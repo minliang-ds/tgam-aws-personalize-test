@@ -11,7 +11,6 @@ Parameters:
     Default: development
     AllowedPattern: "[A-Za-z0-9-]+"
 
-  # *** The stack name for the actual application we're deploying
   ApplicationStackName:
     Type: String
     Default: amazon-personalize-app
@@ -65,7 +64,7 @@ Resources:
             Capabilities: CAPABILITY_IAM
             RoleArn: !GetAtt CloudformationRole.Arn
             StackName: !Ref ApplicationStackName
-            TemplatePath: !Sub "SourceCode::application.yaml"
+            TemplatePath: !Sub "SourceCode::pipeline.yaml"
           RunOrder: 1
 
   CodePipelineRole:
