@@ -4,7 +4,7 @@ Parameters:
   RepoName:
     Type: String
     Default: amazon_personalize_streaming_events
-    AllowedPattern: "[A-Za-z0-9-]+"
+    AllowedPattern: "[A-Za-z0-9-_]+"
 
   RepoBranch:
     Type: String
