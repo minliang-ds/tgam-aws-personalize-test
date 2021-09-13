@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Parameters:
   RepoName:
     Type: String
-    Default: github-codepipeline
+    Default: amazon_personalize_streaming_events
     AllowedPattern: "[A-Za-z0-9-]+"
 
   RepoBranch:
