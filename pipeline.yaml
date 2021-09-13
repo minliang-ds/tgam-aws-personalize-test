@@ -14,7 +14,7 @@ Parameters:
   # *** The stack name for the actual application we're deploying
   ApplicationStackName:
     Type: String
-    Default: amazon_personalize-app
+    Default: amazon-personalize-app
     AllowedPattern: "[A-Za-z0-9-]+"
 
 Resources:
