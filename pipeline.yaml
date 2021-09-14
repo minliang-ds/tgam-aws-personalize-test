@@ -1,6 +1,31 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
 Parameters:
+  ResourcesPrefix:
+    Type: String
+    Default: "tgam-amz-personalize"
+    AllowedPattern: "[A-Za-z0-9-_]+"
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - "dev"
+      - "stg"
+      - "prod"
+
+  ManagedBy:
+    Type: String
+    Default: "CloudFormation"
+    AllowedValues:
+      - "CloudFormation"
+
+  CostAllocationProduct:
+    Type: String
+    Default: "amazon_personalize"
+    AllowedValues:
+      - "amazon_personalize"
+      
   RepoName:
     Type: String
     Default: amazon_personalize_streaming_events
@@ -22,6 +47,43 @@ Resources:
     Properties:
       VersioningConfiguration:
         Status: Enabled
+    
+  CodeBuildLogs:    
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      LogGroupName: tgam-amazon-personalize-build
+      RetentionInDays: 90
+    
+  CodeBuildRole:
+    Description: Creating service role in IAM for AWS CodeBuild
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+      Path: /
+    Type: AWS::IAM::Role
+    
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      LogsConfig: 
+        CloudWatchLogs:
+          GroupName: !Ref CodeBuildLogs
+          Status: ENABLED
+          StreamName: SamBuild
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_LARGE
+        Image: aws/codebuild/standard:4.0
+        PrivilegedMode: true
+      Source:
+        Type: CODEPIPELINE
 
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -51,20 +113,24 @@ Resources:
       # Build and Deploy, etc., stages would follow. Here is an example
       - Name: Deploy
         Actions:
-        - Name: CloudFormationDeploy
+        - Name: SamDeploy
           ActionTypeId:
-            Category: Deploy
+            Category: Build
             Owner: AWS
-            Provider: CloudFormation
+            Provider: CodeBuild
             Version: '1'
           InputArtifacts:
             - Name: SourceCode
           Configuration:
-            ActionMode: CREATE_UPDATE
-            Capabilities: CAPABILITY_IAM
-            RoleArn: !GetAtt CloudformationRole.Arn
-            StackName: !Ref ApplicationStackName
-            TemplatePath: !Sub "SourceCode::pipeline.yaml"
+            #CombineArtifacts: 'true'
+            ProjectName: !Ref CodeBuildProject
+            #PrimarySource: MyApplicationSource1
+            EnvironmentVariables: '[{"name":"TESTING_REGION","value":"us-east-1","type":"PLAINTEXT"},{"name":"TESTING_CLOUDFORMATION_EXECUTION_ROLE","value":"${Ref CodePipelineRole.arn}","type":"PLAINTEXT"},{"name":"TESTING_ARTIFACTS_BUCKET","value":"${Ref PipelineArtifactsBucket.}","type":"PLAINTEXT"},{"name":"TESTING_REGION_SSM","value":"PARAMETER_NAME","type":"PARAMETER_STORE"}]'
+            #ActionMode: CREATE_UPDATE
+            #Capabilities: CAPABILITY_IAM
+            #RoleArn: !GetAtt CloudformationRole.Arn
+            #StackName: !Ref ApplicationStackName
+            #TemplatePath: !Sub "SourceCode::application.yaml"
           RunOrder: 1
 
   CodePipelineRole:
@@ -92,3 +158,31 @@ Resources:
           Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AdministratorAccess #TODO: Reduce permissions
+
+
+  CodeBuildRolePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: tgam-personalize-codebuild
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+            Resource:
+              - !Sub ${CodeBuildLogs.Arn}/*
+          - Effect: Allow
+            Action:
+              - 's3:PutObject'
+              - 's3:GetObject'
+              - 's3:GetObjectVersion'
+              - 's3:GetBucketAcl'
+              - 's3:GetBucketLocation'
+            Resource:
+              - !Sub ${PipelineArtifactsBucket.Arn}/*
+              - !Sub ${PipelineArtifactsBucket.Arn}
+      Roles:
+        - !Ref CodeBuildRole
