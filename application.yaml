@@ -188,7 +188,7 @@ Resources:
   usagePlan:
     DependsOn:
       - APIKey
-      - APIStage
+    #  - APIStage
     Type: 'AWS::ApiGateway::UsagePlan'
     Properties:
       ApiStages:
@@ -199,7 +199,7 @@ Resources:
 
   usagePlanKey:
     DependsOn:
-      - APIKey
+    #  - APIKey
       - APIStage
     Type: 'AWS::ApiGateway::UsagePlanKey'
     Properties:
@@ -243,7 +243,7 @@ Resources:
   LambdaGetRecommendationsMethod:
     Type: "AWS::ApiGateway::Method"
     DependsOn:
-      - GetRecommendations
+    #  - GetRecommendations
       - PutEvents
     Properties:
       ApiKeyRequired: "true"
@@ -293,7 +293,7 @@ Resources:
   recommendationsLambdaApiGatewayInvokeGET:
     Type: "AWS::Lambda::Permission"
     DependsOn:
-      - GetRecommendations
+    #  - GetRecommendations
       - PutEvents
       - apiGatewayDeployment
     Properties:

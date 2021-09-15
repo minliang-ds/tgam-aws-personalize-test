@@ -142,7 +142,7 @@ Resources:
             Value: us-east-1
           - Name: TESTING_CLOUDFORMATION_EXECUTION_ROLE
             Type: PLAINTEXT
-            Value: !GetAtt CodePipelineRole.Arn
+            Value: !GetAtt CloudformationRole.Arn
           - Name: TESTING_ARTIFACTS_BUCKET
             Type: PLAINTEXT
             Value: !Ref PipelineArtifactsBucket
@@ -157,14 +157,13 @@ Resources:
             Value: !Ref Environment  
           - Name: CostAllocationProduct
             Type: PLAINTEXT
-            Value: Ref CostAllocationProduct  
+            Value: !Ref CostAllocationProduct  
           - Name: ManagedBy
             Type: PLAINTEXT
             Value: !Ref ManagedBy  
           - Name: ResourcesPrefix
             Type: PLAINTEXT
             Value: !Ref ResourcesPrefix  
-            
       Source:
         Type: CODEPIPELINE
       Tags:
@@ -311,6 +310,23 @@ Resources:
             Action:
               - 'iam:PassRole'
             Resource:
-              - !GetAtt CodePipelineRole.Arn
+              - !GetAtt CloudformationRole.Arn
+          - Effect: Allow
+            Action:
+              - 'cloudformation:CreateChangeSet'
+              - 'cloudformation:CreateStack'
+              - 'cloudformation:DeleteStack'
+              - 'cloudformation:DescribeChangeSet'
+              - 'cloudformation:DescribeStackEvents'
+              - 'cloudformation:DescribeStacks'
+              - 'cloudformation:ExecuteChangeSet'
+              - 'cloudformation:GetTemplateSummary'
+              - 'cloudformation:ListStackResources'
+              - 'cloudformation:UpdateStack'
+              - 'cloudformation:CreateChangeSet'
+              - 'cloudformation:CreateChangeSet'
+            Resource:
+              - "*"
+
       Roles:
         - !Ref CodeBuildRole
