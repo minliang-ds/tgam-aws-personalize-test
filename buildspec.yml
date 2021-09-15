@@ -11,4 +11,4 @@ phases:
       - cfn-lint ${SAM_TEMPLATE} || true
       - sam validate --template ${SAM_TEMPLATE} 
       - sam build --template ${SAM_TEMPLATE} 
-      - sam deploy --stack-name features-${CI_COMMIT_REF_NAME}-cfn-stack --capabilities CAPABILITY_IAM --region ${TESTING_REGION} --s3-bucket ${TESTING_ARTIFACTS_BUCKET} --no-fail-on-empty-changeset --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE}  --no-confirm-changeset
+      - sam deploy --stack-name ${ResourcesPrefix}-${Environment}-stack --capabilities CAPABILITY_IAM --region ${TESTING_REGION} --s3-bucket ${TESTING_ARTIFACTS_BUCKET} --no-fail-on-empty-changeset --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE}  --no-confirm-changeset
