@@ -145,13 +145,23 @@ Resources:
             Value: !GetAtt CodePipelineRole.Arn
           - Name: TESTING_ARTIFACTS_BUCKET
             Type: PLAINTEXT
-            Value: !GetAtt PipelineArtifactsBucket.Arn
+            Value: !Ref PipelineArtifactsBucket
           - Name: SAM_CLI_TELEMETRY
             Type: PLAINTEXT
             Value: "0"
           - Name: SAM_TEMPLATE
             Type: PLAINTEXT
-            Value: "application.yaml"           
+            Value: "application.yaml"   
+          - Name: Environment
+            Type: PLAINTEXT
+            Value: !Ref Environment  
+          - Name: CostAllocationProduct
+            Type: PLAINTEXT
+            Value: Ref CostAllocationProduct  
+          - Name: ManagedBy
+            Type: PLAINTEXT
+            Value: !Ref ManagedBy  
+            
       Source:
         Type: CODEPIPELINE
       Tags:
