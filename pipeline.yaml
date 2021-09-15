@@ -125,19 +125,7 @@ Resources:
             #CombineArtifacts: 'true'
             ProjectName: !Ref CodeBuildProject
             #PrimarySource: MyApplicationSource1
-            EnvironmentVariables:
-              - Name: TESTING_REGION
-                Type: PLAINTEXT
-                Value: us-east-1
-              - Name: TESTING_CLOUDFORMATION_EXECUTION_ROLE
-                Type: PLAINTEXT
-                Value: !Sub CodePipelineRole.Arn
-              - Name: TESTING_CLOUDFORMATION_EXECUTION_ROLE
-                Type: PLAINTEXT
-                Value: !Sub CodePipelineRole.Arn
-              - Name: TESTING_ARTIFACTS_BUCKET
-                Type: PLAINTEXT
-                Value: !Sub PipelineArtifactsBucket.Arn
+            EnvironmentVariables: !Sub "[{\"name\":\"TESTING_REGION\",\"value\":\"us-east-1\",\"type\":\"PLAINTEXT\"},{\"name\":\"TESTING_ARTIFACTS_BUCKET\",\"value\":\"${PipelineArtifactsBucket.Arn}\",\"type\":\"PLAINTEXT\"}]"
             #ActionMode: CREATE_UPDATE
             #Capabilities: CAPABILITY_IAM
             #RoleArn: !GetAtt CloudformationRole.Arn
@@ -196,5 +184,6 @@ Resources:
             Resource:
               - !Sub ${PipelineArtifactsBucket.Arn}/*
               - !Sub ${PipelineArtifactsBucket.Arn}
+              
       Roles:
         - !Ref CodeBuildRole
