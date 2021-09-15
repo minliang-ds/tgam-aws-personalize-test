@@ -184,6 +184,11 @@ Resources:
             Resource:
               - !Sub ${PipelineArtifactsBucket.Arn}/*
               - !Sub ${PipelineArtifactsBucket.Arn}
-              
+          - Effect: Allow
+            Action:
+              - 'iam:ListPolicies'
+            Resource:
+              - "*"
+
       Roles:
         - !Ref CodeBuildRole

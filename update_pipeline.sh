@@ -16,6 +16,8 @@ aws cloudformation update-stack \
 while true; do
 
 status=`aws cloudformation describe-stacks --stack-name ${CODEPIPELINE_STACK_NAME} --query 'Stacks[*].StackStatus' --output text`
+echo ${status}
+
 if [[ "${status}" ==  "UPDATE_COMPLETE" ]]; then
 break
 fi
