@@ -65,6 +65,8 @@ Resources:
           Value: !Ref CostAllocationProduct
         - Key: "ManagedBy"
           Value: !Ref ManagedBy
+        - Key: "Versioning"
+          Value: "Enabled"
       VersioningConfiguration:
         Status: Enabled
     
@@ -89,6 +91,13 @@ Resources:
   CodeBuildRole:
     Description: Creating service role in IAM for AWS CodeBuild
     Properties:
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
       AssumeRolePolicyDocument:
         Statement:
         - Action: sts:AssumeRole
@@ -101,6 +110,19 @@ Resources:
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
+      Name: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref Environment
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
       ServiceRole: !GetAtt CodeBuildRole.Arn
       LogsConfig: 
         CloudWatchLogs:
@@ -114,12 +136,57 @@ Resources:
         ComputeType: BUILD_GENERAL1_LARGE
         Image: aws/codebuild/standard:4.0
         PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: TESTING_REGION
+            Type: PLAINTEXT
+            Value: us-east-1
+          - Name: TESTING_CLOUDFORMATION_EXECUTION_ROLE
+            Type: PLAINTEXT
+            Value: !Sub CodePipelineRole.Arn
+          - Name: TESTING_ARTIFACTS_BUCKET
+            Type: PLAINTEXT
+            Value: !Sub PipelineArtifactsBucket.Arn
+          - Name: SAM_CLI_TELEMETRY
+            Type: PLAINTEXT
+            Value: "0"
+          - Name: SAM_TEMPLATE
+            Type: PLAINTEXT
+            Value: "application.yaml"           
       Source:
         Type: CODEPIPELINE
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
 
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
+    DependsOn: PipelineArtifactsBucket
     Properties:
+      Name: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref Environment
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
+      RestartExecutionOnUpdate: true
       ArtifactStore:
         Type: S3
         Location: !Ref PipelineArtifactsBucket
@@ -157,7 +224,7 @@ Resources:
             #CombineArtifacts: 'true'
             ProjectName: !Ref CodeBuildProject
             #PrimarySource: MyApplicationSource1
-            EnvironmentVariables: !Sub "[{\"name\":\"TESTING_REGION\",\"value\":\"us-east-1\",\"type\":\"PLAINTEXT\"},{\"name\":\"TESTING_CLOUDFORMATION_EXECUTION_ROLE\",\"value\":\"${CodePipelineRole.Arn}\",\"type\":\"PLAINTEXT\"},{\"name\":\"TESTING_ARTIFACTS_BUCKET\",\"value\":\"${PipelineArtifactsBucket.Arn}\",\"type\":\"PLAINTEXT\"},{\"name\":\"SAM_CLI_TELEMETRY\",\"value\":\"0\",\"type\":\"PLAINTEXT\"},{\"name\":\"SAM_TEMPLATE\",\"value\":\"application.yaml\",\"type\":\"PLAINTEXT\"}]"
+            #EnvironmentVariables: !Sub "[{\"name\":\"TESTING_REGION\",\"value\":\"us-east-1\",\"type\":\"PLAINTEXT\"},{\"name\":\"TESTING_CLOUDFORMATION_EXECUTION_ROLE\",\"value\":\"${CodePipelineRole.Arn}\",\"type\":\"PLAINTEXT\"},{\"name\":\"TESTING_ARTIFACTS_BUCKET\",\"value\":\"${PipelineArtifactsBucket.Arn}\",\"type\":\"PLAINTEXT\"},{\"name\":\"SAM_CLI_TELEMETRY\",\"value\":\"0\",\"type\":\"PLAINTEXT\"},{\"name\":\"SAM_TEMPLATE\",\"value\":\"application.yaml\",\"type\":\"PLAINTEXT\"}]"
             #ActionMode: CREATE_UPDATE
             #Capabilities: CAPABILITY_IAM
             #RoleArn: !GetAtt CloudformationRole.Arn
@@ -168,6 +235,13 @@ Resources:
   CodePipelineRole:
     Type: AWS::IAM::Role
     Properties:
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -181,6 +255,13 @@ Resources:
   CloudformationRole:
     Type: AWS::IAM::Role
     Properties:
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -191,7 +272,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AdministratorAccess #TODO: Reduce permissions
 
-
+#No tags for policy
   CodeBuildRolePolicy:
     Type: 'AWS::IAM::Policy'
     Properties:

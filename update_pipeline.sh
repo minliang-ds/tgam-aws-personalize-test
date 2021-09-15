@@ -5,7 +5,7 @@ region="us-east-1"
 
 set -eu
 
-aws cloudformation update-stack \
+aws cloudformation create-stack \
         --capabilities CAPABILITY_IAM \
         --stack-name $CODEPIPELINE_STACK_NAME \
         --template-body file://pipeline.yaml \
