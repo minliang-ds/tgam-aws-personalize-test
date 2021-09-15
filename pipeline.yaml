@@ -142,10 +142,10 @@ Resources:
             Value: us-east-1
           - Name: TESTING_CLOUDFORMATION_EXECUTION_ROLE
             Type: PLAINTEXT
-            Value: !Sub CodePipelineRole.Arn
+            Value: !GetAtt CodePipelineRole.Arn
           - Name: TESTING_ARTIFACTS_BUCKET
             Type: PLAINTEXT
-            Value: !Sub PipelineArtifactsBucket.Arn
+            Value: !GetAtt PipelineArtifactsBucket.Arn
           - Name: SAM_CLI_TELEMETRY
             Type: PLAINTEXT
             Value: "0"
