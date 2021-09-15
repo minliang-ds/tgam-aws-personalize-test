@@ -18,8 +18,8 @@ while true; do
 status=`aws cloudformation describe-stacks --stack-name ${CODEPIPELINE_STACK_NAME} --query 'Stacks[*].StackStatus' --output text`
 echo ${status}
 
-if [[ "${status}" ==  "UPDATE_COMPLETE" ]]; then
+if [[ "${status}" ==  "UPDATE_COMPLETE" ]] || [[ "${status}" ==  "UPDATE_ROLLBACK_COMPLETE" ]] ; then
 break
 fi
-
+sleep 1
 done

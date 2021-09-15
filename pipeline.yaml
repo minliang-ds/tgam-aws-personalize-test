@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Parameters:
   ResourcesPrefix:
     Type: String
-    Default: "tgam-amz-personalize"
+    Default: "tgam-personalize"
     AllowedPattern: "[A-Za-z0-9-_]+"
 
   Environment:
@@ -45,13 +45,45 @@ Resources:
   PipelineArtifactsBucket:
     Type: AWS::S3::Bucket
     Properties:
+      BucketName: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref Environment
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
       VersioningConfiguration:
         Status: Enabled
     
   CodeBuildLogs:    
     Type: AWS::Logs::LogGroup
     Properties: 
-      LogGroupName: tgam-amazon-personalize-build
+      LogGroupName: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref Environment
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
       RetentionInDays: 90
     
   CodeBuildRole:
