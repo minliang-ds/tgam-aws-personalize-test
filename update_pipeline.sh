@@ -12,3 +12,12 @@ aws cloudformation update-stack \
         --parameters ParameterKey=RepoName,ParameterValue="amazon_personalize_streaming_events" \
         --parameters ParameterKey=RepoBranch,ParameterValue="development" 
 
+
+while true; do
+
+status=`aws cloudformation describe-stacks --stack-name ${CODEPIPELINE_STACK_NAME} --query 'Stacks[*].StackStatus' --output text`
+if [[ "${status}" ==  "UPDATE_COMPLETE" ]]; then
+break
+fi
+
+done

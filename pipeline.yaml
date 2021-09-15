@@ -125,7 +125,7 @@ Resources:
             #CombineArtifacts: 'true'
             ProjectName: !Ref CodeBuildProject
             #PrimarySource: MyApplicationSource1
-            EnvironmentVariables: !Sub "[{\"name\":\"TESTING_REGION\",\"value\":\"us-east-1\",\"type\":\"PLAINTEXT\"},{\"name\":\"TESTING_ARTIFACTS_BUCKET\",\"value\":\"${PipelineArtifactsBucket.Arn}\",\"type\":\"PLAINTEXT\"}]"
+            EnvironmentVariables: !Sub "[{\"name\":\"TESTING_REGION\",\"value\":\"us-east-1\",\"type\":\"PLAINTEXT\"},{\"name\":\"TESTING_CLOUDFORMATION_EXECUTION_ROLE\",\"value\":\"${CodePipelineRole.Arn}\",\"type\":\"PLAINTEXT\"},{\"name\":\"TESTING_ARTIFACTS_BUCKET\",\"value\":\"${PipelineArtifactsBucket.Arn}\",\"type\":\"PLAINTEXT\"},{\"name\":\"SAM_CLI_TELEMETRY\",\"value\":\"0\",\"type\":\"PLAINTEXT\"},{\"name\":\"SAM_TEMPLATE\",\"value\":\"application.yaml\",\"type\":\"PLAINTEXT\"}]"
             #ActionMode: CREATE_UPDATE
             #Capabilities: CAPABILITY_IAM
             #RoleArn: !GetAtt CloudformationRole.Arn
