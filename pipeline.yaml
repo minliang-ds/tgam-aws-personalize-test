@@ -219,7 +219,7 @@ Resources:
           Configuration:
             RepositoryName: !Ref RepoName
             BranchName: !Ref RepoBranch
-            PollForSourceChanges: false
+            PollForSourceChanges: true
           RunOrder: 1
       # Build and Deploy, etc., stages would follow. Here is an example
       - Name: Deploy
