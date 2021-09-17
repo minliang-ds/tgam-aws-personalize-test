@@ -6,12 +6,9 @@ Globals:
   Function:
     Timeout: 3
     Tags:
-      - Key: "Environment"
-        Value: !Ref Environment
-      - Key: "CostAllocationProduct"
-        Value: !Ref CostAllocationProduct
-      - Key: "ManagedBy"
-        Value: !Ref ManagedBy
+      Environment: !Ref Environment
+      CostAllocationProduct: !Ref CostAllocationProduct
+      ManagedBy: !Ref ManagedBy
     Environment:
       Variables:
         Environment: !Ref Environment  
@@ -97,7 +94,7 @@ Resources:
 # # DDB History table
   DynamoTable:
    Type: "AWS::DynamoDB::Table"
-   Condition: DynamoHistoryTable
+   Condition: CreateHistoryTable
    Properties: 
      AttributeDefinitions: 
        - 
@@ -166,7 +163,7 @@ Resources:
       MemorySize: 1024
       Environment:
         Variables:
-          CAMPAIGN_ARN: !GetAtt [CampaignARN, Value]
+          CAMPAIGN_ARN: !Ref CampaignARNParam
   PutEvents:
     DependsOn:
       - LambdaPolicies
@@ -185,7 +182,7 @@ Resources:
             BatchSize: !Ref KinesisBatchSize
       Environment:
         Variables:
-          TRACKING_ID: !GetAtt [EventTrackerId, Value]
+          TRACKING_ID: !Ref EventTrackerIdParam
 # Kinesis Stream
   KinesisStream:
     Type: "AWS::Kinesis::Stream"
@@ -222,7 +219,7 @@ Resources:
             BucketARN: !Join 
               - ''
               - - 'arn:aws:s3:::'
-                - !GetAtt [S3BucketName, Value]
+                - !Ref S3BucketParam
             BufferingHints: 
                 IntervalInSeconds: 60
                 SizeInMBs: 50
@@ -425,6 +422,7 @@ Resources:
         - RootResourceId
       PathPart: events  
   KinesisPutEventsMethod:
+    Condition: CreateKinesisStream
     Type: "AWS::ApiGateway::Method"
     Properties:
       ApiKeyRequired: "true"
@@ -456,6 +454,7 @@ Resources:
           ResponseModels: {"application/json": "Empty"}
   EventsCORESOptionsMethod:
     Type: AWS::ApiGateway::Method
+    Condition: CreateKinesisStream
     Properties:
       AuthorizationType: "NONE"
       RestApiId: !Ref ApiGatewayEndpoint
@@ -486,6 +485,7 @@ Resources:
 # APIGW to Kinesis Role
   APIGatewayKinesisRole:
     Type: AWS::IAM::Role
+    Condition: CreateKinesisStream
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -561,11 +561,11 @@ Resources:
               - !Join 
                 - ''
                 - - 'arn:aws:s3:::'
-                  - !GetAtt [S3BucketName, Value]
+                  - !Ref S3BucketParam
               - !Join 
                 - ''
                 - - 'arn:aws:s3:::'
-                  - !GetAtt [S3BucketName, Value]
+                  - !Ref S3BucketParam
                   - '/*'
           - Effect: Allow
             Action: 'logs:PutLogEvents'
