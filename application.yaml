@@ -5,6 +5,19 @@ Description: >
 Globals:
   Function:
     Timeout: 3
+    Tags:
+      - Key: "Environment"
+        Value: !Ref Environment
+      - Key: "CostAllocationProduct"
+        Value: !Ref CostAllocationProduct
+      - Key: "ManagedBy"
+        Value: !Ref ManagedBy
+    Environment:
+      Variables:
+        Environment: !Ref Environment  
+        CostAllocationProduct: !Ref CostAllocationProduct  
+        ManagedBy: !Ref ManagedBy
+        ResourcesPrefix: !Ref ResourcesPrefix
 
 Parameters:
   ResourcesPrefix:
@@ -154,10 +167,6 @@ Resources:
       Environment:
         Variables:
           CAMPAIGN_ARN: !GetAtt [CampaignARN, Value]
-          Environment: !Ref Environment  
-          CostAllocationProduct: !Ref CostAllocationProduct  
-          ManagedBy: !Ref ManagedBy
-          ResourcesPrefix: !Ref ResourcesPrefixgi
   PutEvents:
     DependsOn:
       - LambdaPolicies
@@ -177,17 +186,6 @@ Resources:
       Environment:
         Variables:
           TRACKING_ID: !GetAtt [EventTrackerId, Value]
-          Environment: !Ref Environment  
-          CostAllocationProduct: !Ref CostAllocationProduct  
-          ManagedBy: !Ref ManagedBy
-          ResourcesPrefix: !Ref ResourcesPrefix
-      Tags:
-        - Key: "Environment"
-          Value: !Ref Environment
-        - Key: "CostAllocationProduct"
-          Value: !Ref CostAllocationProduct
-        - Key: "ManagedBy"
-          Value: !Ref ManagedBy
 # Kinesis Stream
   KinesisStream:
     Type: "AWS::Kinesis::Stream"
