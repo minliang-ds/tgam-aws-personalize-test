@@ -11,4 +11,4 @@ phases:
       - cfn-lint ${SAM_TEMPLATE} 
       - sam validate --template ${SAM_TEMPLATE} 
       - sam build --template ${SAM_TEMPLATE} 
-      - sam deploy --stack-name ${ResourcesPrefix}-${Environment}-stack --capabilities CAPABILITY_IAM --region ${TESTING_REGION} --s3-bucket ${TESTING_ARTIFACTS_BUCKET} --no-fail-on-empty-changeset --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE}  --no-confirm-changeset --parameter-overrides ParameterKey=S3BucketParam,ParameterValue=${TESTING_ARTIFACTS_BUCKET} 
+      - sam deploy --stack-name ${ResourcesPrefix}-${Environment}-stack --capabilities CAPABILITY_IAM --region ${TESTING_REGION} --s3-bucket ${TESTING_ARTIFACTS_BUCKET} --no-fail-on-empty-changeset --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE}  --no-confirm-changeset --parameter-overrides ParameterKey=S3BucketParam,ParameterValue=${TESTING_ARTIFACTS_BUCKET} ParameterKey=ResourcesPrefix,ParameterValue=${ResourcesPrefix} ParameterKey=Environment,ParameterValue=${Environment} ParameterKey=ManagedBy,ParameterValue=${ManagedBy} ParameterKey=CostAllocationProduct,ParameterValue=${CostAllocationProduct} 

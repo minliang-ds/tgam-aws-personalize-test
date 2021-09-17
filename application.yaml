@@ -7,6 +7,44 @@ Globals:
     Timeout: 3
 
 Parameters:
+ ResourcesPrefix:
+    Type: String
+    Default: "tgam-personalize"
+    AllowedPattern: "[A-Za-z0-9-_]+"
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - "dev"
+      - "stg"
+      - "prod"
+
+  ManagedBy:
+    Type: String
+    Default: "CloudFormation"
+    AllowedValues:
+      - "CloudFormation"
+
+  CostAllocationProduct:
+    Type: String
+    Default: "amazon_personalize"
+    AllowedValues:
+      - "amazon_personalize"
+
+  ExistingKinesisStreamARN:
+    Type: String
+    Default: "NONE"
+
+  DynamoHistoryTable:
+    Description: Optional Dynnamo History Table.
+    Default: No
+    Type: String
+    AllowedValues:
+      - No
+      - Yes
+    ConstraintDescription: must specify Yes or No.
+    
   EventTrackerIdParam:
     Type: String
     Description: Please enter your Amazon Personalize Event Tracker ID
@@ -28,60 +66,74 @@ Parameters:
     Description: Please enter your preferred Amazon Kinesis Shard Count
     Default: 1
 
+Conditions:
+  CreateKinesisStream: !Equals 
+    - !Ref ExistingKinesisStreamARN
+    - NONE
+    
+  CreateHistoryTable: !Equals 
+    - !Ref DynamoHistoryTable
+    - Yes
+
 Resources:
 
 # # DDB History table
-#   DynamoTable:
-#     Type: "AWS::DynamoDB::Table"
-#     Properties: 
-#       AttributeDefinitions: 
-#         - 
-#           AttributeName: "userId"
-#           AttributeType: "S"
-#         - 
-#           AttributeName: "timeStamp"
-#           AttributeType: "S"
-#       KeySchema: 
-#         - 
-#           AttributeName: "userId"
-#           KeyType: "HASH"
-#         - 
-#           AttributeName: "timeStamp"
-#           KeyType: "RANGE"
-#       ProvisionedThroughput: 
-#         ReadCapacityUnits: "5"
-#         WriteCapacityUnits: "5"
-#       TableName: "se-personalize-history-tracking-table"
+  DynamoTable:
+   Type: "AWS::DynamoDB::Table"
+   Condition: DynamoHistoryTable
+   Properties: 
+     AttributeDefinitions: 
+       - 
+         AttributeName: "userId"
+         AttributeType: "S"
+       - 
+         AttributeName: "timeStamp"
+         AttributeType: "S"
+     KeySchema: 
+       - 
+         AttributeName: "userId"
+         KeyType: "HASH"
+       - 
+         AttributeName: "timeStamp"
+         KeyType: "RANGE"
+     ProvisionedThroughput: 
+       ReadCapacityUnits: "5"
+       WriteCapacityUnits: "5"
+     TableName: "se-personalize-history-tracking-table"
 
 # SSM Parameters
-  # TableName:
-  #   Type: AWS::SSM::Parameter
-  #   Properties:
-  #     Name: se-personalize-streaming-events-table
-  #     Type: String
-  #     Value: !Ref DynamoTable
-  #     Description: SSM parameter containing the DynamoDB table name
-  EventTrackerId:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: se-personalize-event-tracker-id
-      Type: String
-      Value: !Ref EventTrackerIdParam
-      Description: SSM parameter containing the EventTrackerId of your Amazon Personalize deployment
-  CampaignARN:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: se-personalize-campaign-arn
-      Type: String
-      Value: !Ref CampaignARNParam
-      Description: SSM parameter containing the CampaignARN of your Amazon Personalize deployment
-  S3BucketName:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: se-personalize-s3-bucket-name
-      Type: String
-      Value: !Ref S3BucketParam
-      Description: SSM parameter containing the S3 where your interactions data will be persisted
+  #TableName:
+  #  Type: AWS::SSM::Parameter
+  #  Condition: DynamoHistoryTable
+  #  Properties:
+  #    Name: se-personalize-streaming-events-table
+  #    Type: String
+  #    Value: !Ref DynamoTable
+  #    Description: SSM parameter containing the DynamoDB table name
+      
+  #EventTrackerId:
+  #  Type: AWS::SSM::Parameter
+  #  Properties:
+  #    Name: se-personalize-event-tracker-id
+  #    Type: String
+  #    Value: !Ref EventTrackerIdParam
+  #    Description: SSM parameter containing the EventTrackerId of your Amazon Personalize deployment
+      
+  #CampaignARN:
+  #  Type: AWS::SSM::Parameter
+  #  Properties:
+  #    Name: se-personalize-campaign-arn
+  #    Type: String
+  #    Value: !Ref CampaignARNParam
+  #    Description: SSM parameter containing the CampaignARN of your Amazon Personalize deployment
+      
+  #S3BucketName:
+  #  Type: AWS::SSM::Parameter
+  #  Properties:
+  #    Name: se-personalize-s3-bucket-name
+  #    Type: String
+  #    Value: !Ref S3BucketParam
+  #    Description: SSM parameter containing the S3 where your interactions data will be persisted
   
 
 # Lambda functions
@@ -98,6 +150,10 @@ Resources:
       Environment:
         Variables:
           CAMPAIGN_ARN: !GetAtt [CampaignARN, Value]
+          Environment: !Ref Environment  
+          CostAllocationProduct: !Ref CostAllocationProduct  
+          ManagedBy: !Ref ManagedBy
+          ResourcesPrefix: !Ref ResourcesPrefix
   PutEvents:
     DependsOn:
       - LambdaPolicies
@@ -117,21 +173,43 @@ Resources:
       Environment:
         Variables:
           TRACKING_ID: !GetAtt [EventTrackerId, Value]
+          Environment: !Ref Environment  
+          CostAllocationProduct: !Ref CostAllocationProduct  
+          ManagedBy: !Ref ManagedBy
+          ResourcesPrefix: !Ref ResourcesPrefix
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
 # Kinesis Stream
   KinesisStream:
     Type: "AWS::Kinesis::Stream"
+    Condition: CreateKinesisStream
     Properties:
       ShardCount: !Ref ShardCount
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
+          
   KinesisStreamConsumer:
     Type: "AWS::Kinesis::StreamConsumer"
     Properties:
-      StreamARN: !GetAtt KinesisStream.Arn
+      StreamARN: !If [ CreateKinesisStream, !GetAtt KinesisStream.Arn, !Ref ExistingKinesisStreamARN ]
       ConsumerName: "LambdaConsumer"
+      
 # Kinesis Firehose
   Deliverystream: 
     DependsOn:
       - KinesisDeliveryPolicy
     Type: AWS::KinesisFirehose::DeliveryStream
+    Condition: CreateKinesisStream
     Properties: 
         DeliveryStreamName: "se-kinesis-delivery-stream"
         DeliveryStreamType: KinesisStreamAsSource
@@ -149,9 +227,15 @@ Resources:
             CompressionFormat: UNCOMPRESSED
             Prefix: personalize-events/
             RoleARN: !GetAtt KinesisDeliveryRole.Arn
+        Tags:
+          - Key: "Environment"
+            Value: !Ref Environment
+          - Key: "CostAllocationProduct"
+            Value: !Ref CostAllocationProduct
+          - Key: "ManagedBy"
+            Value: !Ref ManagedBy
 
 # APIGW
-
   ApiGatewayEndpoint:
     DependsOn:
       - GetRecommendations
@@ -160,6 +244,13 @@ Resources:
     Properties:
       Name: "se-personalize-endpoint"
       Description: "Amazon Personalize Streaming Events Enpoint"
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
 #Create the response model for you api
   ApiGatewayModel:
     Type: AWS::ApiGateway::Model
@@ -184,7 +275,13 @@ Resources:
       StageKeys:
       - RestApiId: !Ref ApiGatewayEndpoint
         StageName: "dev2"
-
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
   usagePlan:
     DependsOn:
       - APIKey
@@ -196,7 +293,13 @@ Resources:
           Stage: !Ref APIStage
       Description: Customer ABC's usage plan
       UsagePlanName: 'se-usage-plan'
-
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
   usagePlanKey:
     DependsOn:
     #  - APIKey
@@ -215,7 +318,13 @@ Resources:
       Description: Prod Stage
       RestApiId: !Ref "ApiGatewayEndpoint"
       DeploymentId: !Ref apiGatewayDeployment
-
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
   apiGatewayDeployment:
     Type: "AWS::ApiGateway::Deployment"
     DependsOn:
@@ -306,6 +415,7 @@ Resources:
 # Create /events resource
   EventsResource:
     Type: 'AWS::ApiGateway::Resource'
+    Condition: CreateKinesisStream
     Properties:
       RestApiId: !Ref ApiGatewayEndpoint
       ParentId: !GetAtt 
@@ -395,12 +505,19 @@ Resources:
                 - kinesis:PutRecord
                 - kinesis:PutRecords
               Resource: !GetAtt KinesisStream.Arn 
-
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
 
 
 
 # Kinesis Delivery Role
   KinesisDeliveryRole:
+    Condition: CreateKinesisStream
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -414,8 +531,17 @@ Resources:
             Condition:
               StringEquals:
                 'sts:ExternalId': !Ref 'AWS::AccountId'
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
+          
   KinesisDeliveryPolicy:
     Type: AWS::IAM::Policy
+    Condition: CreateKinesisStream
     Properties:
       PolicyName: se-firehose_delivery_policy
       PolicyDocument:
@@ -477,6 +603,13 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonPersonalizeFullAccess
         - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
   LambdaPolicies:
     Type: AWS::IAM::Policy
     Properties:
