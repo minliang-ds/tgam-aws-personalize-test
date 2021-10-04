@@ -51,6 +51,10 @@ Parameters:
     Description: Please enter your Amazon Personalize Personalize CampaignARN where you would like to get recommendations from
     Default: campaignARNDefault
 
+  ExistingKinesisStreamARN:
+    Type: String
+    Default: "NONE"
+
 Resources:
   PipelineArtifactsBucket:
     Type: AWS::S3::Bucket
@@ -179,7 +183,10 @@ Resources:
             Value: !Ref CampaignARNParam  
           - Name: EventTrackerIdParam
             Type: PLAINTEXT
-            Value: !Ref EventTrackerIdParam  
+            Value: !Ref EventTrackerIdParam 
+          - Name: ExistingKinesisStreamARN
+            Type: PLAINTEXT
+            Value: !Ref ExistingKinesisStreamARN 
       Source:
         Type: CODEPIPELINE
       Tags:
