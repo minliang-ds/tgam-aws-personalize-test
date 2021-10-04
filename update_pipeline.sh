@@ -3,6 +3,7 @@
 CODEPIPELINE_STACK_NAME="tgam-personalize-test-streaming-events"
 region="us-east-1"
 campain_arn="arn:aws:personalize:us-east-1:727304503525:campaign/personalize-poc6-userpersonalization"
+tracker_id="arn:aws:personalize:us-east-1:727304503525:event-tracker/85621e0d"
 
 set -eu
 
@@ -12,7 +13,8 @@ aws cloudformation update-stack \
         --template-body file://pipeline.yaml \
         --parameters ParameterKey=RepoName,ParameterValue="amazon_personalize_streaming_events" \
         --parameters ParameterKey=RepoBranch,ParameterValue="development" \
-        --parameters ParameterKey=CampaignARNParam,ParameterValue="${campain_arn}" 
+        --parameters ParameterKey=CampaignARNParam,ParameterValue="${campain_arn}" \
+        --parameters ParameterKey=EventTrackerIdParam,ParameterValue="${tracker_id}" 
 
 
 while true; do

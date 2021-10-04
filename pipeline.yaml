@@ -164,6 +164,12 @@ Resources:
           - Name: ResourcesPrefix
             Type: PLAINTEXT
             Value: !Ref ResourcesPrefix  
+          - Name: CampaignARNParam
+            Type: PLAINTEXT
+            Value: !Ref CampaignARNParam  
+          - Name: EventTrackerIdParam
+            Type: PLAINTEXT
+            Value: !Ref EventTrackerIdParam  
       Source:
         Type: CODEPIPELINE
       Tags:
