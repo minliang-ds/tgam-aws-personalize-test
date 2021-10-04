@@ -115,41 +115,6 @@ Resources:
        WriteCapacityUnits: "5"
      TableName: "se-personalize-history-tracking-table"
 
-# SSM Parameters
-  #TableName:
-  #  Type: AWS::SSM::Parameter
-  #  Condition: DynamoHistoryTable
-  #  Properties:
-  #    Name: se-personalize-streaming-events-table
-  #    Type: String
-  #    Value: !Ref DynamoTable
-  #    Description: SSM parameter containing the DynamoDB table name
-      
-  #EventTrackerId:
-  #  Type: AWS::SSM::Parameter
-  #  Properties:
-  #    Name: se-personalize-event-tracker-id
-  #    Type: String
-  #    Value: !Ref EventTrackerIdParam
-  #    Description: SSM parameter containing the EventTrackerId of your Amazon Personalize deployment
-      
-  #CampaignARN:
-  #  Type: AWS::SSM::Parameter
-  #  Properties:
-  #    Name: se-personalize-campaign-arn
-  #    Type: String
-  #    Value: !Ref CampaignARNParam
-  #    Description: SSM parameter containing the CampaignARN of your Amazon Personalize deployment
-      
-  #S3BucketName:
-  #  Type: AWS::SSM::Parameter
-  #  Properties:
-  #    Name: se-personalize-s3-bucket-name
-  #    Type: String
-  #    Value: !Ref S3BucketParam
-  #    Description: SSM parameter containing the S3 where your interactions data will be persisted
-  
-
 # Lambda functions
   GetRecommendations:
     DependsOn:
