@@ -166,7 +166,19 @@ Resources:
     Type: "AWS::Kinesis::StreamConsumer"
     Properties:
       StreamARN: !If [ CreateKinesisStream, !GetAtt KinesisStream.Arn, !Ref ExistingKinesisStreamARN ]
-      ConsumerName: "LambdaConsumer"
+      ConsumerName: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref Environment
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
       
 # Kinesis Firehose
   Deliverystream: 
