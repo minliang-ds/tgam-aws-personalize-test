@@ -41,6 +41,16 @@ Parameters:
     Default: amazon-personalize-app
     AllowedPattern: "[A-Za-z0-9-]+"
 
+  EventTrackerIdParam:
+    Type: String
+    Description: Please enter your Amazon Personalize Event Tracker ID
+    Default: 9bec3974-v6bd-5fcf
+  
+  CampaignARNParam:
+    Type: String
+    Description: Please enter your Amazon Personalize Personalize CampaignARN where you would like to get recommendations from
+    Default: campaignARNDefault
+
 Resources:
   PipelineArtifactsBucket:
     Type: AWS::S3::Bucket
