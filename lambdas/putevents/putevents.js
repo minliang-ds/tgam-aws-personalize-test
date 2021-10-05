@@ -18,7 +18,7 @@ exports.handler = (event, context, callback) => {
             return context.successful;
         }
     **/
-        //var eventDate = new Date(payload.PublishedDate);
+        var eventDate = new Date(payload.PublishedDate);
         
         var putItemsParams= {
             'datasetArn': process.env.CONTENT_DATASET_ARN,
@@ -31,7 +31,7 @@ exports.handler = (event, context, callback) => {
                       'WordCount': payload.WordCount,
                       'Published': payload.Published,
                       'ContentType': payload.ContentType,
-                      'PublishedDate': payload.PublishedDate,
+                      'CREATION_TIMESTAMP': eventDate.getTime(),
                   }
                 },
             ]
@@ -46,8 +46,6 @@ exports.handler = (event, context, callback) => {
           }
           else{ 
                 console.log("Success: " + JSON.stringify(data, null, 2)) 
-                //console.log(data);           // successful response
-                //putItemsParams['items'][0]['sentAt']=putItemsParams['items'][0]['sentAt'].toTimeString();
                 const putEventsErrResponse = {
                     statusCode: 500,
                     body: JSON.stringify(err),
