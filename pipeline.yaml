@@ -55,6 +55,10 @@ Parameters:
     Type: String
     Default: "NONE"
 
+  ExistingSecondaryKinesisStreamARN:
+    Type: String
+    Default: "NONE"
+    
 Resources:
   PipelineArtifactsBucket:
     Type: AWS::S3::Bucket
@@ -187,6 +191,10 @@ Resources:
           - Name: ExistingKinesisStreamARN
             Type: PLAINTEXT
             Value: !Ref ExistingKinesisStreamARN 
+          - Name: ExistingSecondaryKinesisStreamARN
+            Type: PLAINTEXT
+            Value: !Ref ExistingSecondaryKinesisStreamARN 
+
       Source:
         Type: CODEPIPELINE
       Tags:

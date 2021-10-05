@@ -46,6 +46,10 @@ Parameters:
     Type: String
     Default: "NONE"
 
+  ExistingSecondaryKinesisStreamARN:
+    Type: String
+    Default: "NONE"
+
   DynamoHistoryTable:
     Description: Optional Dynnamo History Table.
     Default: No
@@ -83,6 +87,10 @@ Parameters:
 Conditions:
   CreateKinesisStream: !Equals 
     - !Ref ExistingKinesisStreamARN
+    - NONE
+    
+  SecondaryKinesisStream: !Equals 
+    - !Ref ExistingSecondaryKinesisStreamARN
     - NONE
     
   CreateHistoryTable: !Equals 
@@ -137,6 +145,7 @@ Resources:
       CodeUri: lambdas/putevents
       Handler: putevents.handler
       Runtime: nodejs12.x
+      LogRetention: 14
       Role: !GetAtt [LambdaRole, Arn]
       Events:
         Stream:
@@ -179,7 +188,25 @@ Resources:
                 - !Split
                   - "/"
                   - !Ref "AWS::StackId"
-      
+                  
+  KinesisStreamConsumer:
+    Type: "AWS::Kinesis::StreamConsumer"
+    Condition: SecondaryKinesisStream
+    Properties:
+      StreamARN:  !Ref ExistingSecondaryKinesisStreamARN 
+      ConsumerName: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref Environment
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"    
 # Kinesis Firehose
   Deliverystream: 
     DependsOn:
