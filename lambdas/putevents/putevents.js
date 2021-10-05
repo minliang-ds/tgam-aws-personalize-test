@@ -17,6 +17,7 @@ exports.handler = (event, context, callback) => {
             console.debug("Skipping event: missing sp_user_id and sp_domain_userid")
             return context.successful;
         }
+        test
     **/
         var eventDate = new Date(payload.PublishedDate);
         
