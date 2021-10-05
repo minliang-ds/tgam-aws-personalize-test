@@ -49,6 +49,10 @@ Parameters:
   ExistingSecondaryKinesisStreamARN:
     Type: String
     Default: "NONE"
+    
+  ContentDatasetARN:
+    Type: String
+    Default: "NONE"
 
   DynamoHistoryTable:
     Description: Optional Dynnamo History Table.
@@ -177,6 +181,7 @@ Resources:
       Environment:
         Variables:
           TRACKING_ID: !Ref EventTrackerIdParam
+          CONTENT_DATASET_ARN: !Ref ContentDatasetARN
 
 # Kinesis Stream
   KinesisStream:
@@ -340,7 +345,7 @@ Resources:
     Properties:
       StageName: "dev2"
       Description: Prod Stage
-      RestApiId: !Ref "ApiGatewayEndpoint"
+      RestApiId: !Ref "ApiGatewayEndpoint"gt
       DeploymentId: !Ref apiGatewayDeployment
       Tags:
         - Key: "Environment"

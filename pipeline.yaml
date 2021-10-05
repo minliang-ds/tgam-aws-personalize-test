@@ -58,6 +58,10 @@ Parameters:
   ExistingSecondaryKinesisStreamARN:
     Type: String
     Default: "NONE"
+  
+  ContentDatasetARN:
+    Type: String
+    Default: "NONE"
     
 Resources:
   PipelineArtifactsBucket:
@@ -194,6 +198,9 @@ Resources:
           - Name: ExistingSecondaryKinesisStreamARN
             Type: PLAINTEXT
             Value: !Ref ExistingSecondaryKinesisStreamARN 
+          - Name: ContentDatasetARN
+            Type: PLAINTEXT
+            Value: !Ref ContentDatasetARN 
 
       Source:
         Type: CODEPIPELINE
