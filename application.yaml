@@ -15,7 +15,7 @@ Globals:
         CostAllocationProduct: !Ref CostAllocationProduct  
         ManagedBy: !Ref ManagedBy
         ResourcesPrefix: !Ref ResourcesPrefix
-
+        CurretnAccountId: !Ref "AWS::AccountId"
 Parameters:
   ResourcesPrefix:
     Type: String

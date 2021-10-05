@@ -12,18 +12,21 @@ def handler(event, context):
     try:
         #input validation
         if payload.get("numResults") and type(payload.get("numResults")) != int:
-            payload["numResults"] = 25;
+            payload["numResults"] = 25
             
         elif payload.get("numResults") and type(payload.get("numResults")) > 500:
-            payload["numResults"] = 500;
+            payload["numResults"] = 500
             
-            
-    
+        if payload.get("filterName"):
+            payload["filterName"] =  f'arn:aws:personalize:{region}:{account_id}:filter/{payload.get("filterName")}'
+        else:
+            payload["filterName"] = f'arn:aws:personalize:{region}:{account_id}:filter/unread'
+
         response = personalize_cli.get_recommendations(
             campaignArn=os.environ['CAMPAIGN_ARN'],
             userId=payload['userId'],
-            numResults = payload.get("numResults") ? payload.get("numResults") : 25,
-            #filterArn = payload.get("filterName") ? f'arn:aws:personalize:{region}:{account_id}:filter/{payload.get("filterName")}' : f'arn:aws:personalize:{region}:{account_id}:filter/unread',
+            numResults = payload.get("numResults"),
+            filterArn = payload.get("filterName"),
             # context=payload['context']
             )
         print(f"RawRecommendations = {response['itemList']}")
