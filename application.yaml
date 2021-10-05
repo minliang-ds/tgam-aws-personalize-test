@@ -271,7 +271,19 @@ Resources:
       - PutEvents
     Type: "AWS::ApiGateway::RestApi"
     Properties:
-      Name: "se-personalize-endpoint"
+      Name: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref Environment
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
       Description: "Amazon Personalize Streaming Events Enpoint"
       Tags:
         - Key: "Environment"
