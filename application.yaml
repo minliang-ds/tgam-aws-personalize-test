@@ -345,7 +345,7 @@ Resources:
     Properties:
       StageName: "dev2"
       Description: Prod Stage
-      RestApiId: !Ref "ApiGatewayEndpoint"gt
+      RestApiId: !Ref "ApiGatewayEndpoint"
       DeploymentId: !Ref apiGatewayDeployment
       Tags:
         - Key: "Environment"
