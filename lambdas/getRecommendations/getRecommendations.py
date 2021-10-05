@@ -1,3 +1,11 @@
+"""
+inputs
+@userId - required, string
+@numResults - optional, int, max: 500, default: 25
+@filterName - optional, string, default: unread
+
+"""
+
 from boto3 import client
 personalize_cli = client('personalize-runtime')
 import json
@@ -9,12 +17,15 @@ account_id = os.environ['CurretnAccountId']
 def handler(event, context):
     print(f"Event = {event}")
     payload = json.loads(event['body'])
+    
+    try:
+        payload["numResults"] = int(payload.get("numResults"))
+    except:
+        payload["numResults"] = 25
+  
     try:
         #input validation
-        if payload.get("numResults") and type(payload.get("numResults")) != int:
-            payload["numResults"] = 25
-            
-        elif payload.get("numResults") and type(payload.get("numResults")) > 500:
+        if payload["numResults"] > 500:
             payload["numResults"] = 500
             
         if payload.get("filterName"):
