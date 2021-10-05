@@ -157,6 +157,27 @@ Resources:
       Environment:
         Variables:
           TRACKING_ID: !Ref EventTrackerIdParam
+  PutContent:
+    DependsOn:
+      - LambdaPolicies
+    Type: AWS::Serverless::Function
+    Condition: SecondaryKinesisStream
+    Properties:
+      CodeUri: lambdas/putcontent
+      Handler: putcontent.handler
+      Runtime: nodejs12.x
+      Role: !GetAtt [LambdaRole, Arn]
+      Events:
+        Stream:
+          Type: Kinesis
+          Properties:
+            Stream: !GetAtt SecondaryKinesisStreamConsumer.ConsumerARN
+            StartingPosition: LATEST
+            BatchSize: !Ref KinesisBatchSize
+      Environment:
+        Variables:
+          TRACKING_ID: !Ref EventTrackerIdParam
+
 # Kinesis Stream
   KinesisStream:
     Type: "AWS::Kinesis::Stream"
