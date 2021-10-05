@@ -145,7 +145,6 @@ Resources:
       CodeUri: lambdas/putevents
       Handler: putevents.handler
       Runtime: nodejs12.x
-      LogRetention: 14
       Role: !GetAtt [LambdaRole, Arn]
       Events:
         Stream:
