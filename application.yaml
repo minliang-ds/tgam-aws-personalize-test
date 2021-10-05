@@ -89,9 +89,10 @@ Conditions:
     - !Ref ExistingKinesisStreamARN
     - NONE
     
-  SecondaryKinesisStream: !Equals 
-    - !Ref ExistingSecondaryKinesisStreamARN
-    - NONE
+  SecondaryKinesisStream: !Not
+    - !Equals 
+      - !Ref ExistingSecondaryKinesisStreamARN
+      - NONE
     
   CreateHistoryTable: !Equals 
     - !Ref DynamoHistoryTable
