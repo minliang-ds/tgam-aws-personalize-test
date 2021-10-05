@@ -28,6 +28,7 @@ exports.handler = (event, context, callback) => {
                   'properties': {
                       'ContentText': payload.ContentText,
                       'Category': payload.Category,
+                      'Section': payload.Section,
                       'WordCount': payload.WordCount,
                       'Published': payload.Published,
                       'ContentType': payload.ContentType,
