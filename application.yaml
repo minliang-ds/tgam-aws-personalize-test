@@ -189,7 +189,7 @@ Resources:
                   - "/"
                   - !Ref "AWS::StackId"
                   
-  KinesisStreamConsumer:
+  SecondaryKinesisStreamConsumer:
     Type: "AWS::Kinesis::StreamConsumer"
     Condition: SecondaryKinesisStream
     Properties:
