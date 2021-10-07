@@ -34,12 +34,13 @@ def handler(event, context):
             payload["filterName"] = f'arn:aws:personalize:{region}:{account_id}:filter/unread'
 
         response = personalize_cli.get_recommendations(
-            campaignArn=os.environ['CAMPAIGN_ARN'],
-            userId=payload['userId'],
-            numResults = payload.get("numResults"),
-            filterArn = payload.get("filterName"),
+            campaignArn = os.environ['CAMPAIGN_ARN'],
+            userId      = payload.get("userId"),
+            numResults  = payload.get("numResults"),
+            filterArn   = payload.get("filterName"),
             # context=payload['context']
             )
+            
         print(f"RawRecommendations = {response['itemList']}")
         return {'statusCode': '200', 'body': json.dumps(response)}
     except personalize_cli.exceptions.ResourceNotFoundException as e:

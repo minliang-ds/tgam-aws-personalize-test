@@ -12,6 +12,11 @@ exports.handler = (event, context, callback) => {
         var payload = Buffer.from(record.kinesis.data, 'base64').toString('ascii');
         console.debug('Decoded payload:', payload);
         payload = JSON.parse(payload);
+        
+        if (!payload.Published){
+            console.debug('Skipping not published content', payload);
+            return context.successful;
+        }
 /**
         if ((payload.sp_user_id === undefined || payload.sp_user_id.trim().length === 0) && (payload.sp_domain_userid === undefined || payload.sp_domain_userid.trim().length === 0)){
             console.debug("Skipping event: missing sp_user_id and sp_domain_userid")
