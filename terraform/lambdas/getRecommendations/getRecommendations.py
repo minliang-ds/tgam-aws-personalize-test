@@ -24,22 +24,26 @@ def handler(event, context):
         payload["numResults"] = 25
   
     try:
+        arguments={
+            'campaignArn': os.environ['CAMPAIGN_ARN'],
+            'userId'     : payload.get("userId"),
+            'numResults' : payload.get("numResults"),
+            'filterValues' : {}
+        }
+        
         #input validation
-        if payload["numResults"] > 500:
-            payload["numResults"] = 500
+        if arguments["numResults"] > 500:
+            arguments["numResults"] = 500
             
         if payload.get("filterName"):
-            payload["filterName"] =  f'arn:aws:personalize:{region}:{account_id}:filter/{payload.get("filterName")}'
+            arguments["filterArn"] =  f'arn:aws:personalize:{region}:{account_id}:filter/{payload.get("filterName")}'
         else:
-            payload["filterName"] = f'arn:aws:personalize:{region}:{account_id}:filter/unread'
+            arguments["filterArn"] = f'arn:aws:personalize:{region}:{account_id}:filter/unread'
 
-        response = personalize_cli.get_recommendations(
-            campaignArn = os.environ['CAMPAIGN_ARN'],
-            userId      = payload.get("userId"),
-            numResults  = payload.get("numResults"),
-            filterArn   = payload.get("filterName"),
-            # context=payload['context']
-            )
+        if payload.get("currentContentId"):
+            arguments["filterValues"]["currentContentId"] = payload.get("currentContentId");
+
+        response = personalize_cli.get_recommendations(**arguments)
             
         print(f"RawRecommendations = {response['itemList']}")
         return {'statusCode': '200', 'body': json.dumps(response)}
