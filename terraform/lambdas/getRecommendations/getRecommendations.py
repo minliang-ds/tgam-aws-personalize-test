@@ -42,6 +42,9 @@ def handler(event, context):
 
         if payload.get("currentContentId"):
             arguments["filterValues"]["currentContentId"] = payload.get("currentContentId");
+            
+        if payload.get("context"):
+            arguments["filterValues"]["context"] = payload.get("context");
 
         response = personalize_cli.get_recommendations(**arguments)
             
