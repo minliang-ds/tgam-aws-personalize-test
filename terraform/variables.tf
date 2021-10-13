@@ -25,7 +25,7 @@ variable "ResoucesPrefix" {
 
 variable "TrackingId" {
   type    = string
-  default = "f19a3e78-4820-4634-ae77-3c9bde0f0b9a"
+  default = "0ba2fe37-3a88-4c72-bb22-d4984ce586db"
 }
 
 
@@ -41,12 +41,12 @@ variable "KinesisContentStream" {
 
 variable "CampainArn" {
   type    = string
-  default = "arn:aws:personalize:us-east-1:727304503525:campaign/personalize-poc6-userpersonalization"
+  default = "arn:aws:personalize:us-east-1:727304503525:campaign/snehshah"
 }
 
 variable "DataSetArn" {
   type    = string
-  default = "arn:aws:personalize:us-east-1:727304503525:dataset/personalize-poc6/ITEMS"
+  default = "arn:aws:personalize:us-east-1:727304503525:dataset/personalize-full2/ITEMS"
 }
 
 

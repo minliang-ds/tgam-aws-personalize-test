@@ -41,10 +41,13 @@ def handler(event, context):
             arguments["filterArn"] = f'arn:aws:personalize:{region}:{account_id}:filter/unread'
 
         if payload.get("currentContentId"):
-            arguments["filterValues"]["currentContentId"] = payload.get("currentContentId");
+            arguments["itemId"] = payload.get("currentContentId");
             
         if payload.get("context"):
             arguments["filterValues"]["context"] = payload.get("context");
+            
+        if payload.get("category"):
+            arguments["filterValues"]["category"] = f'\"{payload.get("category")}\"';
 
         response = personalize_cli.get_recommendations(**arguments)
             
