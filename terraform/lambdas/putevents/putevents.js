@@ -23,8 +23,9 @@ exports.handler = (event, context, callback) => {
         }
 
         var eventDate = new Date(payload.sp_derived_tstamp);
-        var currentDate = new Date();
-        
+        var now = new Date();
+        var currentDate = new Date(now.getTime() + now.getTimezoneOffset() * 60000);
+
         var delay_ms = currentDate.getTime() - eventDate.getTime();
         metrics.putMetric("DeliveryLatencyMS", delay_ms, Unit.Milliseconds);
 
