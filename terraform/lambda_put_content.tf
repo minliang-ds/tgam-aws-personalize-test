@@ -98,6 +98,7 @@ resource "aws_lambda_function" "put_content" {
       CurretnAccountId    = data.aws_caller_identity.current.account_id
       TRACKING_ID         = var.TrackingId
       CONTENT_DATASET_ARN = var.DataSetArn
+      AWS_EMF_NAMESPACE   = "PersonalizeCustomMetrics"
     }
   }
 }

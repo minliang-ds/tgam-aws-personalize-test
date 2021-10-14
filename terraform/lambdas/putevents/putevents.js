@@ -1,4 +1,6 @@
 const AWS = require('aws-sdk')
+const { createMetricsLogger, Unit } = require("aws-embedded-metrics");
+
 var personalizeevents = new AWS.PersonalizeEvents();
 //var dynamoClient = new AWS.DynamoDB.DocumentClient();
 
@@ -9,52 +11,78 @@ exports.handler = (event, context, callback) => {
     
     event.Records.forEach(function(record) {
         // Kinesis data is base64 encoded so decode here
+        const metrics = createMetricsLogger();
+        metrics.putDimensions({ Type: "PutEvents" });
+
         var payload = Buffer.from(record.kinesis.data, 'base64').toString('ascii');
         console.debug('Decoded payload:', payload);
         payload = JSON.parse(payload);
 
-        if (payload.sp_app_id == undefined || payload.sp_app_id != "theglobeandmail-website"){
-            console.debug("Skipping event: not valid sp_app_id")
-            return context.successful;
+        if (payload.sp_event_id != undefined){
+            metrics.setProperty("EventID", payload.sp_event_id);
+        }
 
+        var eventDate = new Date(payload.sp_derived_tstamp);
+        var currentDate = new Date();
+        
+        var delay_ms = currentDate.getTime() - eventDate.getTime();
+        metrics.putMetric("DeliveryLatencyMS", delay_ms, Unit.Milliseconds);
+
+        if (payload.sp_app_id === undefined || payload.sp_app_id != "theglobeandmail-website"){
+            console.debug("Skipping event: not valid sp_app_id")
+            metrics.putMetric("EventStatus", 0);
+            metrics.flush();
+            return context.successful;
         }
 
         if (payload.content_contentId === undefined || payload.content_contentId.trim().length === 0){
             console.debug("Skipping event: not valid content_contentId")
+            metrics.putMetric("EventStatus", 0);
+            metrics.flush();
             return context.successful;
         }
         
         if (payload.sp_derived_tstamp === undefined || payload.sp_derived_tstamp.trim().length === 0){
             console.debug("Skipping event: not valid sp_derived_tstamp")
+            metrics.putMetric("EventStatus", 0);
+            metrics.flush();
             return context.successful;
         }
         
         if (payload.page_type == undefined || payload.page_type != "article"){
             console.debug("Skipping event: not valid page_type")
+            metrics.putMetric("EventStatus", 0);
+            metrics.flush();
             return context.successful;
         }
         
         if (payload.sp_event_name == undefined || payload.sp_event_name != "page_view"){
             console.debug("Skipping event: not valid sp_event_name")
+            metrics.putMetric("EventStatus", 0);
+            metrics.flush();
             return context.successful;
         }
 
         if (payload.sp_domain_sessionid == undefined){
             console.debug("Skipping event: missing sp_domain_sessionid")
+            metrics.putMetric("EventStatus", 0);
+            metrics.flush();
             return context.successful;
         }
         
         if (payload.sp_derived_tstamp == undefined){
             console.debug("Skipping event: missing sp_derived_tstamp")
+            metrics.putMetric("EventStatus", 0);
+            metrics.flush();
             return context.successful;
         }
         
         if ((payload.sp_user_id === undefined || payload.sp_user_id.trim().length === 0) && (payload.sp_domain_userid === undefined || payload.sp_domain_userid.trim().length === 0)){
             console.debug("Skipping event: missing sp_user_id and sp_domain_userid")
+            metrics.putMetric("EventStatus", 0);
+            metrics.flush();
             return context.successful;
         }
-        
-        var eventDate = new Date(payload.sp_derived_tstamp);
         
         var putEventsParams= {
             'sessionId': payload.sp_domain_sessionid,
@@ -86,8 +114,11 @@ exports.handler = (event, context, callback) => {
         personalizeevents.putEvents(putEventsParams, function (err, data) {
           if (err) {
                 console.log(err, err.stack); // an error occurred
+                metrics.putMetric("EventStatus", -1);
           }
           else{ 
+                metrics.putMetric("EventStatus", 1);
+                metrics.flush();
                 console.log("Success: " + JSON.stringify(data, null, 2)) 
                 //console.log(data);           // successful response
                 putEventsParams['eventList'][0]['sentAt']=putEventsParams['eventList'][0]['sentAt'].toTimeString();

@@ -1,4 +1,6 @@
 const AWS = require('aws-sdk')
+const { createMetricsLogger, Unit } = require("aws-embedded-metrics");
+
 var personalizeevents = new AWS.PersonalizeEvents();
 //var dynamoClient = new AWS.DynamoDB.DocumentClient();
 
@@ -9,12 +11,17 @@ exports.handler = (event, context, callback) => {
     
     event.Records.forEach(function(record) {
         // Kinesis data is base64 encoded so decode here
+        const metrics = createMetricsLogger();
+        metrics.putDimensions({ Type: "PutContent" });
+
         var payload = Buffer.from(record.kinesis.data, 'base64').toString('ascii');
         console.debug('Decoded payload:', payload);
         payload = JSON.parse(payload);
         
         if (!payload.Published){
             console.debug('Skipping not published content', payload);
+            metrics.putMetric("EventStatus", 0);
+            metrics.flush();
             return context.successful;
         }
 /**
@@ -24,7 +31,11 @@ exports.handler = (event, context, callback) => {
         }
     **/
         var eventDate = new Date(payload.PublishedDate);
-        
+        var currentDate = new Date();
+                
+        var delay_ms = currentDate.getTime() - eventDate.getTime();
+        metrics.putMetric("DeliveryLatencyMS", delay_ms, Unit.Milliseconds);
+
         var putItemsParams= {
             'datasetArn': process.env.CONTENT_DATASET_ARN,
             'items': [
@@ -47,9 +58,13 @@ exports.handler = (event, context, callback) => {
 
         personalizeevents.putItems(putItemsParams, function (err, data) {
           if (err) {
-                console.log(err, err.stack); // an error occurred
+            metrics.putMetric("EventStatus", -1);
+            metrics.flush();
+            console.log(err, err.stack); // an error occurred
           }
           else{ 
+                metrics.putMetric("EventStatus", 1);
+                metrics.flush();
                 console.log("Success: " + JSON.stringify(data, null, 2)) 
                 //console.log(data);           // successful response
                // putItemsParams['items'][0]['CREATION_TIMESTAMP']=putItemsParams['items'][0]['CREATION_TIMESTAMP'].getTime();

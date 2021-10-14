@@ -41,7 +41,7 @@ variable "KinesisContentStream" {
 
 variable "CampainArn" {
   type    = string
-  default = "arn:aws:personalize:us-east-1:727304503525:campaign/snehshah"
+  default = "arn:aws:personalize:us-east-1:727304503525:campaign/personalize-full2-userpersonalization"
 }
 
 variable "DataSetArn" {
