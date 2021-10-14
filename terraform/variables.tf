@@ -39,6 +39,11 @@ variable "KinesisContentStream" {
   default = "sophi3-unified-content-stream"
 }
 
+variable "FiltersPrefix" {
+  type    = string
+  default = "full2"
+}
+
 variable "CampainArn" {
   type    = string
   default = "arn:aws:personalize:us-east-1:727304503525:campaign/personalize-full2-userpersonalization"

@@ -95,6 +95,7 @@ resource "aws_lambda_function" "get_recommendations_lambda" {
   environment {
     variables = {
       Environment      = var.Environment
+      FiltersPrefix    = var.FiltersPrefix
       CurretnAccountId = data.aws_caller_identity.current.account_id
       CAMPAIGN_ARN     = var.CampainArn
     }

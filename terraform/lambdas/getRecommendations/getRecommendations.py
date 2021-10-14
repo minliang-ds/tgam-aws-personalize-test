@@ -13,6 +13,7 @@ import os
 
 region = os.environ['AWS_REGION']
 account_id = os.environ['CurretnAccountId']
+filter_prefix = os.environ['FiltersPrefix']
 
 def handler(event, context):
     print(f"Event = {event}")
@@ -36,9 +37,9 @@ def handler(event, context):
             arguments["numResults"] = 500
             
         if payload.get("filterName"):
-            arguments["filterArn"] =  f'arn:aws:personalize:{region}:{account_id}:filter/{payload.get("filterName")}'
+            arguments["filterArn"] =  f'arn:aws:personalize:{region}:{account_id}:filter/{filter_prefix}-{payload.get("filterName")}'
         else:
-            arguments["filterArn"] = f'arn:aws:personalize:{region}:{account_id}:filter/unread'
+            arguments["filterArn"] = f'arn:aws:personalize:{region}:{account_id}:filter/{filter_prefix}-unread'
 
         if payload.get("currentContentId"):
             arguments["itemId"] = payload.get("currentContentId");
