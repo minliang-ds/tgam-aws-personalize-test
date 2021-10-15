@@ -54,6 +54,11 @@ variable "DataSetArn" {
   default = "arn:aws:personalize:us-east-1:727304503525:dataset/personalize-full2/ITEMS"
 }
 
+variable "DynamoDbTableArn" {
+  type    = string
+  default = "arn:aws:dynamodb:us-east-1:727304503525:table/Sophi3ContentMetaData"
+}
+
 
 locals {
   resource_prefix = "${var.ResoucesPrefix}-${terraform.workspace}"
