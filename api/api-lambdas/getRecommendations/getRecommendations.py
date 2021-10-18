@@ -154,8 +154,9 @@ def handler(event, context):
 
             for row in deserialized_item:
               for k, v in names_key.items():
-                for old_name in row:
-                  if k.lower() == old_name:
+                for old_name in list(row):
+                  if k == old_name:
+                    #print(f"Remove = {old_name}")
                     row[v] = row.pop(old_name)
             #
             #serialized_item = [{k: [v2 for k2, v2 in v.items()][0] for k, v in element.items()} for element in item]
