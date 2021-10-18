@@ -1,0 +1,159 @@
+{
+   "datasetGroup":{
+      "name":"tgam-personalize-mlops-test"
+   },
+   "datasets":{
+      "Interactions":{
+          "name":"InteractionsDataset",
+          "schema":{
+                "type":"record",
+                "name":"Interactions",
+                "namespace":"com.amazonaws.personalize.schema",
+                "fields":[
+                    {
+                        "name": "USER_ID",
+                        "type": "string"
+                    },
+                    {
+                        "name": "ITEM_ID",
+                        "type": "string"
+                    },
+                    {
+                        "name": "TIMESTAMP",
+                        "type": "long"
+                    },
+                    {
+                        "name": "EVENT_TYPE",
+                        "type": "string"
+                    },
+                    {
+                        "name": "visitor_type",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "categorical": true
+                    },
+                    {
+                        "name": "visitor_countrycode",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "categorical": true
+                    },
+                    {
+                        "name": "device_detector_visitorplatform",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "categorical": true
+                    },
+                    {
+                        "name": "device_detector_brandname",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "categorical": true
+                    },
+                    {
+                        "name": "device_detector_browserfamily",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "categorical": true
+                    }
+                ],
+                "version":"1.0"
+          }
+      },
+      "Items":{
+          "name":"ItemsDataset",
+          "schema":{
+            "type":"record",
+            "name":"Items",
+            "namespace":"com.amazonaws.personalize.schema",
+            "fields":[
+                {
+                    "name": "ITEM_ID",
+                    "type": "string"
+                },
+                {
+                    "name": "CREATION_TIMESTAMP",
+                    "type": "long"
+                },
+                {
+                    "name": "ContentText",
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "textual": true
+                },
+                {
+                    "name": "Category",
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "categorical": true
+                },
+                {
+                    "name": "WordCount",
+                    "type": [
+                        "int",
+                        "null"
+                    ]
+                }
+            ],
+            "version":"1.0"
+          }
+      }
+   },
+   "solutions":{
+      "userPersonalization":{
+         "name":"userPersonalizationSolution",
+         "recipeArn":"arn:aws:personalize:::recipe/aws-user-personalization",
+         "solutionConfig":{
+             "algorithmHyperParameters":{
+                 "bptt":"9",
+                 "hidden_dimension":"132",
+                 "recency_mask":"true"
+             }
+         }
+      }
+   },
+   "eventTracker":{
+      "name":"tgam-personalize-mlops-test-event-tracker"
+   },
+   "campaigns":{
+      "userPersonalizationCampaign":{
+         "name":"userPersonalizationCampaign",
+         "minProvisionedTPS":10,
+         "campaignConfig":{
+             "itemExplorationConfig":{
+                 "explorationWeight": "0.3",
+                 "explorationItemAgeCutOff": "30"
+             }
+         }
+      }
+   },
+   "filters":
+   [
+       {
+            "name":"tgam-personalize-mlops-test-category",
+            "filterExpression":"INCLUDE ItemID WHERE Interactions.event_type IN ($category)"
+       },
+       {
+            "name":"tgam-personalize-mlops-test-read",
+            "filterExpression":"INCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\")"
+       },
+       {
+            "name":"tgam-personalize-mlops-test-unread",
+            "filterExpression":"EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\")"
+       }
+   ]
+}

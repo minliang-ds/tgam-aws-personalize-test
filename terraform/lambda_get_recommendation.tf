@@ -143,113 +143,113 @@ EOF
 
 
 # See also the following AWS managed policy: AWSLambdaBasicExecutionRole
-resource "aws_iam_policy" "api_dynamodb" {
-  name        = "${local.resource_prefix}-api-get-recommendations-${data.aws_region.current.name}"
-  path        = "/"
-  description = "IAM policy for API Gateway"
+#resource "aws_iam_policy" "api_dynamodb" {
+#  name        = "${local.resource_prefix}-api-get-recommendations-${data.aws_region.current.name}"
+#  path        = "/"
+#  description = "IAM policy for API Gateway"
+#
+#  policy = <<EOF
+#{
+#  "Version": "2012-10-17",
+#  "Statement": [
+#    {
+#      "Action": [
+#          "dynamodb:Query"
+#      ],
+#      "Resource": "${var.DynamoDbTableArn}",
+#      "Effect": "Allow"
+#    }
+#  ]
+#}
+#EOF
+#}
 
-  policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": [
-          "dynamodb:Query"
-      ],
-      "Resource": "${var.DynamoDbTableArn}",
-      "Effect": "Allow"
-    }
-  ]
-}
-EOF
-}
-
-resource "aws_iam_role_policy_attachment" "api_dynamodb" {
-  role       = aws_iam_role.iam_for_lambda_api_get_recommendations.name
-  policy_arn = aws_iam_policy.api_dynamodb.arn
-}
+#resource "aws_iam_role_policy_attachment" "api_dynamodb" {
+#  role       = aws_iam_role.iam_for_lambda_api_get_recommendations.name
+#  policy_arn = aws_iam_policy.api_dynamodb.arn
+#}
 
                   
-resource "aws_api_gateway_resource" "get_content" {
-  rest_api_id = aws_api_gateway_rest_api.get_recommendations.id
-  parent_id   = aws_api_gateway_rest_api.get_recommendations.root_resource_id
-  path_part   = "content"
-}
+#resource "aws_api_gateway_resource" "get_content" {
+#  rest_api_id = aws_api_gateway_rest_api.get_recommendations.id
+#  parent_id   = aws_api_gateway_rest_api.get_recommendations.root_resource_id
+#  path_part   = "content"
+#}
 
-resource "aws_api_gateway_resource" "get_content_id" {
-  rest_api_id = aws_api_gateway_rest_api.get_recommendations.id
-  parent_id   = aws_api_gateway_resource.get_content.id
-  path_part   = "{ContentId}"
-}
+#resource "aws_api_gateway_resource" "get_content_id" {
+#  rest_api_id = aws_api_gateway_rest_api.get_recommendations.id
+#  parent_id   = aws_api_gateway_resource.get_content.id
+#  path_part   = "{ContentId}"
+#}
 
-resource "aws_api_gateway_method" "get_content" {
-  rest_api_id      = aws_api_gateway_rest_api.get_recommendations.id
-  resource_id      = aws_api_gateway_resource.get_content_id.id
-  http_method      = "POST"
-  authorization    = "NONE"
-  api_key_required = true
-}
+#resource "aws_api_gateway_method" "get_content" {
+#  rest_api_id      = aws_api_gateway_rest_api.get_recommendations.id
+#  resource_id      = aws_api_gateway_resource.get_content_id.id
+#  http_method      = "POST"
+#  authorization    = "NONE"
+#  api_key_required = true
+#}
 
-resource "aws_api_gateway_integration" "get_content" {
-  rest_api_id = aws_api_gateway_rest_api.get_recommendations.id
-  resource_id = aws_api_gateway_method.get_content.resource_id
-  http_method = aws_api_gateway_method.get_content.http_method
+#resource "aws_api_gateway_integration" "get_content" {
+#  rest_api_id = aws_api_gateway_rest_api.get_recommendations.id
+#  resource_id = aws_api_gateway_method.get_content.resource_id
+#  http_method = aws_api_gateway_method.get_content.http_method
 
-  integration_http_method = "ANY"
-  type                    = "AWS"
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:dynamodb:action/Query"
-  credentials             = aws_iam_role.iam_for_lambda_api_get_recommendations.arn
-  passthrough_behavior    = "WHEN_NO_TEMPLATES"
+#  integration_http_method = "ANY"
+#  type                    = "AWS"
+#  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:dynamodb:action/Query"
+#  credentials             = aws_iam_role.iam_for_lambda_api_get_recommendations.arn
+#  passthrough_behavior    = "WHEN_NO_TEMPLATES"
   
-  request_templates = {
-    "application/json" = <<EOF
-{
-    "TableName": "${element(split("/", var.DynamoDbTableArn),1)}",
-    "KeyConditionExpression": "#kn0 = :v1",
-    "ExpressionAttributeNames": {
-		  "#kn0": "ContentId"
-	  },
-    "ExpressionAttributeValues": {
-        ":v1": {
-            "S": "$input.params('ContentId')"
-        }
-    }
-}
-EOF
-  }
-  
-  #"{var.DynamoDbTableArn}/Query"
-}
+#  request_templates = {
+#    "application/json" = <<EOF
+#{
+#    "TableName": "${element(split("/", var.DynamoDbTableArn),1)}",
+#    "KeyConditionExpression": "#kn0 = :v1",
+#    "ExpressionAttributeNames": {
+#		  "#kn0": "ContentId"
+#	  },
+#    "ExpressionAttributeValues": {
+#        ":v1": {
+#            "S": "$input.params('ContentId')"
+#        }
+#    }
+#}
+#EOF
+#  }
+#  
+#}
 
-resource "aws_api_gateway_integration_response" "get_content" {
-  rest_api_id = aws_api_gateway_rest_api.get_recommendations.id
-  resource_id = aws_api_gateway_method.get_content.resource_id
-  http_method = aws_api_gateway_method.get_content.http_method
-  status_code = "200"
+#resource "aws_api_gateway_integration_response" "get_content" {
+#  rest_api_id = aws_api_gateway_rest_api.get_recommendations.id
+#  resource_id = aws_api_gateway_method.get_content.resource_id
+#  http_method = aws_api_gateway_method.get_content.http_method
+#  status_code = "200"
+#
+#  response_templates = {
+#    "application/json" = <<EOF
+##set($inputRoot = $input.path('$'))
+#{
+#    "comments": [
+#        #foreach($elem in $inputRoot.Items) {
+#            "ContentId": "$elem.ContentId.S",
+#            "AppId": "$elem.AppId.S",
+#            "Category": "$elem.Category.S"
+#        }#if($foreach.hasNext),#end
+#	#end
+#    ]
+#}
+#EOF
+#  }
+#}
 
-  response_templates = {
-    "application/json" = <<EOF
-#set($inputRoot = $input.path('$'))
-{
-    "comments": [
-        #foreach($elem in $inputRoot.Items) {
-            "ContentId": "$elem.ContentId.S",
-            "AppId": "$elem.AppId.S",
-            "Category": "$elem.Category.S"
-        }#if($foreach.hasNext),#end
-	#end
-    ]
-}
-EOF
-  }
-}
+#resource "aws_api_gateway_method_response" "get_content" {
+#  rest_api_id = aws_api_gateway_rest_api.get_recommendations.id
+#  resource_id = aws_api_gateway_method.get_content.resource_id
+#  http_method = aws_api_gateway_method.get_content.http_method
+#  status_code = "200"
+#}
 
-resource "aws_api_gateway_method_response" "get_content" {
-  rest_api_id = aws_api_gateway_rest_api.get_recommendations.id
-  resource_id = aws_api_gateway_method.get_content.resource_id
-  http_method = aws_api_gateway_method.get_content.http_method
-  status_code = "200"
-}
 
 resource "aws_api_gateway_resource" "get_recommendations" {
   rest_api_id = aws_api_gateway_rest_api.get_recommendations.id
@@ -285,7 +285,6 @@ resource "aws_api_gateway_model" "get_recommendations" {
 {}
 EOF
 
-
 }
 
 resource "aws_api_gateway_deployment" "get_recommendations" {
@@ -294,7 +293,11 @@ resource "aws_api_gateway_deployment" "get_recommendations" {
   ]
 
   triggers = {
-    redeployment = sha1(jsonencode(aws_api_gateway_rest_api.get_recommendations.body))
+    redeployment = sha1(jsonencode([
+      aws_api_gateway_rest_api.get_recommendations.body,
+      aws_api_gateway_resource.get_recommendations.id
+      
+      ]))
   }
 
   lifecycle {

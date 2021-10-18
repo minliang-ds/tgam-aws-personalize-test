@@ -1,0 +1,426 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  personalize-streaming-events
+Globals:
+  Function:
+    Timeout: 3
+    Tags:
+      Environment: !Ref Environment
+      CostAllocationProduct: !Ref CostAllocationProduct
+      ManagedBy: !Ref ManagedBy
+    Environment:
+      Variables:
+        Environment: !Ref Environment  
+        CostAllocationProduct: !Ref CostAllocationProduct  
+        ManagedBy: !Ref ManagedBy
+        ResourcesPrefix: !Ref ResourcesPrefix
+        CurretnAccountId: !Ref "AWS::AccountId"
+        
+Parameters:
+  ResourcesPrefix:
+    Type: String
+    Default: "tgam-personalize"
+    AllowedPattern: "[A-Za-z0-9-_]+"
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - "dev"
+      - "stg"
+      - "prod"
+
+  ManagedBy:
+    Type: String
+    Default: "CloudFormation"
+    AllowedValues:
+      - "CloudFormation"
+
+  CostAllocationProduct:
+    Type: String
+    Default: "amazon_personalize"
+    AllowedValues:
+      - "amazon_personalize"
+      
+  KinesisContentStream:
+    Type: String
+    Default: "sophi3-unified-content-stream"
+
+  KinesisEventStream:
+    Type: String
+    Default: "sophi3-transformed-event-stream"
+
+
+  KinesisBatchSize:
+    Type: Number
+    Description: Please enter your preferred batch size procesing data from Kinesis
+    Default: 50
+  
+  ShardCount:
+    Type: Number
+    Description: Please enter your preferred Amazon Kinesis Shard Count
+    Default: 1
+
+  ContentDatasetName:
+    Type: String
+    Description: "Name of datasetGroup from params.json file"
+    Default: "tgam-personalize-mlops-test"
+  
+  EventTrackerIdParam:
+    Type: String
+    Description: Please enter your Amazon Personalize Event Tracker ID
+    Default: f843d3d9-7153-436b-b4be-ed5ce8375c575fcf
+  
+  CampaignName:
+    Type: String
+    Description: Please enter your Amazon Personalize Personalize CampaignARN where you would like to get recommendations from
+    Default: userPersonalizationCampaign
+  
+  FiltersPrefix:
+    Type: String
+    Description: FiltersPrefix for personalize
+    Default: tgam-personalize-mlops-test
+
+  ContentDynamoDbTableName:
+    Type: String
+    Description: FiltersPrefix for personalize
+    Default: Sophi3ContentMetaData
+
+
+Resources:
+
+# # DDB History table
+# Lambda functions
+
+#### Api part
+  ApiLambdaRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonPersonalizeFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
+  LambdaPolicies:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: se-lambda-execution-policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "personalize:*"
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - "kinesis:SubscribeToShard"
+              - "kinesis:ListShards"
+              - "kinesis:GetShardIterator"
+              - "kinesis:GetRecords"
+              - "kinesis:DescribeStream"
+              - "kinesis:DescribeStreamSummary"
+            Resource: "*" 
+      Roles:
+        - !Ref ApiLambdaRole
+        
+  GetRecommendations:
+    DependsOn:
+      - LambdaPolicies
+    Type:  AWS::Serverless::Function
+    Properties:
+      CodeUri: api-lambdas/getRecommendations
+      Handler: getRecommendations.handler
+      Runtime: python3.7
+      Role: !GetAtt [ApiLambdaRole, Arn]
+      MemorySize: 1024
+      Environment:
+        Variables:
+          CAMPAIGN_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}'
+          FiltersPrefix: !Ref FiltersPrefix
+          DynamoDbTableName: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/{FiltersPrefix}'
+  PutEvents:
+    DependsOn:
+      - LambdaPolicies
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api-lambdas/putevents
+      Handler: putevents.handler
+      Runtime: nodejs12.x
+      Role: !GetAtt [ApiLambdaRole, Arn]
+      Events:
+        Stream:
+          Type: Kinesis
+          Properties:
+            Stream: !GetAtt KinesisEventStreamConsumer.ConsumerARN
+            StartingPosition: LATEST
+            BatchSize: !Ref KinesisBatchSize
+      Environment:
+        Variables:
+          TRACKING_ID: !Ref EventTrackerIdParam
+  PutContent:
+    DependsOn:
+      - LambdaPolicies
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api-lambdas/putcontent
+      Handler: putcontent.handler
+      Runtime: nodejs12.x
+      Role: !GetAtt [ApiLambdaRole, Arn]
+      Events:
+        Stream:
+          Type: Kinesis
+          Properties:
+            Stream: !GetAtt KinesisContentStreamConsumer.ConsumerARN
+            StartingPosition: LATEST
+            BatchSize: !Ref KinesisBatchSize
+      Environment:
+        Variables:
+          TRACKING_ID: !Ref EventTrackerIdParam
+          CONTENT_DATASET_ARN: !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:dataset/${ContentDatasetName}/ITEMS'
+          
+  KinesisEventStreamConsumer:
+    Type: "AWS::Kinesis::StreamConsumer"
+    Properties:
+      StreamARN: !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}' 
+      ConsumerName: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref Environment
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
+                  
+  KinesisContentStreamConsumer:
+    Type: "AWS::Kinesis::StreamConsumer"
+    Properties:
+      StreamARN:  !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}' 
+      ConsumerName: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref Environment
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"    
+
+
+# APIGW
+  ApiGatewayEndpoint:
+    DependsOn:
+      - GetRecommendations
+      - PutEvents
+    Type: "AWS::ApiGateway::RestApi"
+    Properties:
+      Name: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref Environment
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
+      Description: "Amazon Personalize Streaming Events Enpoint"
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
+#Create the response model for you api
+  ApiGatewayModel:
+    Type: AWS::ApiGateway::Model
+    DependsOn:
+      - GetRecommendations
+      - PutEvents
+    Properties:
+      ContentType: 'application/json'
+      RestApiId: !Ref ApiGatewayEndpoint
+      Schema: {}
+
+
+#API KEY
+  APIKey:
+    DependsOn:
+      - apiGatewayDeployment
+      - APIStage
+    Type: "AWS::ApiGateway::ApiKey"
+    Properties: 
+      Description: "This is an API key"
+      Enabled: true
+      StageKeys:
+      - RestApiId: !Ref ApiGatewayEndpoint
+        StageName: "dev"
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
+  usagePlan:
+    DependsOn:
+      - APIKey
+    #  - APIStage
+    Type: 'AWS::ApiGateway::UsagePlan'
+    Properties:
+      ApiStages:
+        - ApiId: !Ref ApiGatewayEndpoint
+          Stage: !Ref APIStage
+      Description: Customer ABC's usage plan
+      UsagePlanName: 'se-usage-plan'
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
+  usagePlanKey:
+    DependsOn:
+    #  - APIKey
+      - APIStage
+    Type: 'AWS::ApiGateway::UsagePlanKey'
+    Properties:
+      KeyId: !Ref APIKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref usagePlan
+
+
+  APIStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      StageName: "dev"
+      Description: Prod Stage
+      RestApiId: !Ref "ApiGatewayEndpoint"
+      DeploymentId: !Ref apiGatewayDeployment
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
+  apiGatewayDeployment:
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn:
+      - GetRecommendations
+      - PutEvents
+      - "LambdaGetRecommendationsMethod"
+    Properties:
+      RestApiId: !Ref "ApiGatewayEndpoint"
+
+  
+
+# Create /recommendations resource
+  RecommendationsResource:
+    Type: 'AWS::ApiGateway::Resource'
+    DependsOn:
+      - GetRecommendations
+      - PutEvents
+    Properties:
+      RestApiId: !Ref ApiGatewayEndpoint
+      ParentId: !GetAtt 
+        - ApiGatewayEndpoint
+        - RootResourceId
+      PathPart: recommendations
+# Integrate with your Get Recommendations Lambda
+  LambdaGetRecommendationsMethod:
+    Type: "AWS::ApiGateway::Method"
+    DependsOn:
+    #  - GetRecommendations
+      - PutEvents
+    Properties:
+      ApiKeyRequired: "true"
+      RestApiId: !Ref ApiGatewayEndpoint
+      ResourceId: !Ref RecommendationsResource
+      HttpMethod: "POST"
+      AuthorizationType: "NONE"
+      Integration:
+        IntegrationHttpMethod: "POST"
+        Type: "AWS_PROXY"
+        Uri: !Sub
+          - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations"
+          - lambdaArn: !GetAtt "GetRecommendations.Arn"
+# Activate CORS
+  RecommendationsCORESOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: "NONE"
+      RestApiId: !Ref ApiGatewayEndpoint
+      ResourceId: !Ref RecommendationsResource
+      HttpMethod: "OPTIONS"
+      Integration:
+        Type: "MOCK"
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ''
+        PassthroughBehavior: "WHEN_NO_MATCH"
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseModels:
+            'application/json': 'Empty'
+          ResponseParameters:
+            'method.response.header.Access-Control-Allow-Headers': 'false'
+            'method.response.header.Access-Control-Allow-Methods': 'false'
+            'method.response.header.Access-Control-Allow-Origin': 'false'
+# Deploy your API endpoint
+
+
+# Create the invoke permissions
+  recommendationsLambdaApiGatewayInvokeGET:
+    Type: "AWS::Lambda::Permission"
+    DependsOn:
+    #  - GetRecommendations
+      - PutEvents
+      - apiGatewayDeployment
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt "GetRecommendations.Arn"
+      Principal: "apigateway.amazonaws.com"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayEndpoint}/*/POST/recommendations"
+  
+              
+# Outputs:
+Outputs:
+  POSTRecommendationsApiGatewayInvokeURL:
+    Value: !Sub "https://${ApiGatewayEndpoint}.execute-api.${AWS::Region}.amazonaws.com/dev/recommendations"
+  APIKEY:
+    Value: !Sub "https://console.aws.amazon.com/apigateway/home?region=${AWS::Region}#/api-keys/${APIKey}"
