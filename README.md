@@ -23,8 +23,35 @@ aws s3api create-bucket --bucket sam-${env}-sophi-bucket-us-east-1 --region us-e
 
 ```
 
-## Deploy ML Ops Steps
+## Deploy Personalize CloudFormation Dashboard
+1. Start an AWS CloudShell session from the AWS console
+2. Clone the project repo:
+```bash
+git clone codecommit::us-east-1://amazon_personalize_streaming_events
+```
+3. Navigate into the *monitoring* directory:
+```bash
+cd monitoring
+```
+4. Validate your SAM project:
+```bash
+sam validate
+```
+5. Build your SAM project:
+```bash
+sam build
+```
+6. Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
+```bash
+sam deploy --stack-name tgam-personalize-monitoring-test  --s3-bucket sam-dev-sophi-bucket-us-east-1  --capabilities CAPABILITY_IAM  \
+--parameter-overrides ParameterKey=CampaignARNs,ParameterValue=all \
+ParameterKey=Regions,ParameterValue=us-east-1 \
+ParameterKey=NotificationEndpoint,ParameterValue=mlinliu@amazon.com 
+````
 
+
+
+## Deploy ML Ops Steps
 
 1. Start an AWS CloudShell session from the AWS console
 2. Clone the project repo:
@@ -90,10 +117,10 @@ sam build
 ```bash
 sam deploy --stack-name tgam-personalize-api-test  --s3-bucket sam-dev-sophi-bucket-us-east-1  --capabilities CAPABILITY_IAM  \
     --parameter-overrides ParameterKey=EventTrackerIdParam,ParameterValue=f843d3d9-7153-436b-b4be-ed5ce8375c575fcf \
-    --parameter-overrides ParameterKey=ContentDatasetName,ParameterValue=tgam-personalize-mlops-test \
-    --parameter-overrides ParameterKey=CampaignName,ParameterValue=userPersonalizationCampaign \
-    --parameter-overrides ParameterKey=FiltersPrefix,ParameterValue=tgam-personalize-mlops-test \ 
-    --parameter-overrides ParameterKey=ContentDynamoDbTableName,ParameterValue=Sophi3ContentMetaData 
+ ParameterKey=ContentDatasetName,ParameterValue=tgam-personalize-mlops-test \
+ ParameterKey=CampaignName,ParameterValue=userPersonalizationCampaign \
+ ParameterKey=FiltersPrefix,ParameterValue=tgam-personalize-mlops-test \ 
+ ParameterKey=ContentDynamoDbTableName,ParameterValue=Sophi3ContentMetaData 
 ```
 
 7. Update time for cloudwatch logs retation
@@ -112,4 +139,5 @@ export api_key=(api from output url)
 
 
 
-## 
+## Todo
+- Update lambda python to 3.8  for mlops 

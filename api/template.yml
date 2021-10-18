@@ -189,7 +189,7 @@ Resources:
     Properties:
       CodeUri: api-lambdas/getRecommendations
       Handler: getRecommendations.handler
-      Runtime: python3.7
+      Runtime: python3.8
       Role: !GetAtt [RecommendationsRole, Arn]
       MemorySize: 1024
       Environment:
