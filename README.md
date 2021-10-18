@@ -21,10 +21,11 @@ The below diagram showcases the StepFunction workflow definition:
 export env="dev"
 aws s3api create-bucket --bucket sam-${env}-sophi-bucket-us-east-1 --region us-east-1
 
+```
 
 ## Deploy ML Ops Steps
 
-```
+
 1. Start an AWS CloudShell session from the AWS console
 1. Clone the project repo:
     - `git clone codecommit::us-east-1://amazon_personalize_streaming_events`
@@ -80,10 +81,12 @@ sam deploy --stack-name tgam-personalize-api-test  --s3-bucket sam-dev-sophi-buc
     --parameter-overrides ParameterKey=FiltersPrefix,ParameterValue=tgam-personalize-mlops-test \ 
     --parameter-overrides ParameterKey=ContentDynamoDbTableName,ParameterValue=Sophi3ContentMetaData 
     
-    ```
-1. Update time for cloudwatch logs retation
-1. Test api:
 ```
+
+1. Update time for cloudwatch logs retation
+
+1. Test api:
+```bash
 export api_endpoint=(url from output url)
 export api_key=(api from output url)
 
@@ -93,6 +96,7 @@ export api_key=(api from output url)
   -H "x-api-key: ${api_key}" \
   --data-raw '{"sub_requests":[{"widget_id":"recommended-art_same_section_mostpopular","include_read":false,"include_content_types":"wire,news,blog,column,review,gallery","limit":10,"context":"art_same_section_mostpopular","width":"w620","include_sections":"canada","min_content_age":61,"platform":"desktop","max_content_age":345601,"rank":1,"last_content_ids":"4LTZGA2T7FA5FC3XJXTHCUGXLI","newsletter_ids":"","section":"/canada/","seo_keywords":"","visitor_type":"anonymous"}],"platform":"desktop","visitor_id":"42ed07db-c4d5-41e6-8e51-5173da2bfec0","hash_id":""}'  | jq
 ```
-2. 
+
+
 
 ## 
