@@ -27,52 +27,66 @@ aws s3api create-bucket --bucket sam-${env}-sophi-bucket-us-east-1 --region us-e
 
 
 1. Start an AWS CloudShell session from the AWS console
-1. Clone the project repo:
-    - `git clone codecommit::us-east-1://amazon_personalize_streaming_events`
-1. Navigate into the *mlops/personalize-step-functions* directory:
-    - `cd mlops/personalize-step-functions`
-1. Validate your SAM project:
-    - `sam validate` 
-1. Build your SAM project:
-    - `sam build` 
-1. Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
-    - `sam deploy --stack-name tgam-personalize-mlops-test  --s3-bucket sam-dev-sophi-bucket-us-east-1  --capabilities CAPABILITY_IAM  --parameter-overrides ParameterKey=Email,ParameterValue=mlinliu@amazon.com`
-1. Navigate to your email inbox and confirm your subscription to the SNS topic
-1. Once deployed, the pipeline will create the **InputBucket** which you can find in the CloudFormation stack output. Use it to upload your CSV datasets using the following structure:
+2. Clone the project repo:
+```bash
+git clone codecommit::us-east-1://amazon_personalize_streaming_events
+```
+3. Navigate into the *mlops/personalize-step-functions* directory:
+```bash
+cd mlops/personalize-step-functions
+```
+4. Validate your SAM project:
+```bash
+sam validate
+```
+5. Build your SAM project:
+```bash
+sam build
+```
+6. Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
+```bash
+sam deploy --stack-name tgam-personalize-mlops-test  --s3-bucket sam-dev-sophi-bucket-us-east-1  --capabilities CAPABILITY_IAM  --parameter-overrides ParameterKey=Email,ParameterValue=mlinliu@amazon.com
+````
+7. Navigate to your email inbox and confirm your subscription to the SNS topic
+8. Once deployed, the pipeline will create the **InputBucket** which you can find in the CloudFormation stack output. Use it to upload your CSV datasets using the following structure:
 ```bash
 Items/              # Items dataset(s) folder
 Interactions/       # Interaction dataset(s) folder
 ``` 
-1. Navigate into the *mlops* directory:
-    - `cd ~/sagemaker_notebook_instance_test/mlops`
-1. Upload the `params.json` file to the **root directory of the InputBucket**. This step will trigger the step functions workflow.
-    - `aws s3 cp ./params.json s3://<input-bucket-name>`
-1. Navigate to AWS Step Functions to monitor the workflow (Optional). Once the workflow completes successfully (which might take 12-15 hours), an email notification will be sent out.
+9. Navigate into the *mlops* directory:
+```bash
+cd ~/sagemaker_notebook_instance_test/mlops
+```
+10. Upload the `params.json` file to the **root directory of the InputBucket**. This step will trigger the step functions workflow.
+```bash
+aws s3 cp ./params.json s3://<input-bucket-name>
+```
+11. Navigate to AWS Step Functions to monitor the workflow (Optional). Once the workflow completes successfully (which might take 12-15 hours), an email notification will be sent out.
 
 
 ## Deploy Recommendations API
-
 1. Start an AWS CloudShell session from the AWS console
-1. Clone the project repo:
-```
+2. Clone the project repo:
+```bash
 git clone codecommit::us-east-1://amazon_personalize_streaming_events
 ```
-1. Navigate into the *mlops/personalize-step-functions* directory:
-```
+
+3. Navigate into the *mlops/personalize-step-functions* directory:
+```bash
 cd api
 ```
 
-1. Validate your SAM project:
+4. Validate your SAM project:
 ```bash
 sam validate
 ```
 
-1. Build your SAM project:
+5. Build your SAM project:
 ```bash
 sam build
 ```
 
-1. Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
+6. Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
 ```bash
 sam deploy --stack-name tgam-personalize-api-test  --s3-bucket sam-dev-sophi-bucket-us-east-1  --capabilities CAPABILITY_IAM  \
     --parameter-overrides ParameterKey=EventTrackerIdParam,ParameterValue=f843d3d9-7153-436b-b4be-ed5ce8375c575fcf \
@@ -80,12 +94,11 @@ sam deploy --stack-name tgam-personalize-api-test  --s3-bucket sam-dev-sophi-buc
     --parameter-overrides ParameterKey=CampaignName,ParameterValue=userPersonalizationCampaign \
     --parameter-overrides ParameterKey=FiltersPrefix,ParameterValue=tgam-personalize-mlops-test \ 
     --parameter-overrides ParameterKey=ContentDynamoDbTableName,ParameterValue=Sophi3ContentMetaData 
-    
 ```
 
-1. Update time for cloudwatch logs retation
+7. Update time for cloudwatch logs retation
 
-1. Test api:
+8. Test api:
 ```bash
 export api_endpoint=(url from output url)
 export api_key=(api from output url)
