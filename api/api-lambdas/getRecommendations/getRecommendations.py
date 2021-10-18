@@ -121,7 +121,20 @@ def handler(event, context):
         #PublishedDate => published_at
         #WordCount => word_count
         #byline = what if we have 2 ?
-        
+        names_key = { 
+          'WordCount'.lower()            : 'word_count' ,
+          'ContentType'.lower()          : 'content_type' ,
+          'PublishedDate'.lower()        : 'published_at', 
+          'UpdatedDate'.lower()          : 'updated_at',
+          'Section'.lower()              : 'section_meta_title',
+          'CanonicalURL'.lower()         : 'url',
+          'CreditLine'.lower()           : 'credit',
+          'ContentId'.lower()            : 'content_id',
+          'ContentType'.lower()          : 'content_type',
+          'ContentRestriction'.lower()   : 'protection_product',
+          'ContentType'.lower()          : 'content_type',
+          }
+
         try:
             response = dynamodb.batch_get_item(
                 RequestItems={
@@ -137,6 +150,13 @@ def handler(event, context):
         else:
             item = response['Responses'].get(table_name)
             deserialized_item = [{k.lower(): deserializer.deserialize(v) for k, v in element.items()} for element in item]
+            
+
+            for row in deserialized_item:
+              for k, v in names_key.items():
+                for old_name in row:
+                  if k.lower() == old_name:
+                    row[v] = row.pop(old_name)
             #
             #serialized_item = [{k: [v2 for k2, v2 in v.items()][0] for k, v in element.items()} for element in item]
             
