@@ -70,7 +70,7 @@ Parameters:
   EventTrackerIdParam:
     Type: String
     Description: Please enter your Amazon Personalize Event Tracker ID
-    Default: f843d3d9-7153-436b-b4be-ed5ce8375c575fcf
+    Default: f843d3d9-7153-436b-b4be-ed5ce8375c57
   
   CampaignName:
     Type: String
@@ -180,7 +180,6 @@ Resources:
               - "kinesis:DescribeStream"
               - "kinesis:DescribeStreamSummary"
             Resource:
-              - !Sub '*'
               - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}'
               - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}'
               - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}*'
@@ -468,7 +467,6 @@ Resources:
       Principal: "apigateway.amazonaws.com"
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayEndpoint}/*/POST/recommendations"
   
-  
 
   GetRecommendationsErrorAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -515,22 +513,7 @@ Resources:
       Period: 60
       Statistic: Sum
       Threshold: '1'
-              
- GetRecommendationsThrottlesAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmActions:
-        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      Dimensions:
-        - Name: FunctionName
-          Value: !Ref GetRecommendations
-      EvaluationPeriods: 1
-      MetricName: Throttles
-      Namespace: AWS/Lambda
-      Period: 60
-      Statistic: Sum
-      Threshold: '1'
+      
   PutContentThrottlesAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -560,9 +543,33 @@ Resources:
       Namespace: AWS/Lambda
       Period: 60
       Statistic: Sum
-      Threshold: '1'         
+      Threshold: '1'    
+
+  RecThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref GetRecommendations
+      EvaluationPeriods: 1
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: '1'
+      
+      
 # Outputs:
 Outputs:
+  GetRecommendations:
+    Value: !Ref GetRecommendations
+  PutContent:
+    Value: !Ref PutContent
+  PutEvents:
+    Value: !Ref PutEvents
   POSTRecommendationsApiGatewayInvokeURL:
     Value: !Sub "https://${ApiGatewayEndpoint}.execute-api.${AWS::Region}.amazonaws.com/dev/recommendations"
   APIKEY:
