@@ -94,6 +94,47 @@ Resources:
 # Lambda functions
 
 #### Api part
+  RecommendationsRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
+  RecommendationsPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: se-lambda-execution-policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "personalize:GetRecommendations"
+            Resource:
+              - !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/*'
+              - !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:filter/*'
+          - Effect: Allow
+            Action:
+              - "dynamodb:BatchGetItem"
+            Resource:
+             - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ContentDynamoDbTableName}'
+      Roles:
+        - !Ref RecommendationsRole
+        
+        
   ApiLambdaRole:
     Type: "AWS::IAM::Role"
     Properties:
@@ -133,7 +174,11 @@ Resources:
               - "kinesis:GetRecords"
               - "kinesis:DescribeStream"
               - "kinesis:DescribeStreamSummary"
-            Resource: "*" 
+            Resource:
+              - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}'
+              - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}'
+              - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}*'
+              - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}*'
       Roles:
         - !Ref ApiLambdaRole
         
@@ -145,13 +190,13 @@ Resources:
       CodeUri: api-lambdas/getRecommendations
       Handler: getRecommendations.handler
       Runtime: python3.7
-      Role: !GetAtt [ApiLambdaRole, Arn]
+      Role: !GetAtt [RecommendationsRole, Arn]
       MemorySize: 1024
       Environment:
         Variables:
           CAMPAIGN_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}'
           FiltersPrefix: !Ref FiltersPrefix
-          DynamoDbTableName: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/{FiltersPrefix}'
+          DynamoDbTableName: !Ref ContentDynamoDbTableName
   PutEvents:
     DependsOn:
       - LambdaPolicies
