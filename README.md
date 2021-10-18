@@ -53,16 +53,27 @@ Interactions/       # Interaction dataset(s) folder
 
 1. Start an AWS CloudShell session from the AWS console
 1. Clone the project repo:
-    - `git clone codecommit::us-east-1://amazon_personalize_streaming_events`
-1. Navigate into the *mlops/personalize-step-functions* directory:
-    - `cd api`
-1. Validate your SAM project:
-    - `sam validate` 
-1. Build your SAM project:
-    - `sam build` 
-1. Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
 ```
-sams deploy --stack-name tgam-personalize-api-test  --s3-bucket sam-dev-sophi-bucket-us-east-1  --capabilities CAPABILITY_IAM  \
+git clone codecommit::us-east-1://amazon_personalize_streaming_events
+```
+1. Navigate into the *mlops/personalize-step-functions* directory:
+```
+cd api
+```
+
+1. Validate your SAM project:
+```bash
+sam validate
+```
+
+1. Build your SAM project:
+```bash
+sam build
+```
+
+1. Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
+```bash
+sam deploy --stack-name tgam-personalize-api-test  --s3-bucket sam-dev-sophi-bucket-us-east-1  --capabilities CAPABILITY_IAM  \
     --parameter-overrides ParameterKey=EventTrackerIdParam,ParameterValue=f843d3d9-7153-436b-b4be-ed5ce8375c575fcf \
     --parameter-overrides ParameterKey=ContentDatasetName,ParameterValue=tgam-personalize-mlops-test \
     --parameter-overrides ParameterKey=CampaignName,ParameterValue=userPersonalizationCampaign \
