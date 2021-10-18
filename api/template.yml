@@ -57,10 +57,10 @@ Parameters:
     Description: Please enter your preferred batch size procesing data from Kinesis
     Default: 50
   
-  ShardCount:
-    Type: Number
-    Description: Please enter your preferred Amazon Kinesis Shard Count
-    Default: 1
+#  ShardCount:
+#    Type: Number
+#    Description: Please enter your preferred Amazon Kinesis Shard Count
+#    Default: 1
 
   ContentDatasetName:
     Type: String
@@ -86,6 +86,11 @@ Parameters:
     Type: String
     Description: FiltersPrefix for personalize
     Default: Sophi3ContentMetaData
+
+  Email:
+    Type: String
+    Description: Email to be notified
+    Default: youremail@yourprovider.com
 
 
 Resources:
@@ -175,6 +180,7 @@ Resources:
               - "kinesis:DescribeStream"
               - "kinesis:DescribeStreamSummary"
             Resource:
+              - !Sub '*'
               - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}'
               - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}'
               - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}*'
@@ -462,7 +468,99 @@ Resources:
       Principal: "apigateway.amazonaws.com"
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayEndpoint}/*/POST/recommendations"
   
+  
+
+  GetRecommendationsErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref GetRecommendations
+      EvaluationPeriods: 1
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: '1'
+  PutContentErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PutContent
+      EvaluationPeriods: 1
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: '1'
+  PutEventsErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PutEvents
+      EvaluationPeriods: 1
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: '1'
               
+ GetRecommendationsThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref GetRecommendations
+      EvaluationPeriods: 1
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: '1'
+  PutContentThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PutContent
+      EvaluationPeriods: 1
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: '1'
+  PutEventsThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PutEvents
+      EvaluationPeriods: 1
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: '1'         
 # Outputs:
 Outputs:
   POSTRecommendationsApiGatewayInvokeURL:
