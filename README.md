@@ -116,11 +116,11 @@ sam build
 6. Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
 ```bash
 sam deploy --stack-name tgam-personalize-api-test  --s3-bucket sam-dev-sophi-bucket-us-east-1  --capabilities CAPABILITY_IAM  \
-    --parameter-overrides ParameterKey=EventTrackerIdParam,ParameterValue=f843d3d9-7153-436b-b4be-ed5ce8375c575fcf \
- ParameterKey=ContentDatasetName,ParameterValue=tgam-personalize-mlops-test \
- ParameterKey=CampaignName,ParameterValue=userPersonalizationCampaign \
- ParameterKey=FiltersPrefix,ParameterValue=tgam-personalize-mlops-test \ 
- ParameterKey=ContentDynamoDbTableName,ParameterValue=Sophi3ContentMetaData 
+    --parameter-overrides ParameterKey=EventTrackerIdParam,ParameterValue=f843d3d9-7153-436b-b4be-ed5ce8375c575fcf \ 
+ParameterKey=ContentDatasetName,ParameterValue=tgam-personalize-mlops-test \
+ParameterKey=CampaignName,ParameterValue=userPersonalizationCampaign \
+ParameterKey=FiltersPrefix,ParameterValue=tgam-personalize-mlops-test \ 
+ParameterKey=ContentDynamoDbTableName,ParameterValue=Sophi3ContentMetaData 
 ```
 
 7. Update time for cloudwatch logs retation
