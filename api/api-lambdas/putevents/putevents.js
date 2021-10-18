@@ -6,6 +6,23 @@ var personalizeevents = new AWS.PersonalizeEvents();
 
 console.log('Loading function');
 
+function getTimeZoneOffset(date, timeZone) {
+
+  // Abuse the Intl API to get a local ISO 8601 string for a given time zone.
+  let iso = date.toLocaleString('en-CA', { timeZone, hour12: false }).replace(', ', 'T');
+
+  // Include the milliseconds from the original timestamp
+  iso += '.' + date.getMilliseconds().toString().padStart(3, '0');
+
+  // Lie to the Date object constructor that it's a UTC time.
+  const lie = new Date(iso + 'Z');
+
+  // Return the difference in timestamps, as minutes
+  // Positive values are West of GMT, opposite of ISO 8601
+  // this matches the output of `Date.getTimeZoneOffset`
+  return -(lie - date) / 60 / 1000;
+}
+
 exports.handler = (event, context, callback) => {
     console.log(JSON.stringify(event, null, 2));
     
@@ -23,10 +40,17 @@ exports.handler = (event, context, callback) => {
         }
 
         var eventDate = new Date(payload.sp_derived_tstamp);
-        var now = new Date();
-        var currentDate = new Date(now.getTime() + now.getTimezoneOffset() * 60000);
+        var now = new Date()
 
-        var delay_ms = currentDate.getTime() - eventDate.getTime();
+        //console.debug('Time debug1:', now.toTimeString());
+        //console.debug('Time debug2:', eventDate.toTimeString());
+        //console.debug('Time offset:', getTimeZoneOffset(now, "UTC"));
+        //console.debug('Time offset:', getTimeZoneOffset(now, payload.sp_os_timezone));
+        //console.debug('Time offset:', payload.sp_os_timezone);
+        //console.debug('DeliveryLatencyMS:', (now.getTime() - eventDate.getTime()) - ((getTimeZoneOffset(now, payload.sp_os_timezone) - 60) * 60 * 1000));
+        //console.debug(process.env.TZ)
+
+        var delay_ms = ((now.getTime() - eventDate.getTime()) - ((getTimeZoneOffset(now, payload.sp_os_timezone) - 60) * 60 * 1000))
         metrics.putMetric("DeliveryLatencyMS", delay_ms, Unit.Milliseconds);
 
         if (payload.sp_app_id === undefined || payload.sp_app_id != "theglobeandmail-website"){
