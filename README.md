@@ -142,6 +142,60 @@ export api_key=(api from output url)
 ## Api documentation
 
 ## Request Fields
+@visitor_id - Required, string, userID for personalize
+@hash_id - ignored
+@platform - ignored
+@sub_requests - list of map of requests, this api will support only 1 request but we will keep format of list to maintain compatibility with old api
+
+@sub_requests[0].limit - Optional, int, max: 100, default: 25, limit of items for recommendation 
+@sub_requests[0].context - Optional, string, example: art_same_section_mostpopular, art_mostpopular, user_container_recommendations, mobile_art_morestories. Currently its mapped to filters in personelize api
+@sub_requests[0].platform - Optional, string user platform. Existing types in model: Mobile, Desktop, Tablet. Api will use lower().capitalize() as its case sensitive field
+@sub_requests[0].visitor_type - Optional, string user type. Existing types in model: Anonymous, Subscribed, Registered. Api will use lower().capitalize() as its case sensitive field
+@sub_requests[0].section - Optional, string, section, will be used as filter only if context is **art_same_section_mostpopular**. Api will remove all characters "/" from string.
+@sub_requests[0].last_content_ids - Optional, string, current content ID, it will exlude this content from recommendations
+
+
+@sub_requests[0].widget_id - ignored, was existing in old api 
+@sub_requests[0].include_read - ignored, was existing in old api 
+@sub_requests[0].include_content_types - ignored, was existing in old api 
+@sub_requests[0].width - ignored, was existing in old api 
+@sub_requests[0].include_sections - ignored, was existing in old api 
+@sub_requests[0].min_content_age - ignored, was existing in old api 
+@sub_requests[0].max_content_age - ignored, was existing in old api 
+@sub_requests[0].rank - ignored, was existing in old api 
+@sub_requests[0].newsletter_ids - ignored, was existing in old api 
+@sub_requests[0].seo_keywords - ignored, was existing in old api 
+
+
+Example of request data:
+
+```json
+{
+  "sub_requests": [
+    {
+      "widget_id": "recommended-art_same_section_mostpopular",
+      "include_read": false,
+      "include_content_types": "wire,news,blog,column,review,gallery",
+      "limit": 6,
+      "context": "art_same_section_mostpopular",
+      "width": "w620",
+      "include_sections": "business",
+      "min_content_age": 61,
+      "platform": "desktop",
+      "max_content_age": 345601,
+      "rank": 1,
+      "last_content_ids": "IBIPXDSTAVFNTMRN5FXZXJFKRI",
+      "newsletter_ids": "",
+      "section": "/business/",
+      "seo_keywords": "",
+      "visitor_type": "registered"
+    }
+  ],
+  "platform": "desktop",
+  "visitor_id": "82889d15-188b-41ae-bf20-33982546e7b5",
+  "hash_id": ""
+}
+```
 
 ## Reply Fields
 
