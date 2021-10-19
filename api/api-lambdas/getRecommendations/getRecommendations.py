@@ -102,11 +102,14 @@ def handler(event, context):
             arguments["filterArn"] = f'arn:aws:personalize:{region}:{account_id}:filter/{filter_prefix}-unread'
 
         if payload.get("platform"):
-            arguments["context"]['device_detector_visitorplatform'] = payload.get("platform");
+            arguments["context"]['device_detector_visitorplatform'] = payload.get("platform").lower().capitalize();
+            #capitalize as in model we have Mobile/Destop and its case sensitive
 
         if payload.get("visitor_type"):
-            arguments["context"]['visitor_type'] = payload.get("visitor_type");
-            
+            arguments["context"]['visitor_type'] = payload.get("visitor_type").lower().capitalize();
+            #capitalize as in model we have Anonymous and its case sensitive
+
+
         print(f"RequestRecommendations = {arguments}")
         response = personalize_cli.get_recommendations(**arguments)
             
