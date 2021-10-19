@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "aws-embedded-metrics": "^2.0.4"
+    "aws-embedded-metrics": "^2.0.4",
+    "moment-timezone": "^0.5.33"
   }
 }

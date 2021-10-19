@@ -2,6 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
   personalize-streaming-events
+
 Globals:
   Function:
     Timeout: 3
@@ -16,7 +17,8 @@ Globals:
         ManagedBy: !Ref ManagedBy
         ResourcesPrefix: !Ref ResourcesPrefix
         CurretnAccountId: !Ref "AWS::AccountId"
-        
+        EventsTZ: "America/Toronto"
+      
 Parameters:
   ResourcesPrefix:
     Type: String
@@ -30,6 +32,14 @@ Parameters:
       - "dev"
       - "stg"
       - "prod"
+
+  StageName:
+    Type: String
+    Default: v1
+
+  MetricsNamespace:
+    Type: String
+    Default: PersonalizeCustomMetrics
 
   ManagedBy:
     Type: String
@@ -51,6 +61,10 @@ Parameters:
     Type: String
     Default: "sophi3-transformed-event-stream"
 
+  LogRotation:
+    Type: Number
+    Description: Number of days for log rotation in cloudwatch logs
+    Default: 30
 
   KinesisBatchSize:
     Type: Number
@@ -74,7 +88,7 @@ Parameters:
   
   CampaignName:
     Type: String
-    Description: Please enter your Amazon Personalize Personalize CampaignARN where you would like to get recommendations from
+    Description: Please enter your Amazon Personalize Personalize CampaignARN where you would like to get recommendations 
     Default: userPersonalizationCampaign
   
   FiltersPrefix:
@@ -196,7 +210,7 @@ Resources:
       Handler: getRecommendations.handler
       Runtime: python3.8
       Role: !GetAtt [RecommendationsRole, Arn]
-      MemorySize: 1024
+      MemorySize: 192
       Environment:
         Variables:
           CAMPAIGN_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}'
@@ -211,6 +225,7 @@ Resources:
       Handler: putevents.handler
       Runtime: nodejs12.x
       Role: !GetAtt [ApiLambdaRole, Arn]
+      MemorySize: 192
       Events:
         Stream:
           Type: Kinesis
@@ -221,6 +236,7 @@ Resources:
       Environment:
         Variables:
           TRACKING_ID: !Ref EventTrackerIdParam
+          AWS_EMF_NAMESPACE: !Ref MetricsNamespace
   PutContent:
     DependsOn:
       - LambdaPolicies
@@ -237,9 +253,11 @@ Resources:
             Stream: !GetAtt KinesisContentStreamConsumer.ConsumerARN
             StartingPosition: LATEST
             BatchSize: !Ref KinesisBatchSize
+
       Environment:
         Variables:
           TRACKING_ID: !Ref EventTrackerIdParam
+          AWS_EMF_NAMESPACE: !Ref MetricsNamespace
           CONTENT_DATASET_ARN: !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:dataset/${ContentDatasetName}/ITEMS'
           
   KinesisEventStreamConsumer:
@@ -330,7 +348,7 @@ Resources:
       Enabled: true
       StageKeys:
       - RestApiId: !Ref ApiGatewayEndpoint
-        StageName: "dev"
+        StageName: !Ref StageName
       Tags:
         - Key: "Environment"
           Value: !Ref Environment
@@ -366,12 +384,39 @@ Resources:
       KeyType: API_KEY
       UsagePlanId: !Ref usagePlan
 
-
+  APIStageLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      LogGroupName: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref Environment
+          - "APIGW"
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
+      RetentionInDays: !Ref LogRotation
+  
   APIStage:
     Type: AWS::ApiGateway::Stage
     Properties:
-      StageName: "dev"
-      Description: Prod Stage
+      StageName: !Ref StageName
+      AccessLogSetting: 
+        DestinationArn: !GetAtt APIStageLogGroup.Arn
+        Format: '$context.identity.sourceIp $context.identity.caller $context.identity.user [$context.requestTime] "$context.httpMethod $context.resourcePath $context.protocol" $context.status $context.responseLength $context.requestId'
+      Description: !Ref StageName
+      MethodSettings: 
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          MetricsEnabled: 'true'
+          DataTraceEnabled: 'false'
+          LoggingLevel: "INFO"
       RestApiId: !Ref "ApiGatewayEndpoint"
       DeploymentId: !Ref apiGatewayDeployment
       Tags:
@@ -389,8 +434,6 @@ Resources:
       - "LambdaGetRecommendationsMethod"
     Properties:
       RestApiId: !Ref "ApiGatewayEndpoint"
-
-  
 
 # Create /recommendations resource
   RecommendationsResource:
@@ -561,7 +604,134 @@ Resources:
       Statistic: Sum
       Threshold: '1'
       
-      
+  PenronalizeDashboard:
+   Type: AWS::CloudWatch::Dashboard
+   Properties:
+     DashboardName:  !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref Environment
+          - "Dashboard"
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
+     DashboardBody: !Sub |
+      {
+        "widgets": [
+            {
+                "height": 6,
+                "width": 24,
+                "y": 6,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                    "metrics": [
+                        [ "AWS/Lambda", "Throttles", "FunctionName", "${GetRecommendations}", { "color": "#ff7f0e" } ],
+                        [ ".", "Errors", ".", ".", { "color": "#d62728" } ],
+                        [ ".", "Invocations", ".", "." ],
+                        [ ".", "Duration", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": true,
+                    "region": "us-east-1",
+                    "stat": "Sum",
+                    "period": 300,
+                    "title": "GetRecommendations Lambda"
+                }
+            },
+            {
+                "height": 6,
+                "width": 12,
+                "y": 12,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                    "metrics": [
+                        [ "AWS/Lambda", "Throttles", "FunctionName", "${PutEvents}", { "color": "#ff7f0e" } ],
+                        [ ".", "Errors", ".", ".", { "color": "#d62728" } ],
+                        [ ".", "Invocations", ".", "." ],
+                        [ ".", "Duration", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ],
+                        [ "PersonalizeCustomMetrics", "DeliveryLatencyMS", "Type", "PutEvents", "ServiceName", "${PutEvents}", "LogGroup", "${PutEvents}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": true,
+                    "region": "us-east-1",
+                    "stat": "Sum",
+                    "period": 300,
+                    "title": "PutEvents Lambda"
+                }
+            },
+            {
+                "height": 6,
+                "width": 12,
+                "y": 12,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                    "metrics": [
+                        [ "AWS/Lambda", "Throttles", "FunctionName", "${PutContent}", { "color": "#ff7f0e" } ],
+                        [ ".", "Errors", ".", ".", { "color": "#d62728" } ],
+                        [ ".", "Invocations", ".", "." ],
+                        [ ".", "Duration", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ],
+                        [ "PersonalizeCustomMetrics", "DeliveryLatencyMS", "Type", "PutContent", "ServiceName", "${PutContent}", "LogGroup", "${PutContent}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": true,
+                    "region": "us-east-1",
+                    "stat": "Sum",
+                    "period": 300,
+                    "title": "PutContent Lambda"
+                }
+            },
+            {
+                "type": "alarm",
+                "x": 0,
+                "y": 18,
+                "width": 24,
+                "height": 3,
+                "properties": {
+                    "title": "Lambda Alarm Status",
+                    "alarms": [
+                        "${GetRecommendationsErrorAlarm.Arn}",
+                        "${RecThrottlesAlarm.Arn}",
+                        "${PutContentErrorAlarm.Arn}",
+                        "${PutContentThrottlesAlarm.Arn}",
+                        "${PutEventsErrorAlarm.Arn}",
+                        "${PutEventsThrottlesAlarm.Arn}"
+                    ]
+                }
+            },
+            {
+                "type": "metric",
+                "x": 0,
+                "y": 0,
+                "width": 24,
+                "height": 6,
+                "properties": {
+                    "metrics": [
+                        [ "AWS/ApiGateway", "4XXError", "ApiName", "tgam-personalize-dev-39464c60", "Stage", "${StageName}" ],
+                        [ ".", "5XXError", ".", ".", ".", "." ],
+                        [ ".", "Latency", ".", ".", ".", ".", { "yAxis": "right", "stat": "Average" } ],
+                        [ ".", "Count", ".", ".", ".", "." ],
+                        [ ".", "IntegrationLatency", ".", ".", ".", ".", { "stat": "Average", "yAxis": "right" } ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": false,
+                    "region": "us-east-1",
+                    "stat": "Sum",
+                    "period": 300,
+                    "title": "Api Gateway Metrics"
+                }
+            }
+        ]
+      }
+         
 # Outputs:
 Outputs:
   GetRecommendations:
@@ -571,6 +741,6 @@ Outputs:
   PutEvents:
     Value: !Ref PutEvents
   POSTRecommendationsApiGatewayInvokeURL:
-    Value: !Sub "https://${ApiGatewayEndpoint}.execute-api.${AWS::Region}.amazonaws.com/dev/recommendations"
+    Value: !Sub "https://${ApiGatewayEndpoint}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/recommendations"
   APIKEY:
     Value: !Sub "https://console.aws.amazon.com/apigateway/home?region=${AWS::Region}#/api-keys/${APIKey}"

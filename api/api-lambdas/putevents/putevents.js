@@ -1,5 +1,6 @@
 const AWS = require('aws-sdk')
 const { createMetricsLogger, Unit } = require("aws-embedded-metrics");
+//var moment = require('moment-timezone');
 
 var personalizeevents = new AWS.PersonalizeEvents();
 //var dynamoClient = new AWS.DynamoDB.DocumentClient();
@@ -39,18 +40,17 @@ exports.handler = (event, context, callback) => {
             metrics.setProperty("EventID", payload.sp_event_id);
         }
 
+        if (payload.sp_derived_tstamp === undefined || payload.sp_derived_tstamp.trim().length === 0){
+            console.debug("Skipping event: not valid sp_derived_tstamp")
+            metrics.putMetric("EventStatus", 0);
+            metrics.flush();
+            return context.successful;
+        }
+        
         var eventDate = new Date(payload.sp_derived_tstamp);
         var now = new Date()
 
-        //console.debug('Time debug1:', now.toTimeString());
-        //console.debug('Time debug2:', eventDate.toTimeString());
-        //console.debug('Time offset:', getTimeZoneOffset(now, "UTC"));
-        //console.debug('Time offset:', getTimeZoneOffset(now, payload.sp_os_timezone));
-        //console.debug('Time offset:', payload.sp_os_timezone);
-        //console.debug('DeliveryLatencyMS:', (now.getTime() - eventDate.getTime()) - ((getTimeZoneOffset(now, payload.sp_os_timezone) - 60) * 60 * 1000));
-        //console.debug(process.env.TZ)
-
-        var delay_ms = ((now.getTime() - eventDate.getTime()) - ((getTimeZoneOffset(now, payload.sp_os_timezone) - 60) * 60 * 1000))
+        var delay_ms = ((now.getTime() - eventDate.getTime()) - ((getTimeZoneOffset(now, process.env.EventsTZ) - 60) * 60 * 1000))
         metrics.putMetric("DeliveryLatencyMS", delay_ms, Unit.Milliseconds);
 
         if (payload.sp_app_id === undefined || payload.sp_app_id != "theglobeandmail-website"){
@@ -67,41 +67,27 @@ exports.handler = (event, context, callback) => {
             return context.successful;
         }
         
-        if (payload.sp_derived_tstamp === undefined || payload.sp_derived_tstamp.trim().length === 0){
-            console.debug("Skipping event: not valid sp_derived_tstamp")
-            metrics.putMetric("EventStatus", 0);
-            metrics.flush();
-            return context.successful;
-        }
-        
-        if (payload.page_type == undefined || payload.page_type != "article"){
+        if (payload.page_type === undefined || payload.page_type != "article"){
             console.debug("Skipping event: not valid page_type")
             metrics.putMetric("EventStatus", 0);
             metrics.flush();
             return context.successful;
         }
         
-        if (payload.sp_event_name == undefined || payload.sp_event_name != "page_view"){
+        if (payload.sp_event_name === undefined || payload.sp_event_name != "page_view"){
             console.debug("Skipping event: not valid sp_event_name")
             metrics.putMetric("EventStatus", 0);
             metrics.flush();
             return context.successful;
         }
 
-        if (payload.sp_domain_sessionid == undefined){
+        if (payload.sp_domain_sessionid === undefined){
             console.debug("Skipping event: missing sp_domain_sessionid")
             metrics.putMetric("EventStatus", 0);
             metrics.flush();
             return context.successful;
         }
-        
-        if (payload.sp_derived_tstamp == undefined){
-            console.debug("Skipping event: missing sp_derived_tstamp")
-            metrics.putMetric("EventStatus", 0);
-            metrics.flush();
-            return context.successful;
-        }
-        
+
         if ((payload.sp_user_id === undefined || payload.sp_user_id.trim().length === 0) && (payload.sp_domain_userid === undefined || payload.sp_domain_userid.trim().length === 0)){
             console.debug("Skipping event: missing sp_user_id and sp_domain_userid")
             metrics.putMetric("EventStatus", 0);

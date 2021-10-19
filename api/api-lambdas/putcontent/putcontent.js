@@ -30,11 +30,11 @@ exports.handler = (event, context, callback) => {
             return context.successful;
         }
     **/
-        var eventDate = new Date(payload.PublishedDate);
+        var eventDate = new Date(payload.UpdatedDate);
         var now = new Date();
-        var currentDate = new Date(now.getTime() + now.getTimezoneOffset() * 60000);
-        var delay_ms = currentDate.getTime() - eventDate.getTime();
+        var delay_ms = now.getTime() - eventDate.getTime();
         
+    
         metrics.putMetric("DeliveryLatencyMS", delay_ms, Unit.Milliseconds);
 
         var putItemsParams= {
