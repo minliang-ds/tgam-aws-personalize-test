@@ -102,7 +102,7 @@ def handler(event, context):
             arguments["filterArn"] = f'arn:aws:personalize:{region}:{account_id}:filter/{filter_prefix}-unread'
 
         if payload.get("platform"):
-            arguments["context"]['platform'] = payload.get("platform");
+            arguments["context"]['device_detector_visitorplatform'] = payload.get("platform");
 
         if payload.get("visitor_type"):
             arguments["context"]['visitor_type'] = payload.get("visitor_type");
