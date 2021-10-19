@@ -145,7 +145,7 @@
    [
        {
             "name":"tgam-personalize-mlops-test-category",
-            "filterExpression":"INCLUDE ItemID WHERE Interactions.event_type IN ($category)"
+            "filterExpression":"INCLUDE ItemID WHERE Items.Category IN ($category)"
        },
        {
             "name":"tgam-personalize-mlops-test-read",
