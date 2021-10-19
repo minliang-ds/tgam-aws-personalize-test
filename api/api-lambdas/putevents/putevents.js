@@ -50,6 +50,7 @@ exports.handler = (event, context, callback) => {
         var eventDate = new Date(payload.sp_derived_tstamp);
         var now = new Date()
 
+
         var delay_ms = ((now.getTime() - eventDate.getTime()) - ((getTimeZoneOffset(now, process.env.EventsTZ) - 60) * 60 * 1000))
         metrics.putMetric("DeliveryLatencyMS", delay_ms, Unit.Milliseconds);
 
