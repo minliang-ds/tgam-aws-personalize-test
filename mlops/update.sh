@@ -1,4 +1,5 @@
 #!/bin/bash
+cd personalize-step-functions 
 cfn-lint template.yml
 sam validate
 sam build 
