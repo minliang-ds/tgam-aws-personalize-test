@@ -148,7 +148,19 @@ export api_key=(api from output url)
 ## Data convertion between dynamoDB and reply
 | Field in DynamoDB | Field in reply | Additional convertion | Comment | 
 | ----------------- | -------------- | --------------------- |-------- | 
-| Byline | byline | from list of string to string (first element from list) |
+| Byline | byline | from list of string to string (first element from list) |  |
+| WordCount | word_count | from list of string to string (first element from list) |  |
+| ContentType | content_type | from list of string to string (first element from list) |  |
+| PublishedDate | published_at | from list of string to string (first element from list) |  |
+| UpdatedDate | updated_at | from list of string to string (first element from list) |  |
+| Section | section_meta_title | from list of string to string (first element from list) |  |
+| CanonicalURL | url | from list of string to string (first element from list) |  |
+| CreditLine | credit | from list of string to string (first element from list) |  |
+| ContentId | content_id | from list of string to string (first element from list) |  |
+| ContentType | content_type | from list of string to string (first element from list) |  |
+| ContentRestriction | protection_product | from list of string to string (first element from list) |  |
+| ContentType | content_type | from list of string to string (first element from list) |  |
+
 
 - 
 ## Frontend fields requiremetns
