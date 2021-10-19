@@ -147,6 +147,7 @@ export api_key=(api from output url)
 
 ## Data convertion between dynamoDB and reply
 | Field in DynamoDB | Field in reply | Additional convertion | Comment | 
+| ----------------- | -------------- | --------------------- |-------- | 
 | Byline | byline | from list of string to string (first element from list) |
 
 - 
