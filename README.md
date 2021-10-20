@@ -138,7 +138,9 @@ aws logs put-retention-policy --log-group-name /aws/lambda/${name of put content
 aws logs put-retention-policy --log-group-name /aws/lambda/${name of get recommendation lambda from output --retention-in-days 30
 ```
 
-10. Test api:
+10. Request DNS change for domain ng-dev.theglobeandmail.ca to point to CNAME record provided by API Gateway
+
+11. Test api:
 ```bash
 export api_endpoint=(url from output url)
 export api_key=(api from output url)
