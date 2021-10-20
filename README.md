@@ -218,15 +218,17 @@ Example of request data:
 
 - 
 ## Frontend fields requiremetns
-published_at - String
-updated_at - String
-url - String
-title - String
-deck - String
-byline - String
-content_type - String
-protection_product - String
-label - String
-article.author_rel[0].url220
-article.promo_image.urls["220"]
-article.picture_rel[0].url220
+| Field name | Type | Comment | 
+| ----------------- | -------------- |-------- | 
+| published_at  |  String | |
+| updated_at - String | |
+| url - String | |
+| title - String | |
+| deck - String | |
+| byline - String | |
+| content_type - String | |
+| protection_product - String | |
+| label - String | |
+| article.author_rel[0].url220 | | 
+| article.promo_image.urls["220"] | |
+| article.picture_rel[0].url220 | |
