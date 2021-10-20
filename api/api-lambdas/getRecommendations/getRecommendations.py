@@ -177,9 +177,13 @@ def handler(event, context):
                       if k == old_name:
                         row[v] = row.pop(old_name)
                     
-                      if k == "byline" and type(row[v].['byline']) is list:
-                        row[v].['byline'] = ' and '.join(row[v].['byline'])
-                        
+                  #byline in Dynamo is list of strings (sometimes empty) and we need to return it as string
+                  if row.get('byline') and (type(row.get('byline')) is list):
+                    if len(row['byline']) > 0:
+                        row['byline'] = ' and '.join(row['byline'])
+                    else:
+                        row['byline'] = ''
+                            
                   reply["recommendations"].append(row)
                   
                 reply["recommendations"] = reply["recommendations"][:arguments["numResults"] - 1] 
