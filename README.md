@@ -97,7 +97,7 @@ aws s3 cp ./params.json s3://<input-bucket-name>
 1. Start an AWS CloudShell session from the AWS console
 2. Request certificate for domain
 ```bash
-aws acm request-certificate --domain-name ng-dev.theglobeandmail.ca --validation-method DNS
+aws acm request-certificate --domain-name recoapi-ng-dev.theglobeandmail.ca --validation-method DNS
 ```
 3. Request DNS entry change to validate certificate 
 4. Clone the project repo:
