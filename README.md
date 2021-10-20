@@ -144,26 +144,26 @@ export api_key=(api from output url)
 ## Request Fields
 | Field Name   | Required | Type   | Default | Comment |  
 | ------------ | -------- | ------ |-------- | ---------------------- |
-| visitor_id   | Required | String |         | userID for personalize |
+| visitor_id   | *Required* | String |         | userID for personalize |
 | hash_id      | Ignored  | String |         | was existing in old api |
 | platform     | Ignored  | String |         | was existing in old api |
 | sub_requests | Required | List of dictionary |         | this api will support only 1 request but we will keep format of list to maintain compatibility with old api |
-| sub_requests[0].limit | Optional | Int| max: 100, default: 25 |  limit of items for recommendation 
-| sub_requests[0].context | Optional | String | |  example: art_same_section_mostpopular, art_mostpopular, user_container_recommendations, mobile_art_morestories. Currently its mapped to filters in personelize api
-| sub_requests[0].platform | Optional | String | | User platform. Existing types in model: Mobile, Desktop, Tablet. Api will use lower().capitalize() as its case sensitive field
-| sub_requests[0].visitor_type | Optional | String | | Visitor type. Existing types in model: Anonymous, Subscribed, Registered. Api will use lower().capitalize() as its case sensitive field
-| sub_requests[0].section | Optional | String |  | section, will be used as filter only if context is **art_same_section_mostpopular**. Api will remove all characters "/" from string.
-| sub_requests[0].last_content_ids | Optional | | | Current content ID, it will exlude this content from recommendations
-| sub_requests[0].widget_id | Ignored | | | was existing in old api |
-| sub_requests[0].include_read | Ignored | | | was existing in old api |
-| sub_requests[0].include_content_types | Ignored | | | was existing in old api |
-| sub_requests[0].width | Ignored | | | was existing in old api |
-| sub_requests[0].include_sections | Ignored | | | was existing in old api |
-| sub_requests[0].min_content_age | Ignored | | | was existing in old api |
-| sub_requests[0].max_content_age | Ignored | | | was existing in old api |
-| sub_requests[0].rank | Ignored | | | was existing in old api |
-| sub_requests[0].newsletter_ids | Ignored | | | was existing in old api |
-| sub_requests[0].seo_keywords | Ignored | | | was existing in old api |
+| sub_requests\[0\].limit | Optional | Int| max: 100, default: 25 |  limit of items for recommendation 
+| sub_requests\[0\].context | Optional | String | |  example: art_same_section_mostpopular, art_mostpopular, user_container_recommendations, mobile_art_morestories. Currently its mapped to filters in personelize api
+| sub_requests\[0\].platform | Optional | String | | User platform. Existing types in model: Mobile, Desktop, Tablet. Api will use lower().capitalize() as its case sensitive field
+| sub_requests\[0\].visitor_type | Optional | String | | Visitor type. Existing types in model: Anonymous, Subscribed, Registered. Api will use lower().capitalize() as its case sensitive field
+| sub_requests\[0\].section | Optional | String |  | section, will be used as filter only if context is **art_same_section_mostpopular**. Api will remove all characters "/" from string.
+| sub_requests\[0\].last_content_ids | Optional | | | Current content ID, it will exlude this content from recommendations
+| sub_requests\[0\].widget_id | Ignored | | | was existing in old api |
+| sub_requests\[0\].include_read | Ignored | | | was existing in old api |
+| sub_requests\[0\].include_content_types | Ignored | | | was existing in old api |
+| sub_requests\[0\].width | Ignored | | | was existing in old api |
+| sub_requests\[0\].include_sections | Ignored | | | was existing in old api |
+| sub_requests\[0\].min_content_age | Ignored | | | was existing in old api |
+| sub_requests\[0\].max_content_age | Ignored | | | was existing in old api |
+| sub_requests\[0\].rank | Ignored | | | was existing in old api |
+| sub_requests\[0\].newsletter_ids | Ignored | | | was existing in old api |
+| sub_requests\[0\].seo_keywords | Ignored | | | was existing in old api |
 
 
 
