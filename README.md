@@ -206,7 +206,7 @@ Example of request data:
 ## Data convertion between dynamoDB and reply
 | Field in DynamoDB | Field in reply | Additional convertion | Comment | 
 | ----------------- | -------------- | --------------------- |-------- | 
-| Byline | byline | from list of string to string (first element from list) |  |
+| Byline | byline | join list of string with separator ' and ' |  |
 | WordCount | word_count | N/A |  |
 | ContentType | content_type | N/A |  |
 | PublishedDate | published_at | N/A |  |

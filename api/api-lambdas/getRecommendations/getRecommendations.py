@@ -177,8 +177,8 @@ def handler(event, context):
                       if k == old_name:
                         row[v] = row.pop(old_name)
                     
-                      if k == "byline":
-                        row[v].['byline'] = row[v].['byline'][0]
+                      if k == "byline" and type(row[v].['byline']) is list:
+                        row[v].['byline'] = ' and '.join(row[v].['byline'])
                         
                   reply["recommendations"].append(row)
                   
