@@ -153,17 +153,17 @@ export api_key=(api from output url)
 | sub_requests[0].platform | Optional | String | | User platform. Existing types in model: Mobile, Desktop, Tablet. Api will use lower().capitalize() as its case sensitive field
 | sub_requests[0].visitor_type | Optional | String | | Visitor type. Existing types in model: Anonymous, Subscribed, Registered. Api will use lower().capitalize() as its case sensitive field
 | sub_requests[0].section | Optional | String |  | section, will be used as filter only if context is **art_same_section_mostpopular**. Api will remove all characters "/" from string.
-| sub_requests[0].last_content_ids | Optional | String | | Current content ID, it will exlude this content from recommendations
-| sub_requests[0].widget_id | Ignored | | was existing in old api |
-| sub_requests[0].include_read | Ignored | | was existing in old api |
-| sub_requests[0].include_content_types | Ignored | | was existing in old api |
-| sub_requests[0].width | Ignored | | was existing in old api |
-| sub_requests[0].include_sections | Ignored | | was existing in old api |
-| sub_requests[0].min_content_age | Ignored | | was existing in old api |
-| sub_requests[0].max_content_age | Ignored | | was existing in old api |
-| sub_requests[0].rank | Ignored | | was existing in old api |
-| sub_requests[0].newsletter_ids | Ignored | | was existing in old api |
-| sub_requests[0].seo_keywords | Ignored | | was existing in old api |
+| sub_requests[0].last_content_ids | Optional | | | Current content ID, it will exlude this content from recommendations
+| sub_requests[0].widget_id | Ignored | | | was existing in old api |
+| sub_requests[0].include_read | Ignored | | | was existing in old api |
+| sub_requests[0].include_content_types | Ignored | | | was existing in old api |
+| sub_requests[0].width | Ignored | | | was existing in old api |
+| sub_requests[0].include_sections | Ignored | | | was existing in old api |
+| sub_requests[0].min_content_age | Ignored | | | was existing in old api |
+| sub_requests[0].max_content_age | Ignored | | | was existing in old api |
+| sub_requests[0].rank | Ignored | | | was existing in old api |
+| sub_requests[0].newsletter_ids | Ignored | | | was existing in old api |
+| sub_requests[0].seo_keywords | Ignored | | | was existing in old api |
 
 
 
