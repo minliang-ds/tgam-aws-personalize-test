@@ -69,12 +69,12 @@ Parameters:
   KinesisBatchSize:
     Type: Number
     Description: Please enter your preferred batch size procesing data from Kinesis
-    Default: 50
+    Default: 100
   
-#  ShardCount:
-#    Type: Number
-#    Description: Please enter your preferred Amazon Kinesis Shard Count
-#    Default: 1
+  KinesisParallelizationFactor:
+    Type: Number
+    Description: The number of batches to process concurrently from each shard. The default value is 1. 
+    Default: 2
 
   ContentDatasetName:
     Type: String
@@ -275,6 +275,7 @@ Resources:
       Runtime: nodejs12.x
       Role: !GetAtt [ApiLambdaRole, Arn]
       MemorySize: 192
+      Timeout: 30
       Events:
         Stream:
           Type: Kinesis
@@ -282,6 +283,7 @@ Resources:
             Stream: !GetAtt KinesisEventStreamConsumer.ConsumerARN
             StartingPosition: LATEST
             BatchSize: !Ref KinesisBatchSize
+            ParallelizationFactor: !Ref KinesisParallelizationFactor
       Environment:
         Variables:
           TRACKING_ID: !Ref EventTrackerIdParam
@@ -295,6 +297,7 @@ Resources:
       Handler: putcontent.handler
       Runtime: nodejs12.x
       Role: !GetAtt [ApiLambdaRole, Arn]
+      Timeout: 30
       Events:
         Stream:
           Type: Kinesis
@@ -302,6 +305,7 @@ Resources:
             Stream: !GetAtt KinesisContentStreamConsumer.ConsumerARN
             StartingPosition: LATEST
             BatchSize: !Ref KinesisBatchSize
+            ParallelizationFactor: !Ref KinesisParallelizationFactor
 
       Environment:
         Variables:
@@ -652,6 +656,39 @@ Resources:
       Period: 60
       Statistic: Sum
       Threshold: '1'
+    
+
+  EventsIteratorAge:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PutEvents
+      EvaluationPeriods: 2
+      MetricName: IteratorAge
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Maximum
+      Threshold: '10000'
+      
+  ContentIteratorAge:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PutContent
+      EvaluationPeriods: 2
+      MetricName: IteratorAge
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Maximum
+      Threshold: '10000'
       
   PenronalizeDashboard:
    Type: AWS::CloudWatch::Dashboard
@@ -687,7 +724,7 @@ Resources:
                         [ ".", "Duration", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ]
                     ],
                     "view": "timeSeries",
-                    "stacked": true,
+                    "stacked": false,
                     "region": "us-east-1",
                     "stat": "Sum",
                     "period": 300,
@@ -705,11 +742,10 @@ Resources:
                         [ "AWS/Lambda", "Throttles", "FunctionName", "${PutEvents}", { "color": "#ff7f0e" } ],
                         [ ".", "Errors", ".", ".", { "color": "#d62728" } ],
                         [ ".", "Invocations", ".", "." ],
-                        [ ".", "Duration", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ],
-                        [ "PersonalizeCustomMetrics", "DeliveryLatencyMS", "Type", "PutEvents", "ServiceName", "${PutEvents}", "LogGroup", "${PutEvents}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ]
+                        [ ".", "Duration", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ]
                     ],
                     "view": "timeSeries",
-                    "stacked": true,
+                    "stacked": false,
                     "region": "us-east-1",
                     "stat": "Sum",
                     "period": 300,
@@ -727,11 +763,10 @@ Resources:
                         [ "AWS/Lambda", "Throttles", "FunctionName", "${PutContent}", { "color": "#ff7f0e" } ],
                         [ ".", "Errors", ".", ".", { "color": "#d62728" } ],
                         [ ".", "Invocations", ".", "." ],
-                        [ ".", "Duration", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ],
-                        [ "PersonalizeCustomMetrics", "DeliveryLatencyMS", "Type", "PutContent", "ServiceName", "${PutContent}", "LogGroup", "${PutContent}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ]
+                        [ ".", "Duration", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ]
                     ],
                     "view": "timeSeries",
-                    "stacked": true,
+                    "stacked": false,
                     "region": "us-east-1",
                     "stat": "Sum",
                     "period": 300,
@@ -739,9 +774,45 @@ Resources:
                 }
             },
             {
+                "height": 6,
+                "width": 12,
+                "y": 24,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                    "metrics": [
+                        [ "AWS/Lambda", "IteratorAge", "FunctionName", "${PutEvents}", { "color": "#ff7f0e" } ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": true,
+                    "region": "us-east-1",
+                    "stat": "Maximum",
+                    "period": 300,
+                    "title": "PutEvents Lambda IteratorAge"
+                }
+            },
+            {
+                "height": 6,
+                "width": 12,
+                "y": 24,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                    "metrics": [
+                        [ "AWS/Lambda", "IteratorAge", "FunctionName", "${PutContent}", { "color": "#ff7f0e" } ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": true,
+                    "region": "us-east-1",
+                    "stat": "Maximum",
+                    "period": 300,
+                    "title": "PutContent Lambda IteratorAge"
+                }
+            },
+            {
                 "type": "alarm",
                 "x": 0,
-                "y": 18,
+                "y": 30,
                 "width": 24,
                 "height": 3,
                 "properties": {
@@ -752,7 +823,9 @@ Resources:
                         "${PutContentErrorAlarm.Arn}",
                         "${PutContentThrottlesAlarm.Arn}",
                         "${PutEventsErrorAlarm.Arn}",
-                        "${PutEventsThrottlesAlarm.Arn}"
+                        "${PutEventsThrottlesAlarm.Arn}",
+                        "${ContentIteratorAge.Arn}",
+                        "${EventsIteratorAge.Arn}"
                     ]
                 }
             },
