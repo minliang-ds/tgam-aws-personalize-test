@@ -23,6 +23,7 @@ function getTimeZoneOffset(date, timeZone) {
   return -(lie - date) / 60 / 1000;
 }
 
+var now = new Date();
 var timezone_offset = (getTimeZoneOffset(now, process.env.EventsTZ) - 60) * 60 * 1000
 
 exports.handler = (event, context, callback) => {
@@ -50,7 +51,6 @@ exports.handler = (event, context, callback) => {
         }
     **/
         var eventDate = new Date(payload.UpdatedDate);
-        var now = new Date();
         var delay_ms = now.getTime() - eventDate.getTime() - timezone_offset;
         
     
