@@ -139,7 +139,11 @@ export api_key=(api from output url)
 
 
 
-## Api documentation
+## Put Event api documentation
+
+## Put Content api documentation
+
+## Get recommendation api documentation
 
 ## Request Fields
 | Field Name   | Required | Type   | Default | Comment |  
@@ -216,7 +220,6 @@ Example of request data:
 | ContentType | content_type | N/A |  |
 
 
-- 
 ## Frontend fields requiremetns
 | Field name | Type | Comment | 
 | ----------------- | -------------- |-------- | 
