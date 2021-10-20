@@ -123,7 +123,12 @@ ParameterKey=FiltersPrefix,ParameterValue=tgam-personalize-mlops-test \
 ParameterKey=ContentDynamoDbTableName,ParameterValue=Sophi3ContentMetaData 
 ```
 
-7. Update time for cloudwatch logs retation
+7. As cloudromation do not allow easy set log retention for log group from lambda we need to manually update time for cloudwatch logs retation
+```bash 
+aws logs put-retention-policy --log-group-name /aws/lambda/${name of put event lambda from output} --retention-in-days 30
+aws logs put-retention-policy --log-group-name /aws/lambda/${name of put content lambda from output --retention-in-days 30
+aws logs put-retention-policy --log-group-name /aws/lambda/${name of get recommendation lambda from output --retention-in-days 30
+```
 
 8. Test api:
 ```bash
@@ -156,7 +161,7 @@ export api_key=(api from output url)
 | sub_requests\[0\].context | Optional | String | |  example: art_same_section_mostpopular, art_mostpopular, user_container_recommendations, mobile_art_morestories. Currently its mapped to filters in personelize api
 | sub_requests\[0\].platform | Optional | String | | User platform. Existing types in model: Mobile, Desktop, Tablet. Api will use lower().capitalize() as its case sensitive field
 | sub_requests\[0\].visitor_type | Optional | String | | Visitor type. Existing types in model: Anonymous, Subscribed, Registered. Api will use lower().capitalize() as its case sensitive field
-| sub_requests\[0\].section | Optional | String |  | section, will be used as filter only if context is **art_same_section_mostpopular**. Api will remove all characters "/" from string.
+| sub_requests\[0\].section | Optional | String |  | section, will be used as filter only if context is **art_same_section_mostpopular**. Api will split string by "/" and select 2 element to convert "/canada/" => "canada" and /canada/alberta" => "canada"
 | sub_requests\[0\].last_content_ids | Optional | | | Current content ID, it will exlude this content from recommendations
 | sub_requests\[0\].widget_id | Ignored | | | was existing in old api |
 | sub_requests\[0\].include_read | Ignored | | | was existing in old api |
