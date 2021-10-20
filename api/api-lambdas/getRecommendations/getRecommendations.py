@@ -41,7 +41,6 @@ dynamodb = client('dynamodb')
 from boto3.dynamodb.types import TypeDeserializer
 deserializer = TypeDeserializer()
 
-
 from botocore.exceptions import ClientError
 
 import json
@@ -92,13 +91,14 @@ def handler(event, context):
         arguments["numResults"] += 1
 
         #input validation
-        if arguments["numResults"] > 100:
-            arguments["numResults"] = 100
+        if arguments["numResults"] > 500:
+            arguments["numResults"] = 500
             
         if payload.get("context") == "art_same_section_mostpopular":
             arguments["filterArn"] =  f'arn:aws:personalize:{region}:{account_id}:filter/{filter_prefix}-category'
             
-            
+            #section can be /canada/ or /canada/alberta/
+            #in both cases we need category to be "canada"
             category = payload.get("section").split("/")
             if len(category) > 0:
                 category = category[1]
@@ -142,6 +142,10 @@ def handler(event, context):
         #WordCount => word_count
         #byline = what if we have 2 ?
         
+        
+        
+        
+        #Mapping convertion fields from dynamo table to reply
         names_key = { 
           'WordCount'.lower()            : 'word_count' ,
           'ContentType'.lower()          : 'content_type' ,
@@ -158,23 +162,49 @@ def handler(event, context):
 
         try:
             if (len(response['itemList']) > 0):
-                db_response = dynamodb.batch_get_item(
-                    RequestItems={
-                        table_name: {
-                            'Keys': [{'ContentId': {'S': item["itemId"]}} for item in response['itemList']],
-                            'AttributesToGet': [ 'Title', 'Deck', 'Byline', 'Category', 'Section', 'Keywords', 'State', 'CanonicalURL', 'CreditLine', 'Ownership', 'Sponsored', 'ContentId', 'ContentType', 'ContentRestriction', 'PublishedDate', 'WordCount', 'picture_rel', 'author_rel', 'video_duration', 'caption', 'promo_image', 'UpdatedDate']
-                        }
-                    },
-                    ReturnConsumedCapacity='TOTAL'
-                )
-        except ClientError as e:
-            print(e.db_response['Error']['Message'])
-        else:
-            if (len(response['itemList']) > 0):
-                reply["recommendations"] = []
+                deserialized_item = []
+                processed_items = 0
                 
-                item = db_response['Responses'].get(table_name)
-                deserialized_item = [{k.lower(): deserializer.deserialize(v) for k, v in element.items()} for element in item]
+                #if request ask for more then 100 items we need to split it
+                #as batch_get_items can support only 100 items per request
+                while processed_items < len(response['itemList']):
+                    print(f"Debug processed_items: {processed_items} len {len(response['itemList'])}")
+
+                    if ((len(response['itemList']) - processed_items)  > 100):
+                        items_limit = 100
+                    else:
+                        items_limit = len(response['itemList']) - processed_items
+                        
+                    request_batch = [{'ContentId': {'S': item["itemId"]}} for item in response['itemList'][processed_items:processed_items+items_limit]]
+                    
+                    while request_batch:
+                        db_response = dynamodb.batch_get_item(
+                            RequestItems={
+                                table_name: {
+                                    'Keys':request_batch,
+                                    'AttributesToGet': [ 'Title', 'Deck', 'Byline', 'Category', 'Section', 'Keywords', 'State', 'CanonicalURL', 'CreditLine', 'Ownership', 'Sponsored', 'ContentId', 'ContentType', 'ContentRestriction', 'PublishedDate', 'WordCount', 'picture_rel', 'author_rel', 'video_duration', 'caption', 'promo_image', 'UpdatedDate']
+                                }
+                            },
+                            ReturnConsumedCapacity='TOTAL'
+                        )
+                        items = db_response['Responses'].get(table_name)
+                        deserialized_iteration= [{k.lower(): deserializer.deserialize(v) for k, v in element.items()} for element in items]
+                        
+                        deserialized_item.extend(deserialized_iteration)
+                        request_batch = db_response.get("UnprocessedKeys",  None)
+                    
+                    processed_items += items_limit
+                    
+        except ClientError as e:
+            print(f"Key Error: {e}")
+
+        else:
+            print(f"RawDynamoReply = {db_response}")
+
+            if (len(deserialized_item) > 0):
+                reply["recommendations"] = []
+                #item = db_response['Responses'].get(table_name)
+                #deserialized_item = [{k.lower(): deserializer.deserialize(v) for k, v in element.items()} for element in item]
                 
                 for row in deserialized_item:
                   if payload.get("last_content_ids") and row.get('contentid') == payload.get("last_content_ids"):
@@ -203,8 +233,7 @@ def handler(event, context):
                   
                   row['picture_rel'] = [{}]
                   row['picture_rel'][0]['url220'] = "https://www.theglobeandmail.com/resizer/F-DhMVztlRFULNcWSI1BuknYJHM=/200x0/smart/filters:quality(80)/cloudfront-us-east-1.images.arcpublishing.com/tgam/YDAY4VZRYRH5LGUHO3QMJXR6JA.JPG"
-                  
-                            
+
                   reply["recommendations"].append(row)
                   
                 reply["recommendations"] = reply["recommendations"][:arguments["numResults"] - 1] 
