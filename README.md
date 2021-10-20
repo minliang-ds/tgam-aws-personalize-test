@@ -144,10 +144,10 @@ export api_key=(api from output url)
 ## Request Fields
 | Field Name   | Required | Type   | Default | Comment |  
 | ------------ | -------- | ------ |-------- | ---------------------- |
-| visitor_id   | *Required* | String |         | userID for personalize |
+| visitor_id   | **Required** | String |         | userID for personalize |
 | hash_id      | Ignored  | String |         | was existing in old api |
 | platform     | Ignored  | String |         | was existing in old api |
-| sub_requests | Required | List of dictionary |         | this api will support only 1 request but we will keep format of list to maintain compatibility with old api |
+| sub_requests | **Required** | List of dictionary |         | this api will support only 1 request but we will keep format of list to maintain compatibility with old api |
 | sub_requests\[0\].limit | Optional | Int| max: 100, default: 25 |  limit of items for recommendation 
 | sub_requests\[0\].context | Optional | String | |  example: art_same_section_mostpopular, art_mostpopular, user_container_recommendations, mobile_art_morestories. Currently its mapped to filters in personelize api
 | sub_requests\[0\].platform | Optional | String | | User platform. Existing types in model: Mobile, Desktop, Tablet. Api will use lower().capitalize() as its case sensitive field
