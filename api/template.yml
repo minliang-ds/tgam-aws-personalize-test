@@ -581,7 +581,7 @@ Resources:
       EvaluationPeriods: 1
       MetricName: Errors
       Namespace: AWS/Lambda
-      Period: 60
+      Period: 300
       Statistic: Sum
       Threshold: '1'
   PutContentErrorAlarm:
@@ -596,7 +596,7 @@ Resources:
       EvaluationPeriods: 1
       MetricName: Errors
       Namespace: AWS/Lambda
-      Period: 60
+      Period: 300
       Statistic: Sum
       Threshold: '1'
   PutEventsErrorAlarm:
@@ -611,7 +611,7 @@ Resources:
       EvaluationPeriods: 1
       MetricName: Errors
       Namespace: AWS/Lambda
-      Period: 60
+      Period: 300
       Statistic: Sum
       Threshold: '1'
       
@@ -627,7 +627,7 @@ Resources:
       EvaluationPeriods: 1
       MetricName: Throttles
       Namespace: AWS/Lambda
-      Period: 60
+      Period: 300
       Statistic: Sum
       Threshold: '1'
   PutEventsThrottlesAlarm:
@@ -642,7 +642,7 @@ Resources:
       EvaluationPeriods: 1
       MetricName: Throttles
       Namespace: AWS/Lambda
-      Period: 60
+      Period: 300
       Statistic: Sum
       Threshold: '1'    
 
@@ -658,7 +658,7 @@ Resources:
       EvaluationPeriods: 1
       MetricName: Throttles
       Namespace: AWS/Lambda
-      Period: 60
+      Period: 300
       Statistic: Sum
       Threshold: '1'
     
@@ -672,10 +672,10 @@ Resources:
       Dimensions:
         - Name: FunctionName
           Value: !Ref PutEvents
-      EvaluationPeriods: 2
+      EvaluationPeriods: 1
       MetricName: IteratorAge
       Namespace: AWS/Lambda
-      Period: 60
+      Period: 300
       Statistic: Maximum
       Threshold: !Ref LambdaIteratorAgeAlarm
       
@@ -688,10 +688,10 @@ Resources:
       Dimensions:
         - Name: FunctionName
           Value: !Ref PutContent
-      EvaluationPeriods: 2
+      EvaluationPeriods: 1
       MetricName: IteratorAge
       Namespace: AWS/Lambda
-      Period: 60
+      Period: 300
       Statistic: Maximum
       Threshold: !Ref LambdaIteratorAgeAlarm
       
