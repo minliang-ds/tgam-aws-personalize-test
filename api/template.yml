@@ -76,6 +76,11 @@ Parameters:
     Description: The number of batches to process concurrently from each shard. The default value is 1. 
     Default: 2
 
+  LambdaIteratorAgeAlarm:
+    Type: Number
+    Description: Alarm value for IteratorAge
+    Default: 10000
+    
   ContentDatasetName:
     Type: String
     Description: "Name of datasetGroup from params.json file"
@@ -672,7 +677,7 @@ Resources:
       Namespace: AWS/Lambda
       Period: 60
       Statistic: Maximum
-      Threshold: '10000'
+      Threshold: !Ref LambdaIteratorAgeAlarm
       
   ContentIteratorAge:
     Type: AWS::CloudWatch::Alarm
@@ -688,7 +693,7 @@ Resources:
       Namespace: AWS/Lambda
       Period: 60
       Statistic: Maximum
-      Threshold: '10000'
+      Threshold: !Ref LambdaIteratorAgeAlarm
       
   PenronalizeDashboard:
    Type: AWS::CloudWatch::Dashboard
@@ -727,7 +732,7 @@ Resources:
                     "stacked": false,
                     "region": "us-east-1",
                     "stat": "Sum",
-                    "period": 300,
+                    "period": 60,
                     "title": "GetRecommendations Lambda"
                 }
             },
@@ -748,7 +753,7 @@ Resources:
                     "stacked": false,
                     "region": "us-east-1",
                     "stat": "Sum",
-                    "period": 300,
+                    "period": 60,
                     "title": "PutEvents Lambda"
                 }
             },
@@ -769,7 +774,7 @@ Resources:
                     "stacked": false,
                     "region": "us-east-1",
                     "stat": "Sum",
-                    "period": 300,
+                    "period": 60,
                     "title": "PutContent Lambda"
                 }
             },
@@ -787,8 +792,16 @@ Resources:
                     "stacked": true,
                     "region": "us-east-1",
                     "stat": "Maximum",
-                    "period": 300,
-                    "title": "PutEvents Lambda IteratorAge"
+                    "period": 60,
+                    "title": "PutEvents Lambda IteratorAge",
+                    "annotations": {
+                        "horizontal": [
+                            {
+                                "label": "Alarm",
+                                "value": ${LambdaIteratorAgeAlarm}
+                            }
+                        ]
+                    }
                 }
             },
             {
@@ -805,8 +818,16 @@ Resources:
                     "stacked": true,
                     "region": "us-east-1",
                     "stat": "Maximum",
-                    "period": 300,
-                    "title": "PutContent Lambda IteratorAge"
+                    "period": 60,
+                    "title": "PutContent Lambda IteratorAge",
+                    "annotations": {
+                        "horizontal": [
+                            {
+                                "label": "Alarm",
+                                "value": ${LambdaIteratorAgeAlarm}
+                            }
+                        ]
+                    }
                 }
             },
             {
@@ -847,7 +868,7 @@ Resources:
                     "stacked": false,
                     "region": "us-east-1",
                     "stat": "Sum",
-                    "period": 300,
+                    "period": 60,
                     "title": "Api Gateway Metrics"
                 }
             }
