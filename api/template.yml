@@ -106,12 +106,61 @@ Parameters:
     Description: Email to be notified
     Default: youremail@yourprovider.com
 
+  ExternalDomain:
+    Type: String
+    Default: "NONE"
+    AllowedValues:
+      - "recoapi-ng-dev.theglobeandmail.ca"
+      - "recoapi-ng-prod.theglobeandmail.ca"
+      - "NONE"
+
+  CertificateARN:
+    Type: String
+    Default: "arn:aws:acm:us-east-1:727304503525:certificate/2d541648-2f71-4b97-89ed-26d252d496b9"
+
+Conditions:
+  UseExternalDomain: !Not 
+    - !Equals 
+      - !Ref ExternalDomain
+      - NONE
 
 Resources:
 
 # # DDB History table
 # Lambda functions
 
+  #Certificate:
+  #  Type: AWS::CertificateManager::Certificate
+  #  Condition: UseExternalDomain
+  #  Properties:
+  #    DomainName: !Ref ExternalDomain
+  #    ValidationMethod: DNS
+    
+          
+  APIDomain:
+    Type: 'AWS::ApiGateway::DomainName'
+    Properties:
+      DomainName: !Ref ExternalDomain
+      CertificateArn: !Ref CertificateARN
+      SecurityPolicy: TLS_1_2
+      EndpointConfiguration:
+        Types: 
+          - "EDGE"
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
+        
+  APIMapping:
+      Type: AWS::ApiGateway::BasePathMapping
+      Properties: 
+        DomainName: !Ref ExternalDomain
+        RestApiId: !Ref ApiGatewayEndpoint
+        Stage: !Ref APIStage
+        
 #### Api part
   RecommendationsRole:
     Type: "AWS::IAM::Role"
@@ -741,6 +790,6 @@ Outputs:
   PutEvents:
     Value: !Ref PutEvents
   POSTRecommendationsApiGatewayInvokeURL:
-    Value: !Sub "https://${ApiGatewayEndpoint}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/recommendations"
+    Value: !Sub "https://${ExternalDomain}/${StageName}/recommendations"
   APIKEY:
     Value: !Sub "https://console.aws.amazon.com/apigateway/home?region=${AWS::Region}#/api-keys/${APIKey}"

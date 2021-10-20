@@ -92,45 +92,53 @@ aws s3 cp ./params.json s3://<input-bucket-name>
 
 
 ## Deploy Recommendations API
+
+
 1. Start an AWS CloudShell session from the AWS console
-2. Clone the project repo:
+2. Request certificate for domain
+```bash
+aws acm request-certificate --domain-name ng-dev.theglobeandmail.ca --validation-method DNS
+```
+3. Request DNS entry change to validate certificate 
+4. Clone the project repo:
 ```bash
 git clone codecommit::us-east-1://amazon_personalize_streaming_events
 ```
 
-3. Navigate into the *mlops/personalize-step-functions* directory:
+5. Navigate into the *mlops/personalize-step-functions* directory:
 ```bash
 cd api
 ```
 
-4. Validate your SAM project:
+6. Validate your SAM project:
 ```bash
 sam validate
 ```
 
-5. Build your SAM project:
+7. Build your SAM project:
 ```bash
 sam build
 ```
 
-6. Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
+8. Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
 ```bash
 sam deploy --stack-name tgam-personalize-api-test  --s3-bucket sam-dev-sophi-bucket-us-east-1  --capabilities CAPABILITY_IAM  \
-    --parameter-overrides ParameterKey=EventTrackerIdParam,ParameterValue=f843d3d9-7153-436b-b4be-ed5ce8375c575fcf \ 
+--parameter-overrides ParameterKey=EventTrackerIdParam,ParameterValue=f843d3d9-7153-436b-b4be-ed5ce8375c57 \
 ParameterKey=ContentDatasetName,ParameterValue=tgam-personalize-mlops-test \
 ParameterKey=CampaignName,ParameterValue=userPersonalizationCampaign \
-ParameterKey=FiltersPrefix,ParameterValue=tgam-personalize-mlops-test \ 
-ParameterKey=ContentDynamoDbTableName,ParameterValue=Sophi3ContentMetaData 
+ParameterKey=StageName,ParameterValue=v1 \
+ParameterKey=ExternalDomain,ParameterValue=recoapi-ng-dev.theglobeandmail.ca
+
 ```
 
-7. As cloudromation do not allow easy set log retention for log group from lambda we need to manually update time for cloudwatch logs retation
+9. As cloudromation do not allow easy set log retention for log group from lambda we need to manually update time for cloudwatch logs retation
 ```bash 
 aws logs put-retention-policy --log-group-name /aws/lambda/${name of put event lambda from output} --retention-in-days 30
 aws logs put-retention-policy --log-group-name /aws/lambda/${name of put content lambda from output --retention-in-days 30
 aws logs put-retention-policy --log-group-name /aws/lambda/${name of get recommendation lambda from output --retention-in-days 30
 ```
 
-8. Test api:
+10. Test api:
 ```bash
 export api_endpoint=(url from output url)
 export api_key=(api from output url)
