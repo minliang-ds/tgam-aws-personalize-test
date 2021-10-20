@@ -133,15 +133,6 @@ Resources:
 
 # # DDB History table
 # Lambda functions
-
-  #Certificate:
-  #  Type: AWS::CertificateManager::Certificate
-  #  Condition: UseExternalDomain
-  #  Properties:
-  #    DomainName: !Ref ExternalDomain
-  #    ValidationMethod: DNS
-    
-          
   APIDomain:
     Type: 'AWS::ApiGateway::DomainName'
     Properties:
@@ -165,6 +156,7 @@ Resources:
         DomainName: !Ref ExternalDomain
         RestApiId: !Ref ApiGatewayEndpoint
         Stage: !Ref APIStage
+        BasePath: !Ref StageName
         
 #### Api part
   RecommendationsRole:
@@ -208,7 +200,7 @@ Resources:
         - !Ref RecommendationsRole
         
         
-  ApiLambdaRole:
+  EventApiLambdaRole:
     Type: "AWS::IAM::Role"
     Properties:
       AssumeRolePolicyDocument:
@@ -228,7 +220,7 @@ Resources:
           Value: !Ref CostAllocationProduct
         - Key: "ManagedBy"
           Value: !Ref ManagedBy
-  LambdaPolicies:
+  EventLambdaPolicies:
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: se-lambda-execution-policy
@@ -249,15 +241,58 @@ Resources:
               - "kinesis:DescribeStreamSummary"
             Resource:
               - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}'
-              - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}'
               - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}*'
+      Roles:
+        - !Ref EventApiLambdaRole
+      
+  ContentApiLambdaRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonPersonalizeFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
+  ContentLambdaPolicies:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: se-lambda-execution-policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "personalize:*"
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - "kinesis:SubscribeToShard"
+              - "kinesis:ListShards"
+              - "kinesis:GetShardIterator"
+              - "kinesis:GetRecords"
+              - "kinesis:DescribeStream"
+              - "kinesis:DescribeStreamSummary"
+            Resource:
+              - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}'
               - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}*'
       Roles:
-        - !Ref ApiLambdaRole
+        - !Ref ContentApiLambdaRole
         
   GetRecommendations:
     DependsOn:
-      - LambdaPolicies
+      - RecommendationsPolicy
     Type:  AWS::Serverless::Function
     Properties:
       CodeUri: api-lambdas/getRecommendations
@@ -272,13 +307,13 @@ Resources:
           DynamoDbTableName: !Ref ContentDynamoDbTableName
   PutEvents:
     DependsOn:
-      - LambdaPolicies
+      - EventLambdaPolicies
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: api-lambdas/putevents
       Handler: putevents.handler
       Runtime: nodejs12.x
-      Role: !GetAtt [ApiLambdaRole, Arn]
+      Role: !GetAtt [EventApiLambdaRole, Arn]
       MemorySize: 192
       Timeout: 30
       Events:
@@ -295,13 +330,13 @@ Resources:
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
   PutContent:
     DependsOn:
-      - LambdaPolicies
+      - ContentLambdaPolicies
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: api-lambdas/putcontent
       Handler: putcontent.handler
       Runtime: nodejs12.x
-      Role: !GetAtt [ApiLambdaRole, Arn]
+      Role: !GetAtt [ContentApiLambdaRole, Arn]
       Timeout: 30
       Events:
         Stream:
@@ -655,7 +690,7 @@ Resources:
       Dimensions:
         - Name: FunctionName
           Value: !Ref GetRecommendations
-      EvaluationPeriods: 1
+      EvaluationPeriods: 2
       MetricName: Throttles
       Namespace: AWS/Lambda
       Period: 300
@@ -672,7 +707,7 @@ Resources:
       Dimensions:
         - Name: FunctionName
           Value: !Ref PutEvents
-      EvaluationPeriods: 1
+      EvaluationPeriods: 2
       MetricName: IteratorAge
       Namespace: AWS/Lambda
       Period: 300
