@@ -177,6 +177,9 @@ def handler(event, context):
                       if k == old_name:
                         row[v] = row.pop(old_name)
                     
+                      if k == "byline":
+                        row[v].['byline'] = row[v].['byline'][0]
+                        
                   reply["recommendations"].append(row)
                   
                 reply["recommendations"] = reply["recommendations"][:arguments["numResults"] - 1] 
