@@ -97,7 +97,15 @@ def handler(event, context):
             
         if payload.get("context") == "art_same_section_mostpopular":
             arguments["filterArn"] =  f'arn:aws:personalize:{region}:{account_id}:filter/{filter_prefix}-category'
-            arguments["filterValues"]["category"] = f'\"{payload.get("section").replace("/","")}\"';
+            
+            
+            category = payload.get("section").split("/")
+            if len(category) > 0:
+                category = category[1]
+            else:
+                category = payload.get("section")
+            
+            arguments["filterValues"]["category"] = f'\"{category}\"';
         else:
             arguments["filterArn"] = f'arn:aws:personalize:{region}:{account_id}:filter/{filter_prefix}-unread'
 
@@ -183,6 +191,19 @@ def handler(event, context):
                         row['byline'] = ' and '.join(row['byline'])
                     else:
                         row['byline'] = ''
+            
+            
+                  #mock images - for now
+                  row['author_rel'] = [{}]
+                  row['author_rel'][0]['url220'] = "https://www.theglobeandmail.com/resizer/IH6n5vARBLydpQBlwj6xHVlsk44=/220x0/smart/filters:quality(80)/s3.amazonaws.com/arc-authors/tgam/8d3dea3c-6a55-40bc-9a12-187ea6329b31.png"
+                  
+                  row['promo_image'] = {}
+                  row['promo_image']['urls'] = {}
+                  row['promo_image']['urls']['url220'] = "https://www.theglobeandmail.com/resizer/gtrV3TKZSo-O9-r6sNnvuXAn4SY=/220x0/smart/filters:quality(80)/cloudfront-us-east-1.images.arcpublishing.com/tgam/YDAY4VZRYRH5LGUHO3QMJXR6JA.JPG"
+                  
+                  row['picture_rel'] = [{}]
+                  row['picture_rel'][0]['url220'] = "https://www.theglobeandmail.com/resizer/F-DhMVztlRFULNcWSI1BuknYJHM=/200x0/smart/filters:quality(80)/cloudfront-us-east-1.images.arcpublishing.com/tgam/YDAY4VZRYRH5LGUHO3QMJXR6JA.JPG"
+                  
                             
                   reply["recommendations"].append(row)
                   
