@@ -221,17 +221,17 @@ Example of request data:
 
 
 ## Frontend fields requiremetns
-| Field name | Type | Comment | 
+| Field name | Type | Example | 
 | ----------------- | -------------- |-------- | 
-| published_at  |  String | |
-| updated_at - String | |
-| url - String | |
-| title - String | |
-| deck - String | |
-| byline - String | |
-| content_type - String | |
-| protection_product - String | |
-| label - String | |
-| article.author_rel[0].url220 | | 
-| article.promo_image.urls["220"] | |
-| article.picture_rel[0].url220 | |
+| published_at  |  String | 2021-10-20 06:00:00 |
+| updated_at | String | 2021-10-20 06:00:00 |
+| url | String | /canada/article-ontario-to-mail-out-new-property-assessments-after-next-provincial/ |
+| title | String | Ontario to mail out new property assessments after next provincial election, sources say |
+| deck | String | Two senior officials with two municipalities in the Greater Toronto Area say that the province is proposing to mail out 2022 property assessments to residents after the June 2 provincial election |
+| byline | String | Chris Hannay and Jeff Gray |
+| content_type | String | news |
+| protection_product | String | yellow |
+| label | String | ?? |
+| article.author_rel[0].url220 | String | https://www.theglobeandmail.com/resizer/IH6n5vARBLydpQBlwj6xHVlsk44=/220x0/smart/filters:quality(80)/s3.amazonaws.com/arc-authors/tgam/8d3dea3c-6a55-40bc-9a12-187ea6329b31.png |
+| article.promo_image.urls["220"] | String | https://www.theglobeandmail.com/resizer/gtrV3TKZSo-O9-r6sNnvuXAn4SY=/220x0/smart/filters:quality(80)/cloudfront-us-east-1.images.arcpublishing.com/tgam/YDAY4VZRYRH5LGUHO3QMJXR6JA.JPG |
+| article.picture_rel[0].url220 | String | https://www.theglobeandmail.com/resizer/gtrV3TKZSo-O9-r6sNnvuXAn4SY=/220x0/smart/filters:quality(80)/cloudfront-us-east-1.images.arcpublishing.com/tgam/YDAY4VZRYRH5LGUHO3QMJXR6JA.JPG |
