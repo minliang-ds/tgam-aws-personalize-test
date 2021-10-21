@@ -16,9 +16,9 @@ git clone codecommit::us-east-1://amazon_personalize_streaming_events
 ```
 
 ## Prerequisite
-To deploy SAM models we need to create private (Amazon S3)[https://aws.amazon.com/s3/] bucket
+To deploy SAM models we need to create private [Amazon S3](https://aws.amazon.com/s3/) bucket
 
-1. [In CloudShell]: Create S3 bucket to keep configuration for SAM deployments
+1. \[In CloudShell\]: Create S3 bucket to keep configuration for SAM deployments
 ```bash
 export env="dev"
 aws s3api create-bucket --bucket sam-${env}-sophi-bucket-us-east-1 --region us-east-1
@@ -26,26 +26,29 @@ aws s3api create-bucket --bucket sam-${env}-sophi-bucket-us-east-1 --region us-e
 
 
 ## Deploy Personalize CloudFormation Dashboard
-1. [In CloudShell] Navigate into the *monitoring* directory in this repo:
+When you deploy this application, a [CloudWatch dashboard](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Dashboards.html) is built with widgets for Actual vs Provisioned TPS, Campaign Utilization, and Campaign Latency for the campaigns you wish to monitor. The dashboard gives you critical visual information to assess how your campaigns are performing and being utilized. The data in these graphs can help you properly tune your campaign's minProvisionedTPS.
+
+1. \[In CloudShell\]: Navigate into the *monitoring* directory in this repo:
 ```bash
 cd monitoring
 ```
-1. [In CloudShell] Validate and build your SAM project:
+2. \[In CloudShell\]: Validate and build your SAM project:
 ```bash
-sam validate
-sam build
+sam validate && sam build
 ```
-1. Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
+3. \[In CloudShell\]: Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
 ```bash
-sam deploy --stack-name tgam-personalize-monitoring-test  --s3-bucket sam-dev-sophi-bucket-us-east-1  --capabilities CAPABILITY_IAM  \
+sam deploy --stack-name tgam-personalize-monitoring-test  \
+--s3-bucket sam-dev-sophi-bucket-us-east-1  \
+--capabilities CAPABILITY_IAM  \
 --parameter-overrides ParameterKey=CampaignARNs,ParameterValue=all \
-ParameterKey=Regions,ParameterValue=us-east-1 \
-ParameterKey=NotificationEndpoint,ParameterValue=mlinliu@amazon.com 
+  ParameterKey=Regions,ParameterValue=us-east-1 \
+  ParameterKey=NotificationEndpoint,ParameterValue=mlinliu@amazon.com 
 ````
 
 
 
-# MLOps pipeline 
+## MLOps pipeline 
 MLOps pipeline for Amazon Personalize Recommender System
 
 This pipeline builds a User-Personalization Amazon Personalize campaign for Sophi from scatch, assuming input datasets have been pre-generated. As shown in the following architecture diagram, the pipeline uses AWS Serverless Application Model (SAM) to deploy an AWS Step Function Workflow containing AWS Lambda functions that call Amazon S3, Amazon Personalize, and Amazon SNS APIs.
@@ -59,96 +62,74 @@ The below diagram showcases the StepFunction workflow definition:
 ![stepfunction definition](images/stepfunctions.png)
 
 
-## Deploy ML Ops Steps
-
-1. Start an AWS CloudShell session from the AWS console
-2. Clone the project repo:
-```bash
-git clone codecommit::us-east-1://amazon_personalize_streaming_events
-```
-3. Navigate into the *mlops/personalize-step-functions* directory:
+1. \[In CloudShell\]: Navigate into the *mlops/personalize-step-functions* directory:
 ```bash
 cd mlops/personalize-step-functions
 ```
-4. Validate your SAM project:
+2. \[In CloudShell\]: Validate and build your SAM project:
 ```bash
-sam validate
+sam validate && sam build
+
 ```
-5. Build your SAM project:
-```bash
-sam build
-```
-6. Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
+4. \[In CloudShell\]: Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
 ```bash
 sam deploy --stack-name tgam-personalize-mlops-test  --s3-bucket sam-dev-sophi-bucket-us-east-1  --capabilities CAPABILITY_IAM  --parameter-overrides ParameterKey=Email,ParameterValue=mlinliu@amazon.com
 ````
-7. Navigate to your email inbox and confirm your subscription to the SNS topic
-8. Once deployed, the pipeline will create the **InputBucket** which you can find in the CloudFormation stack output. Use it to upload your CSV datasets using the following structure:
+5. Navigate to your email inbox and confirm your subscription to the SNS topic
+6. \[In CloudShell\]: Once deployed, the pipeline will create the **InputBucket** which you can find in the CloudFormation stack output. Use it to upload your CSV datasets using the following structure:
 ```bash
 Items/              # Items dataset(s) folder
 Interactions/       # Interaction dataset(s) folder
 ``` 
-9. Navigate into the *mlops* directory:
+7. \[In CloudShell\]: Navigate into the *mlops* directory:
 ```bash
-cd ~/sagemaker_notebook_instance_test/mlops
+cd ~/mlops
 ```
-10. Upload the `params.json` file to the **root directory of the InputBucket**. This step will trigger the step functions workflow.
+8. \[In CloudShell\]: Upload the `params.json` file to the **root directory of the InputBucket**. This step will trigger the step functions workflow.
 ```bash
 aws s3 cp ./params.json s3://<input-bucket-name>
 ```
-11. Navigate to AWS Step Functions to monitor the workflow (Optional). Once the workflow completes successfully (which might take 12-15 hours), an email notification will be sent out.
+9. Navigate to AWS Step Functions to monitor the workflow (Optional). Once the workflow completes successfully (which might take 12-15 hours), an email notification will be sent out.
 
 
 ## Deploy Recommendations API
 
-
-1. Start an AWS CloudShell session from the AWS console
-2. Request certificate for domain
+1. \[In CloudShell\]: Request certificate for domain dev: **recoapi-ng-dev.theglobeandmail.ca** prod: **recoapi-ng-prod.theglobeandmail.ca**
 ```bash
 aws acm request-certificate --domain-name recoapi-ng-dev.theglobeandmail.ca --validation-method DNS
 ```
-3. Request DNS entry change to validate certificate 
-4. Clone the project repo:
-```bash
-git clone codecommit::us-east-1://amazon_personalize_streaming_events
-```
-
-5. Navigate into the *mlops/personalize-step-functions* directory:
+2. Request DNS entry CNAME record to validate certificate.
+3. \[In CloudShell\]: Navigate into the *mlops/personalize-step-functions* directory:
 ```bash
 cd api
 ```
-
-6. Validate your SAM project:
+4. \[In CloudShell\]: Validate and build your SAM project:
 ```bash
-sam validate
+sam validate && sam build
 ```
-
-7. Build your SAM project:
+5. \[In CloudShell\]: Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
 ```bash
-sam build
-```
-
-8. Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
-```bash
-sam deploy --stack-name tgam-personalize-api-test  --s3-bucket sam-dev-sophi-bucket-us-east-1  --capabilities CAPABILITY_IAM  \
+sam deploy --stack-name tgam-personalize-api-test  \
+--s3-bucket sam-dev-sophi-bucket-us-east-1  \
+--capabilities CAPABILITY_IAM  \
 --parameter-overrides ParameterKey=EventTrackerIdParam,ParameterValue=f843d3d9-7153-436b-b4be-ed5ce8375c57 \
-ParameterKey=ContentDatasetName,ParameterValue=tgam-personalize-mlops-test \
-ParameterKey=CampaignName,ParameterValue=userPersonalizationCampaign \
-ParameterKey=StageName,ParameterValue=v1 \
-ParameterKey=ExternalDomain,ParameterValue=recoapi-ng-dev.theglobeandmail.ca
+  ParameterKey=ContentDatasetName,ParameterValue=tgam-personalize-mlops-test \
+  ParameterKey=CampaignName,ParameterValue=userPersonalizationCampaign \
+  ParameterKey=StageName,ParameterValue=v1 \
+  ParameterKey=ExternalDomain,ParameterValue=recoapi-ng-dev.theglobeandmail.ca
 
 ```
 
-9. As cloudromation do not allow easy set log retention for log group from lambda we need to manually update time for cloudwatch logs retation
+6. \[In CloudShell\]: As cloudromation do not allow easy set log retention for log group from lambda we need to manually update time for cloudwatch logs retation
 ```bash 
 aws logs put-retention-policy --log-group-name /aws/lambda/${name of put event lambda from output} --retention-in-days 30
 aws logs put-retention-policy --log-group-name /aws/lambda/${name of put content lambda from output --retention-in-days 30
 aws logs put-retention-policy --log-group-name /aws/lambda/${name of get recommendation lambda from output --retention-in-days 30
 ```
 
-10. Request DNS change for domain ng-dev.theglobeandmail.ca to point to CNAME record provided by API Gateway
+7. Request DNS change for domain ng-dev.theglobeandmail.ca to point to CNAME record provided by API Gateway
 
-11. Test api:
+8. \[In CloudShell\]: Test api:
 ```bash
 export api_endpoint=(url from output url)
 export api_key=(api from output url)
@@ -160,6 +141,13 @@ export api_key=(api from output url)
   --data-raw '{"sub_requests":[{"widget_id":"recommended-art_same_section_mostpopular","include_read":false,"include_content_types":"wire,news,blog,column,review,gallery","limit":10,"context":"art_same_section_mostpopular","width":"w620","include_sections":"canada","min_content_age":61,"platform":"desktop","max_content_age":345601,"rank":1,"last_content_ids":"4LTZGA2T7FA5FC3XJXTHCUGXLI","newsletter_ids":"","section":"/canada/","seo_keywords":"","visitor_type":"anonymous"}],"platform":"desktop","visitor_id":"42ed07db-c4d5-41e6-8e51-5173da2bfec0","hash_id":""}'  | jq
 ```
 
+
+# API/Lambda documentation
+
+This solution will provide 3 [AWS Lambda](https://aws.amazon.com/lambda/) fucntions that will be processing Sophi data:
+- PutEvent - AWS Lambda to transfer information about events from **sophi3-transformed-event-stream** [Amazon Kinesis Data Streams](https://aws.amazon.com/kinesis/data-streams/)
+- PutContent -  AWS Lambda to transfer information about content changes from **sophi3-unified-content-stream** [Amazon Kinesis Data Streams](https://aws.amazon.com/kinesis/data-streams/)
+- GetRecommendations - AWS Lambda published in backend of [Amazon API Gateway](https://aws.amazon.com/api-gateway/) to provide recommendation api for end users
 
 
 ## Put Event api documentation
