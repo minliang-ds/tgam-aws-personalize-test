@@ -270,17 +270,17 @@ def handler(event, context, metrics):
                   if images_map.get(current_content_id):
                       row['author_rel'] = [{}]
                       if images_map[current_content_id].get('authorrel') and len(images_map[current_content_id].get('authorrel')) > 0:
-                          row['author_rel'][0]['url220'] = images_map[current_content_id].get('authorrel')[0].get('url220')
+                          row['author_rel'][0]['url220'] = images_map[current_content_id].get('authorrel')[0].get('url220', "")
 
                       row['picture_rel'] = [{}]
                       if images_map[current_content_id].get('picturerel') and len(images_map[current_content_id].get('picturerel')) > 0:
-                        row['picture_rel'][0]['url220'] = images_map[current_content_id].get('picturerel')[0].get('url220')
+                        row['picture_rel'][0]['url220'] = images_map[current_content_id].get('picturerel')[0].get('url220', "")
 
                       #copy formatted from arc_content.PictureRel
                       row['promo_image'] = {}
                       row['promo_image']['urls'] = {}
                       if images_map[current_content_id].get('picturerel') and len(images_map[current_content_id].get('picturerel')) > 0:
-                        row['promo_image']['urls']['url220'] = images_map[current_content_id].get('picturerel')[0].get('url220')
+                        row['promo_image']['urls']['url220'] = images_map[current_content_id].get('picturerel')[0].get('url220', "")
 
                   reply["recommendations"].append(row)
                   
