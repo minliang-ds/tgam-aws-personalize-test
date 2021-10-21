@@ -779,7 +779,7 @@ Resources:
                     ],
                     "view": "timeSeries",
                     "stacked": false,
-                    "region": "us-east-1",
+                    "region": "${AWS::Region}",
                     "stat": "Sum",
                     "period": 300,
                     "title": "GetRecommendations Lambda"
@@ -799,7 +799,7 @@ Resources:
                     ],
                     "view": "timeSeries",
                     "stacked": true,
-                    "region": "us-east-1",
+                    "region": "",
                     "stat": "Average",
                     "period": 300,
                     "title": "GetRecommendations Dependency"
@@ -820,7 +820,7 @@ Resources:
                     ],
                     "view": "timeSeries",
                     "stacked": false,
-                    "region": "us-east-1",
+                    "region": "${AWS::Region}",
                     "stat": "Sum",
                     "period": 300,
                     "title": "PutEvents Lambda"
@@ -841,7 +841,7 @@ Resources:
                     ],
                     "view": "timeSeries",
                     "stacked": false,
-                    "region": "us-east-1",
+                    "region": "${AWS::Region}",
                     "stat": "Sum",
                     "period": 300,
                     "title": "PutContent Lambda"
@@ -859,7 +859,7 @@ Resources:
                     ],
                     "view": "timeSeries",
                     "stacked": true,
-                    "region": "us-east-1",
+                    "region": "${AWS::Region}",
                     "stat": "Maximum",
                     "period": 60,
                     "title": "PutEvents Lambda IteratorAge",
@@ -885,7 +885,7 @@ Resources:
                     ],
                     "view": "timeSeries",
                     "stacked": true,
-                    "region": "us-east-1",
+                    "region": "${AWS::Region}",
                     "stat": "Maximum",
                     "period": 60,
                     "title": "PutContent Lambda IteratorAge",
@@ -935,7 +935,7 @@ Resources:
                     ],
                     "view": "timeSeries",
                     "stacked": false,
-                    "region": "us-east-1",
+                    "region": "${AWS::Region}",
                     "stat": "Sum",
                     "period": 300,
                     "title": "Api Gateway Metrics"
