@@ -59,8 +59,66 @@ class DecimalEncoder(json.JSONEncoder):
 region = os.environ['AWS_REGION']
 account_id = os.environ['CurretnAccountId']
 filter_prefix = os.environ['FiltersPrefix']
-table_name = os.environ['DynamoDbTableName']
+sophi3_table_name = os.environ['Sophi3DynamoDbTableName']
+sophi2_table_name = os.environ['Sophi2DynamoDbTableName']
 
+attributes_to_get_sophi3 = [ 'Title', 'Deck', 'Byline', 'Category', 'Section', 'Keywords', 'State', 'CanonicalURL', 'CreditLine', 'Ownership', 'Sponsored', 'ContentId', 'ContentType', 'ContentRestriction', 'PublishedDate', 'WordCount', 'Caption', 'UpdatedDate']
+attributes_to_get_sophi2 = ['ContentID', 'StoryRel', 'AuthorRel', 'PictureRel'];
+sort_key_name_sophi3     = "ContentId"
+sort_key_name_sophi2     = "ContentID"
+
+
+def get_dynamo_data(dynamo_table, sort_key_name, attributes, item_list, return_type_map=False, return_type_list=False):
+    if (len(item_list) > 0):
+        try:
+            deserialized_item = []
+            processed_items = 0
+
+            #if request ask for more then 100 items we need to split it
+            #as batch_get_items can support only 100 items per request
+            while processed_items < len(item_list):
+                print(f"Debug processed_items: {processed_items} len {len(item_list)}")
+        
+                if ((len(item_list) - processed_items)  > 100):
+                    items_limit = 100
+                else:
+                    items_limit = len(item_list) - processed_items
+                    
+                request_batch = [{sort_key_name: {'S': item["itemId"]}} for item in item_list[processed_items:processed_items+items_limit]]
+                
+                while request_batch:
+                    db_response = dynamodb.batch_get_item(
+                        RequestItems={
+                            dynamo_table: {
+                                'Keys':request_batch,
+                                'AttributesToGet': attributes
+                            }
+                        },
+                        ReturnConsumedCapacity='TOTAL'
+                    )
+                    items = db_response['Responses'].get(dynamo_table)
+                    deserialized_iteration= [{k.lower(): deserializer.deserialize(v) for k, v in element.items()} for element in items]
+                    
+                    deserialized_item.extend(deserialized_iteration)
+                    request_batch = db_response.get("UnprocessedKeys",  None)
+                
+                processed_items += items_limit
+                
+        except ClientError as e:
+            print(f"Key Error: {e}")
+
+        else:
+            print(f"RawDynamoReply = {db_response}")
+
+
+        if return_type_map:
+            return_map = {element['contentid']: element for element in deserialized_item}
+            return return_map;
+        
+        if return_type_list:
+            return deserialized_item;
+        
+        
 def handler(event, context):
     print(f"Event = {event}")
     body = json.loads(event['body'])
@@ -144,7 +202,6 @@ def handler(event, context):
         
         
         
-        
         #Mapping convertion fields from dynamo table to reply
         names_key = { 
           'WordCount'.lower()            : 'word_count' ,
@@ -162,54 +219,22 @@ def handler(event, context):
 
         try:
             if (len(response['itemList']) > 0):
-                deserialized_item = []
-                processed_items = 0
+                deserialized_item = get_dynamo_data(sophi3_table_name, sort_key_name_sophi3, attributes_to_get_sophi3, response['itemList'], False, True)
+                images_map = get_dynamo_data(sophi2_table_name, sort_key_name_sophi2, attributes_to_get_sophi2, response['itemList'], True, False)
+                #print(f"Images map: {images_map}")
+                #print(f"Recommendation list: {deserialized_item}")
                 
-                #if request ask for more then 100 items we need to split it
-                #as batch_get_items can support only 100 items per request
-                while processed_items < len(response['itemList']):
-                    print(f"Debug processed_items: {processed_items} len {len(response['itemList'])}")
 
-                    if ((len(response['itemList']) - processed_items)  > 100):
-                        items_limit = 100
-                    else:
-                        items_limit = len(response['itemList']) - processed_items
-                        
-                    request_batch = [{'ContentId': {'S': item["itemId"]}} for item in response['itemList'][processed_items:processed_items+items_limit]]
-                    
-                    while request_batch:
-                        db_response = dynamodb.batch_get_item(
-                            RequestItems={
-                                table_name: {
-                                    'Keys':request_batch,
-                                    'AttributesToGet': [ 'Title', 'Deck', 'Byline', 'Category', 'Section', 'Keywords', 'State', 'CanonicalURL', 'CreditLine', 'Ownership', 'Sponsored', 'ContentId', 'ContentType', 'ContentRestriction', 'PublishedDate', 'WordCount', 'picture_rel', 'author_rel', 'video_duration', 'caption', 'promo_image', 'UpdatedDate']
-                                }
-                            },
-                            ReturnConsumedCapacity='TOTAL'
-                        )
-                        items = db_response['Responses'].get(table_name)
-                        deserialized_iteration= [{k.lower(): deserializer.deserialize(v) for k, v in element.items()} for element in items]
-                        
-                        deserialized_item.extend(deserialized_iteration)
-                        request_batch = db_response.get("UnprocessedKeys",  None)
-                    
-                    processed_items += items_limit
-                    
         except ClientError as e:
             print(f"Key Error: {e}")
 
         else:
-            print(f"RawDynamoReply = {db_response}")
-
             if (len(deserialized_item) > 0):
                 reply["recommendations"] = []
-                #item = db_response['Responses'].get(table_name)
-                #deserialized_item = [{k.lower(): deserializer.deserialize(v) for k, v in element.items()} for element in item]
-                
-                for row in deserialized_item:
-                  if payload.get("last_content_ids") and row.get('contentid') == payload.get("last_content_ids"):
-                    continue;
 
+                for row in deserialized_item:
+
+                  #Updaete formating of keys to match reply requirements
                   for k, v in names_key.items():
                     for old_name in list(row):
                       if k == old_name:
@@ -222,17 +247,26 @@ def handler(event, context):
                     else:
                         row['byline'] = ''
             
-            
-                  #mock images - for now
-                  row['author_rel'] = [{}]
-                  row['author_rel'][0]['url220'] = "https://www.theglobeandmail.com/resizer/IH6n5vARBLydpQBlwj6xHVlsk44=/220x0/smart/filters:quality(80)/s3.amazonaws.com/arc-authors/tgam/8d3dea3c-6a55-40bc-9a12-187ea6329b31.png"
-                  
-                  row['promo_image'] = {}
-                  row['promo_image']['urls'] = {}
-                  row['promo_image']['urls']['url220'] = "https://www.theglobeandmail.com/resizer/gtrV3TKZSo-O9-r6sNnvuXAn4SY=/220x0/smart/filters:quality(80)/cloudfront-us-east-1.images.arcpublishing.com/tgam/YDAY4VZRYRH5LGUHO3QMJXR6JA.JPG"
-                  
-                  row['picture_rel'] = [{}]
-                  row['picture_rel'][0]['url220'] = "https://www.theglobeandmail.com/resizer/F-DhMVztlRFULNcWSI1BuknYJHM=/200x0/smart/filters:quality(80)/cloudfront-us-east-1.images.arcpublishing.com/tgam/YDAY4VZRYRH5LGUHO3QMJXR6JA.JPG"
+                  #Exlude last_content_ids from result 
+                  current_content_id = row.get('content_id')
+                  if payload.get("last_content_ids") and current_content_id == payload.get("last_content_ids"):
+                    continue;
+                    
+                  #Merging information about images from sophi2 table
+                  if images_map.get(current_content_id):
+                      row['author_rel'] = [{}]
+                      if len(images_map[current_content_id].get('authorrel')) > 0:
+                          row['author_rel'][0]['url220'] = images_map[current_content_id].get('authorrel')[0].get('url220')
+
+                      row['picture_rel'] = [{}]
+                      if len(images_map[current_content_id].get('picturerel')) > 0:
+                        row['picture_rel'][0]['url220'] = images_map[current_content_id].get('picturerel')[0].get('url220')
+
+                      #copy formatted from arc_content.PictureRel
+                      row['promo_image'] = {}
+                      row['promo_image']['urls'] = {}
+                      if len(images_map[current_content_id].get('picturerel')) > 0:
+                        row['promo_image']['urls']['url220'] = images_map[current_content_id].get('picturerel')[0].get('url220')
 
                   reply["recommendations"].append(row)
                   

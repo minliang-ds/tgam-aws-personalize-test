@@ -219,21 +219,23 @@ Example of request data:
 ## Reply Fields
 
 ## Data convertion between dynamoDB and reply
-| Field in DynamoDB | Field in reply | Additional convertion | Comment | 
-| ----------------- | -------------- | --------------------- |-------- | 
-| Byline | byline | join list of string with separator ' and ' |  |
-| WordCount | word_count | N/A |  |
-| ContentType | content_type | N/A |  |
-| PublishedDate | published_at | N/A |  |
-| UpdatedDate | updated_at | N/A |  |
-| Section | section_meta_title | N/A |  |
-| CanonicalURL | url | N/A |  |
-| CreditLine | credit | N/A |  |
-| ContentId | content_id | N/A |  |
-| ContentType | content_type | N/A |  |
-| ContentRestriction | protection_product | N/A |  |
-| ContentType | content_type | N/A |  |
-
+| DynamoDB Table        | Field in DynamoDB  | Field in reply | Additional convertion | Comment | 
+| --------------------- | ------------------ | -------------- | --------------------- |-------- | 
+| Sophi3ContentMetaData | Byline             | byline | join list of string with separator ' and ' |  |
+| Sophi3ContentMetaData | WordCount          | word_count | N/A |  |
+| Sophi3ContentMetaData | ContentType        | content_type | N/A |  |
+| Sophi3ContentMetaData | PublishedDate      | published_at | N/A |  |
+| Sophi3ContentMetaData | UpdatedDate        | updated_at | N/A |  |
+| Sophi3ContentMetaData | Section            | section_meta_title | N/A |  |
+| Sophi3ContentMetaData | CanonicalURL       | url | N/A |  |
+| Sophi3ContentMetaData | CreditLine         | credit | N/A |  |
+| Sophi3ContentMetaData | ContentId          | content_id | N/A |  |
+| Sophi3ContentMetaData | ContentType        | content_type | N/A |  |
+| Sophi3ContentMetaData | ContentRestriction | protection_product | N/A |  |
+| Sophi3ContentMetaData | ContentType        | content_type | N/A |  |
+| arc_content           | StoryRel           | story_rel | only url220 key from data | from sophi2  | |
+| arc_content           | AuthorRel          | author_rel | only url220 key from data | from sophi2 | |
+| arc_content           | PictureRel         | promo_image | copy from PictureRel only url220 key from data | from sophi2  | |
 
 ## Frontend fields requiremetns
 | Field name | Type | Example | 

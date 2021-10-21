@@ -101,10 +101,15 @@ Parameters:
     Description: FiltersPrefix for personalize
     Default: tgam-personalize-mlops-test
 
-  ContentDynamoDbTableName:
+  Sophi3DynamoDbTableName:
     Type: String
     Description: FiltersPrefix for personalize
     Default: Sophi3ContentMetaData
+
+  Sophi2DynamoDbTableName:
+    Type: String
+    Description: FiltersPrefix for personalize
+    Default: arc_content
 
   Email:
     Type: String
@@ -195,7 +200,8 @@ Resources:
             Action:
               - "dynamodb:BatchGetItem"
             Resource:
-             - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ContentDynamoDbTableName}'
+             - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Sophi3DynamoDbTableName}'
+             - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Sophi2DynamoDbTableName}'
       Roles:
         - !Ref RecommendationsRole
         
@@ -304,7 +310,8 @@ Resources:
         Variables:
           CAMPAIGN_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}'
           FiltersPrefix: !Ref FiltersPrefix
-          DynamoDbTableName: !Ref ContentDynamoDbTableName
+          Sophi3DynamoDbTableName: !Ref Sophi3DynamoDbTableName
+          Sophi2DynamoDbTableName: !Ref Sophi2DynamoDbTableName
   PutEvents:
     DependsOn:
       - EventLambdaPolicies
