@@ -1,9 +1,49 @@
-# Table of Contents
-1. [MLOps pipeline](#MLOps-pipeline)
-2. [Example2](#example2)
-3. [Third Example](#third-example)
-4. [Fourth Example](#fourth-examplehttpwwwfourthexamplecom)
-5. 
+# Introduction
+
+This reporistory contains 3 [AWS Serverless Application Model](https://aws.amazon.com/serverless/sam/) projects, every in each own folder:
+- api - GetRecommendations, PutContent, PutEvents api  
+- mlops - MLOps pipeline for [Amazon Personalize](https://aws.amazon.com/personalize/) Recommender System
+- monitoring - [Amazon CloudWatch](https://aws.amazon.com/cloudwatch/) Dashboard for [Amazon Personalize](https://aws.amazon.com/personalize/)
+
+
+# Deployment steps
+
+All commands describe in this readme assume using (AWS CloudShell)[https://aws.amazon.com/cloudshell/] with content of this repository cloned into **amazon_personalize_streaming_event** folder 
+1. Start an AWS CloudShell session from the AWS console
+1. Clone the project repo:
+```bash
+git clone codecommit::us-east-1://amazon_personalize_streaming_events
+```
+
+## Prerequisite
+To deploy SAM models we need to create private (Amazon S3)[https://aws.amazon.com/s3/] bucket
+
+1. [In CloudShell]: Create S3 bucket to keep configuration for SAM deployments
+```bash
+export env="dev"
+aws s3api create-bucket --bucket sam-${env}-sophi-bucket-us-east-1 --region us-east-1
+```
+
+
+## Deploy Personalize CloudFormation Dashboard
+1. [In CloudShell] Navigate into the *monitoring* directory in this repo:
+```bash
+cd monitoring
+```
+1. [In CloudShell] Validate and build your SAM project:
+```bash
+sam validate
+sam build
+```
+1. Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
+```bash
+sam deploy --stack-name tgam-personalize-monitoring-test  --s3-bucket sam-dev-sophi-bucket-us-east-1  --capabilities CAPABILITY_IAM  \
+--parameter-overrides ParameterKey=CampaignARNs,ParameterValue=all \
+ParameterKey=Regions,ParameterValue=us-east-1 \
+ParameterKey=NotificationEndpoint,ParameterValue=mlinliu@amazon.com 
+````
+
+
 
 # MLOps pipeline 
 MLOps pipeline for Amazon Personalize Recommender System
@@ -17,46 +57,6 @@ The below diagram describes the architecture of the solution:
 The below diagram showcases the StepFunction workflow definition:
 
 ![stepfunction definition](images/stepfunctions.png)
-
-
-
-
-
-## Global Steps Steps
-
-1. Create S3 bucket to keep configuration for SAM deployments
-```bash
-export env="dev"
-aws s3api create-bucket --bucket sam-${env}-sophi-bucket-us-east-1 --region us-east-1
-
-```
-
-## Deploy Personalize CloudFormation Dashboard
-1. Start an AWS CloudShell session from the AWS console
-2. Clone the project repo:
-```bash
-git clone codecommit::us-east-1://amazon_personalize_streaming_events
-```
-3. Navigate into the *monitoring* directory:
-```bash
-cd monitoring
-```
-4. Validate your SAM project:
-```bash
-sam validate
-```
-5. Build your SAM project:
-```bash
-sam build
-```
-6. Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
-```bash
-sam deploy --stack-name tgam-personalize-monitoring-test  --s3-bucket sam-dev-sophi-bucket-us-east-1  --capabilities CAPABILITY_IAM  \
---parameter-overrides ParameterKey=CampaignARNs,ParameterValue=all \
-ParameterKey=Regions,ParameterValue=us-east-1 \
-ParameterKey=NotificationEndpoint,ParameterValue=mlinliu@amazon.com 
-````
-
 
 
 ## Deploy ML Ops Steps
