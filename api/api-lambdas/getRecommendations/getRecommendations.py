@@ -33,6 +33,7 @@ inputs
   "hash_id": ""
 }
 """
+import time 
 
 from boto3 import client
 personalize_cli = client('personalize-runtime')
@@ -42,6 +43,7 @@ from boto3.dynamodb.types import TypeDeserializer
 deserializer = TypeDeserializer()
 
 from botocore.exceptions import ClientError
+from aws_embedded_metrics import metric_scope
 
 import json
 import os
@@ -56,9 +58,9 @@ class DecimalEncoder(json.JSONEncoder):
                 return int(o)
         return super(DecimalEncoder, self).default(o)
         
-region = os.environ['AWS_REGION']
-account_id = os.environ['CurretnAccountId']
-filter_prefix = os.environ['FiltersPrefix']
+region            = os.environ['AWS_REGION']
+account_id        = os.environ['CurretnAccountId']
+filter_prefix     = os.environ['FiltersPrefix']
 sophi3_table_name = os.environ['Sophi3DynamoDbTableName']
 sophi2_table_name = os.environ['Sophi2DynamoDbTableName']
 
@@ -117,9 +119,9 @@ def get_dynamo_data(dynamo_table, sort_key_name, attributes, item_list, return_t
         
         if return_type_list:
             return deserialized_item;
-        
-        
-def handler(event, context):
+
+@metric_scope        
+def handler(event, context, metrics):
     print(f"Event = {event}")
     body = json.loads(event['body'])
     payload = body.get("sub_requests")[0]
@@ -177,9 +179,13 @@ def handler(event, context):
 
 
         print(f"RequestRecommendations = {arguments}")
+        before_request = time.time_ns()
         response = personalize_cli.get_recommendations(**arguments)
-            
+        after_request = time.time_ns()
+
+        metrics.put_metric("PersonalizeRequestTime", (int(after_request-before_request)/1000000), "Milliseconds")
         print(f"RawRecommendations = {response['itemList']}")
+        
         reply['recommendations_debug'] = response['itemList']
         reply['recommendationId'] = response['recommendationId']
         
@@ -219,8 +225,16 @@ def handler(event, context):
 
         try:
             if (len(response['itemList']) > 0):
+                before_request = time.time_ns()
                 deserialized_item = get_dynamo_data(sophi3_table_name, sort_key_name_sophi3, attributes_to_get_sophi3, response['itemList'], False, True)
+                after_request = time.time_ns()
+                metrics.put_metric("DynamoSophi2ReuqestTime", (int(after_request-before_request)/1000000), "Milliseconds")
+                
+                before_request = time.time_ns()
                 images_map = get_dynamo_data(sophi2_table_name, sort_key_name_sophi2, attributes_to_get_sophi2, response['itemList'], True, False)
+                after_request = time.time_ns()
+                metrics.put_metric("DynamoSophi3ReuqestTime", (int(after_request-before_request)/1000000), "Milliseconds")
+                
                 #print(f"Images map: {images_map}")
                 #print(f"Recommendation list: {deserialized_item}")
                 
@@ -255,17 +269,17 @@ def handler(event, context):
                   #Merging information about images from sophi2 table
                   if images_map.get(current_content_id):
                       row['author_rel'] = [{}]
-                      if len(images_map[current_content_id].get('authorrel')) > 0:
+                      if images_map[current_content_id].get('authorrel') and len(images_map[current_content_id].get('authorrel')) > 0:
                           row['author_rel'][0]['url220'] = images_map[current_content_id].get('authorrel')[0].get('url220')
 
                       row['picture_rel'] = [{}]
-                      if len(images_map[current_content_id].get('picturerel')) > 0:
+                      if images_map[current_content_id].get('picturerel') and len(images_map[current_content_id].get('picturerel')) > 0:
                         row['picture_rel'][0]['url220'] = images_map[current_content_id].get('picturerel')[0].get('url220')
 
                       #copy formatted from arc_content.PictureRel
                       row['promo_image'] = {}
                       row['promo_image']['urls'] = {}
-                      if len(images_map[current_content_id].get('picturerel')) > 0:
+                      if images_map[current_content_id].get('picturerel') and len(images_map[current_content_id].get('picturerel')) > 0:
                         row['promo_image']['urls']['url220'] = images_map[current_content_id].get('picturerel')[0].get('url220')
 
                   reply["recommendations"].append(row)

@@ -128,12 +128,6 @@ Parameters:
     Type: String
     Default: "arn:aws:acm:us-east-1:727304503525:certificate/2d541648-2f71-4b97-89ed-26d252d496b9"
 
-Conditions:
-  UseExternalDomain: !Not 
-    - !Equals 
-      - !Ref ExternalDomain
-      - NONE
-
 Resources:
 
 # # DDB History table
@@ -295,7 +289,16 @@ Resources:
               - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}*'
       Roles:
         - !Ref ContentApiLambdaRole
-        
+      
+  PythonMetricsLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: api-lambdas/PythonMetricsLayer
+      CompatibleRuntimes:
+        - python3.8
+    Metadata:
+      BuildMethod: python3.8              # Required to have AWS SAM build this layer
+      
   GetRecommendations:
     DependsOn:
       - RecommendationsPolicy
@@ -306,12 +309,16 @@ Resources:
       Runtime: python3.8
       Role: !GetAtt [RecommendationsRole, Arn]
       MemorySize: 192
+      Layers:
+        - !Ref PythonMetricsLayer
       Environment:
         Variables:
           CAMPAIGN_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}'
           FiltersPrefix: !Ref FiltersPrefix
           Sophi3DynamoDbTableName: !Ref Sophi3DynamoDbTableName
           Sophi2DynamoDbTableName: !Ref Sophi2DynamoDbTableName
+          AWS_EMF_NAMESPACE: !Ref MetricsNamespace
+          AWS_EMF_SERVICE_NAME: "GetRecommendations"
   PutEvents:
     DependsOn:
       - EventLambdaPolicies
@@ -774,14 +781,34 @@ Resources:
                     "stacked": false,
                     "region": "us-east-1",
                     "stat": "Sum",
-                    "period": 60,
+                    "period": 300,
                     "title": "GetRecommendations Lambda"
                 }
             },
             {
                 "height": 6,
-                "width": 12,
+                "width": 24,
                 "y": 12,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                    "metrics": [
+                      [ "PersonalizeCustomMetrics", "PersonalizeRequestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ],
+                      [ "PersonalizeCustomMetrics", "DynamoSophi2ReuqestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ],
+                      [ "PersonalizeCustomMetrics", "DynamoSophi3ReuqestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ] 
+                    ],
+                    "view": "timeSeries",
+                    "stacked": true,
+                    "region": "us-east-1",
+                    "stat": "Average",
+                    "period": 300,
+                    "title": "GetRecommendations Dependency"
+                }
+            },          
+            {
+                "height": 6,
+                "width": 12,
+                "y": 18,
                 "x": 0,
                 "type": "metric",
                 "properties": {
@@ -795,14 +822,14 @@ Resources:
                     "stacked": false,
                     "region": "us-east-1",
                     "stat": "Sum",
-                    "period": 60,
+                    "period": 300,
                     "title": "PutEvents Lambda"
                 }
             },
             {
                 "height": 6,
                 "width": 12,
-                "y": 12,
+                "y": 18,
                 "x": 12,
                 "type": "metric",
                 "properties": {
@@ -816,7 +843,7 @@ Resources:
                     "stacked": false,
                     "region": "us-east-1",
                     "stat": "Sum",
-                    "period": 60,
+                    "period": 300,
                     "title": "PutContent Lambda"
                 }
             },
@@ -910,7 +937,7 @@ Resources:
                     "stacked": false,
                     "region": "us-east-1",
                     "stat": "Sum",
-                    "period": 60,
+                    "period": 300,
                     "title": "Api Gateway Metrics"
                 }
             }
