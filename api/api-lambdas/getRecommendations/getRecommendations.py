@@ -186,7 +186,7 @@ def handler(event, context, metrics):
         metrics.put_metric("PersonalizeRequestTime", (int(after_request-before_request)/1000000), "Milliseconds")
         print(f"RawRecommendations = {response['itemList']}")
         
-        reply['recommendations_debug'] = response['itemList']
+        #reply['recommendations_debug'] = response['itemList']
         reply['recommendationId'] = response['recommendationId']
         
         #UpdatedDate => updated_at
