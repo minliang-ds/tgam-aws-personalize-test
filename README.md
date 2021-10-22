@@ -3,7 +3,6 @@
 This reporistory contains 3 [AWS Serverless Application Model](https://aws.amazon.com/serverless/sam/) projects, every in each own folder:
 - api - GetRecommendations, PutContent, PutEvents api  
 - mlops - MLOps pipeline for [Amazon Personalize](https://aws.amazon.com/personalize/) Recommender System
-- monitoring - [Amazon CloudWatch](https://aws.amazon.com/cloudwatch/) Dashboard for [Amazon Personalize](https://aws.amazon.com/personalize/)
 
 
 # Deployment steps
@@ -23,30 +22,6 @@ To deploy SAM models we need to create private [Amazon S3](https://aws.amazon.co
 export env="dev"
 aws s3api create-bucket --bucket sam-${env}-sophi-bucket-us-east-1 --region us-east-1
 ```
-
-
-## Deploy Personalize CloudFormation Dashboard
-When you deploy this application, a [CloudWatch dashboard](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Dashboards.html) is built with widgets for Actual vs Provisioned TPS, Campaign Utilization, and Campaign Latency for the campaigns you wish to monitor. The dashboard gives you critical visual information to assess how your campaigns are performing and being utilized. The data in these graphs can help you properly tune your campaign's minProvisionedTPS.
-
-1. \[In CloudShell\]: Navigate into the *monitoring* directory in this repo:
-```bash
-cd monitoring
-```
-2. \[In CloudShell\]: Validate and build your SAM project:
-```bash
-sam validate && sam build
-```
-3. \[In CloudShell\]: Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
-```bash
-sam deploy --stack-name tgam-personalize-monitoring-test  \
---s3-bucket sam-dev-sophi-bucket-us-east-1  \
---capabilities CAPABILITY_IAM  \
---parameter-overrides ParameterKey=CampaignARNs,ParameterValue=all \
-  ParameterKey=Regions,ParameterValue=us-east-1 \
-  ParameterKey=NotificationEndpoint,ParameterValue=mlinliu@amazon.com 
-````
-
-
 
 ## MLOps pipeline 
 MLOps pipeline for Amazon Personalize Recommender System
@@ -110,14 +85,28 @@ sam validate && sam build
 5. \[In CloudShell\]: Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
 ```bash
 sam deploy --stack-name tgam-personalize-api-test  \
---s3-bucket sam-dev-sophi-bucket-us-east-1  \
---capabilities CAPABILITY_IAM  \
---parameter-overrides ParameterKey=EventTrackerIdParam,ParameterValue=f843d3d9-7153-436b-b4be-ed5ce8375c57 \
-  ParameterKey=ContentDatasetName,ParameterValue=tgam-personalize-mlops-test \
-  ParameterKey=CampaignName,ParameterValue=userPersonalizationCampaign \
+  --s3-bucket sam-dev-sophi-bucket-us-east-1  \
+  --capabilities CAPABILITY_IAM  \
+  --parameter-overrides \
+  ParameterKey=ResourcesPrefix,ParameterValue=tgam-personalize \
+  ParameterKey=Environment,ParameterValue=dev \
   ParameterKey=StageName,ParameterValue=v1 \
-  ParameterKey=ExternalDomain,ParameterValue=recoapi-ng-dev.theglobeandmail.ca
-
+  ParameterKey=CostAllocationProduct,ParameterValue=amazon_personalize \
+  ParameterKey=KinesisContentStream,ParameterValue=sophi3-unified-content-stream \
+  ParameterKey=KinesisEventStream,ParameterValue=sophi3-transformed-event-stream \
+  ParameterKey=LogRotation,ParameterValue=30 \
+  ParameterKey=ContentDatasetName,ParameterValue=tgam-personalize-mlops-test \
+  ParameterKey=EventTrackerIdParam,ParameterValue=f843d3d9-7153-436b-b4be-ed5ce8375c57 \
+  ParameterKey=EventTrackerArn,ParameterValue=arn:aws:personalize:us-east-1:727304503525:event-tracker/7a1a2aff \
+  ParameterKey=CampainProvisionedTPS,ParameterValue=1 \
+  ParameterKey=CampaignName,ParameterValue=userPersonalizationCampaign \
+  ParameterKey=FiltersPrefix,ParameterValue=tgam-personalize-mlops-test \
+  ParameterKey=Sophi3DynamoDbTableName,ParameterValue=Sophi3ContentMetaData \
+  ParameterKey=Sophi2DynamoDbTableName,ParameterValue=arc_content \
+  ParameterKey=ExternalDomain,ParameterValue=recoapi-ng-dev.theglobeandmail.ca \
+  ParameterKey=CertificateARN,ParameterValue=arn:aws:acm:us-east-1:727304503525:certificate/2d541648-2f71-4b97-89ed-26d252d496b9 \
+  ParameterKey=DefaultNotificationEmail,ParameterValue=mlinliu@amazon.com
+  
 ```
 
 6. \[In CloudShell\]: As cloudromation do not allow easy set log retention for log group from lambda we need to manually update time for cloudwatch logs retation
@@ -163,7 +152,7 @@ This solution will provide 3 [AWS Lambda](https://aws.amazon.com/lambda/) fucnti
 | hash_id      | Ignored  | String |         | was existing in old api |
 | platform     | Ignored  | String |         | was existing in old api |
 | sub_requests | **Required** | List of dictionary |         | this api will support only 1 request but we will keep format of list to maintain compatibility with old api |
-| sub_requests\[0\].limit | Optional | Int| max: 100, default: 25 |  limit of items for recommendation 
+| sub_requests\[0\].limit | Optional | Int| max: 500, default: 25 |  limit of items for recommendation 
 | sub_requests\[0\].context | Optional | String | |  example: art_same_section_mostpopular, art_mostpopular, user_container_recommendations, mobile_art_morestories. Currently its mapped to filters in personelize api
 | sub_requests\[0\].platform | Optional | String | | User platform. Existing types in model: Mobile, Desktop, Tablet. Api will use lower().capitalize() as its case sensitive field
 | sub_requests\[0\].visitor_type | Optional | String | | Visitor type. Existing types in model: Anonymous, Subscribed, Registered. Api will use lower().capitalize() as its case sensitive field

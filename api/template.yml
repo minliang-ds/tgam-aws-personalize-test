@@ -42,10 +42,10 @@ Parameters:
     Type: String
     Default: PersonalizeCustomMetrics
     
-  OldAPIUlr:
-    Type: String
-    Default: "NONE"
-    #"https://recoapi-prd.theglobeandmail.ca/v1/recommendations"
+  #OldAPIUlr:
+  #  Type: String
+  #  Default: "NONE"
+  #  #"https://recoapi-prd.theglobeandmail.ca/v1/recommendations"
 
   ManagedBy:
     Type: String
@@ -56,9 +56,7 @@ Parameters:
   CostAllocationProduct:
     Type: String
     Default: "amazon_personalize"
-    AllowedValues:
-      - "amazon_personalize"
-      
+
   KinesisContentStream:
     Type: String
     Default: "sophi3-unified-content-stream"
@@ -97,6 +95,16 @@ Parameters:
     Description: Please enter your Amazon Personalize Event Tracker ID
     Default: f843d3d9-7153-436b-b4be-ed5ce8375c57
   
+  EventTrackerArn:
+    Type: String
+    Description: Please enter your Amazon Personalize Event Tracker ARN
+    Default: "arn:aws:personalize:us-east-1:727304503525:event-tracker/7a1a2aff"
+
+  CampainProvisionedTPS:
+    Type: Number
+    Description: Minimum provisioned TPS for metrics
+    Default: 1
+
   CampaignName:
     Type: String
     Description: Please enter your Amazon Personalize Personalize CampaignARN where you would like to get recommendations 
@@ -117,11 +125,6 @@ Parameters:
     Description: FiltersPrefix for personalize
     Default: arc_content
 
-  Email:
-    Type: String
-    Description: Email to be notified
-    Default: youremail@yourprovider.com
-
   ExternalDomain:
     Type: String
     Default: "NONE"
@@ -133,6 +136,10 @@ Parameters:
   CertificateARN:
     Type: String
     Default: "arn:aws:acm:us-east-1:727304503525:certificate/2d541648-2f71-4b97-89ed-26d252d496b9"
+
+  DefaultNotificationEmail:
+    Type: String
+    Default: "mlinliu@amazon.com"
 
 #Conditions:
 #  FallbackApi: !Not 
@@ -649,11 +656,43 @@ Resources:
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayEndpoint}/*/POST/recommendations"
   
 
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties: 
+      TopicName: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref Environment
+          - "APIGW"
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
+
+  AlarmSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref DefaultNotificationEmail
+      Protocol: email
+      TopicArn: !Ref 'AlarmTopic'
+      
   GetRecommendationsErrorAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmActions:
-        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+        - !Ref AlarmTopic
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Dimensions:
         - Name: FunctionName
@@ -668,7 +707,7 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmActions:
-        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+        - !Ref AlarmTopic
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Dimensions:
         - Name: FunctionName
@@ -683,7 +722,7 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmActions:
-        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+        - !Ref AlarmTopic
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Dimensions:
         - Name: FunctionName
@@ -699,7 +738,7 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmActions:
-        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+        - !Ref AlarmTopic
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Dimensions:
         - Name: FunctionName
@@ -714,7 +753,7 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmActions:
-        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+        - !Ref AlarmTopic
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Dimensions:
         - Name: FunctionName
@@ -730,7 +769,7 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmActions:
-        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+        - !Ref AlarmTopic
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Dimensions:
         - Name: FunctionName
@@ -747,7 +786,7 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmActions:
-        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+        - !Ref AlarmTopic
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Dimensions:
         - Name: FunctionName
@@ -763,7 +802,7 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmActions:
-        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:PersonalizeMonitorNotifications"
+        - !Ref AlarmTopic
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Dimensions:
         - Name: FunctionName
@@ -774,6 +813,31 @@ Resources:
       Period: 300
       Statistic: Maximum
       Threshold: !Ref LambdaIteratorAgeAlarm
+      
+  CampainUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmTopic
+      AlarmDescription: Campain TPS high
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      Metrics:
+      - Expression: "(m1/300)"
+        Id: e1
+        Label: "TPS"
+      - Id: m1
+        MetricStat:
+          Metric:
+            Dimensions:
+              - Name: CampaignArn
+                Value: !Sub "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}"
+            MetricName: GetRecommendations
+            Namespace: AWS/Personalize
+          Period: 300
+          Stat: Sum
+        ReturnData: false
+      Threshold: "0.8"
       
   PenronalizeDashboard:
    Type: AWS::CloudWatch::Dashboard
@@ -795,6 +859,28 @@ Resources:
      DashboardBody: !Sub |
       {
         "widgets": [
+          {
+                "type": "metric",
+                "x": 0,
+                "y": 0,
+                "width": 24,
+                "height": 6,
+                "properties": {
+                    "metrics": [
+                        [ "AWS/ApiGateway", "4XXError", "ApiName", "tgam-personalize-dev-39464c60", "Stage", "${StageName}" ],
+                        [ ".", "5XXError", ".", ".", ".", ".",  ],
+                        [ ".", "Latency", ".", ".", ".", ".", { "yAxis": "right", "stat": "Average" } ],
+                        [ ".", "Count", ".", ".", ".", "." ],
+                        [ ".", "IntegrationLatency", ".", ".", ".", ".", { "stat": "Average", "yAxis": "right" } ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": false,
+                    "region": "${AWS::Region}",
+                    "stat": "Sum",
+                    "period": 300,
+                    "title": "Api Gateway Metrics"
+                }
+            },
             {
                 "height": 6,
                 "width": 24,
@@ -830,16 +916,64 @@ Resources:
                     ],
                     "view": "timeSeries",
                     "stacked": true,
-                    "region": "",
+                    "region": "${AWS::Region}",
                     "stat": "Average",
                     "period": 300,
                     "title": "GetRecommendations Dependency"
                 }
-            },          
+            },
+            {
+                "height": 6,
+                "width": 24,
+                "y": 18,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                    "metrics": [
+                      [ "AWS/Personalize", "GetRecommendations5XXErrors", "CampaignArn", "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}", { "color": "#d62728" } ],
+                      [ ".", "GetRecommendations4XXErrors", ".", "." ],
+                      [ ".", "GetRecommendationsLatency", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ],
+                      [ ".", "GetRecommendations", ".", "." ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": false,
+                    "region": "${AWS::Region}",
+                    "stat": "Sum",
+                    "period": 300,
+                    "title": "Amazon Personalize Requests Campain: ${CampaignName}"
+                }
+            },
+            {
+                "height": 6,
+                "width": 24,
+                "y": 24,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                    "metrics": [
+                      [ { "expression": "m1/300", "label": "TPS", "id": "e1" } ],
+                      [ "AWS/Personalize", "GetRecommendations", "CampaignArn", "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}", { "id": "m1", "visible": false} ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": false,
+                    "region": "${AWS::Region}",
+                    "stat": "Sum",
+                    "period": 300,
+                    "title": "Amazon Personalize Actial vs Provisioned  TPS: ${CampaignName}",
+                    "annotations": {
+                        "horizontal": [
+                            {
+                                "label": "Provisioned TPS",
+                                "value": ${CampainProvisionedTPS}
+                            }
+                        ]
+                    }
+                }
+            },
             {
                 "height": 6,
                 "width": 12,
-                "y": 18,
+                "y": 30,
                 "x": 0,
                 "type": "metric",
                 "properties": {
@@ -860,7 +994,28 @@ Resources:
             {
                 "height": 6,
                 "width": 12,
-                "y": 18,
+                "y": 36,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                    "metrics": [
+                        [ "AWS/Personalize", "putEvents4xxErrors", "EventTrackerArn", "${EventTrackerArn}", { "color": "#ff7f0e" } ],
+                        [ ".", "putEvents5xxErrors", ".", ".", { "color": "#d62728" } ],
+                        [ ".", "putEventsRequests", ".", "." ],
+                        [ ".", "putEventLatency", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": false,
+                    "region": "${AWS::Region}",
+                    "stat": "Sum",
+                    "period": 300,
+                    "title": "PutEvents Personalize Tracker: ${EventTrackerArn}"
+                }
+            },
+            {
+                "height": 6,
+                "width": 12,
+                "y": 30,
                 "x": 12,
                 "type": "metric",
                 "properties": {
@@ -881,7 +1036,7 @@ Resources:
             {
                 "height": 6,
                 "width": 12,
-                "y": 24,
+                "y": 42,
                 "x": 0,
                 "type": "metric",
                 "properties": {
@@ -907,7 +1062,7 @@ Resources:
             {
                 "height": 6,
                 "width": 12,
-                "y": 24,
+                "y": 42,
                 "x": 12,
                 "type": "metric",
                 "properties": {
@@ -932,8 +1087,8 @@ Resources:
             },
             {
                 "type": "alarm",
+                "y": 48,
                 "x": 0,
-                "y": 30,
                 "width": 24,
                 "height": 3,
                 "properties": {
@@ -946,30 +1101,9 @@ Resources:
                         "${PutEventsErrorAlarm.Arn}",
                         "${PutEventsThrottlesAlarm.Arn}",
                         "${ContentIteratorAge.Arn}",
-                        "${EventsIteratorAge.Arn}"
+                        "${EventsIteratorAge.Arn}",
+                        "${CampainUtilizationAlarm.Arn}"
                     ]
-                }
-            },
-            {
-                "type": "metric",
-                "x": 0,
-                "y": 0,
-                "width": 24,
-                "height": 6,
-                "properties": {
-                    "metrics": [
-                        [ "AWS/ApiGateway", "4XXError", "ApiName", "tgam-personalize-dev-39464c60", "Stage", "${StageName}" ],
-                        [ ".", "5XXError", ".", ".", ".", "." ],
-                        [ ".", "Latency", ".", ".", ".", ".", { "yAxis": "right", "stat": "Average" } ],
-                        [ ".", "Count", ".", ".", ".", "." ],
-                        [ ".", "IntegrationLatency", ".", ".", ".", ".", { "stat": "Average", "yAxis": "right" } ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": false,
-                    "region": "${AWS::Region}",
-                    "stat": "Sum",
-                    "period": 300,
-                    "title": "Api Gateway Metrics"
                 }
             }
         ]
