@@ -64,13 +64,14 @@ filter_prefix     = os.environ['FiltersPrefix']
 sophi3_table_name = os.environ['Sophi3DynamoDbTableName']
 sophi2_table_name = os.environ['Sophi2DynamoDbTableName']
 
-attributes_to_get_sophi3 = [ 'Title', 'Deck', 'Byline', 'Category', 'Section', 'Keywords', 'State', 'CanonicalURL', 'CreditLine', 'Ownership', 'Sponsored', 'ContentId', 'ContentType', 'ContentRestriction', 'PublishedDate', 'WordCount', 'Caption', 'UpdatedDate']
+attributes_to_get_sophi3 = [ 'Title', 'Deck', 'Byline', 'Category', 'Section', 'Keywords', 'State', 'CanonicalURL', 'CreditLine', 'Ownership', 'Sponsored', 'ContentId', 'ContentType', 'ContentRestriction', 'PublishedDate', 'WordCount', 'Caption', 'UpdatedDate', 'Label']
 attributes_to_get_sophi2 = ['ContentID', 'StoryRel', 'AuthorRel', 'PictureRel'];
 sort_key_name_sophi3     = "ContentId"
 sort_key_name_sophi2     = "ContentID"
 
 
-def get_dynamo_data(dynamo_table, sort_key_name, attributes, item_list, return_type_map=False, return_type_list=False):
+def get_dynamo_data(dynamo_table, sort_key_name, attributes, item_list, return_type_map=False, return_type_list=False, api_gateway_request_id="NONE"):
+    #item_list.insert(0,{'itemId': 'MTDKSOO7GJBNDE2OMQIF62ULEM'})
     if (len(item_list) > 0):
         try:
             deserialized_item = []
@@ -79,8 +80,6 @@ def get_dynamo_data(dynamo_table, sort_key_name, attributes, item_list, return_t
             #if request ask for more then 100 items we need to split it
             #as batch_get_items can support only 100 items per request
             while processed_items < len(item_list):
-                print(f"Debug processed_items: {processed_items} len {len(item_list)}")
-        
                 if ((len(item_list) - processed_items)  > 100):
                     items_limit = 100
                 else:
@@ -107,10 +106,10 @@ def get_dynamo_data(dynamo_table, sort_key_name, attributes, item_list, return_t
                 processed_items += items_limit
                 
         except ClientError as e:
-            print(f"Key Error: {e}")
+            print(f"RequestID: {api_gateway_request_id} Key Error: {e}")
 
         else:
-            print(f"RawDynamoReply = {db_response}")
+            print(f"RequestID: {api_gateway_request_id} RawDynamoReply = {db_response}")
 
 
         if return_type_map:
@@ -122,13 +121,17 @@ def get_dynamo_data(dynamo_table, sort_key_name, attributes, item_list, return_t
 
 @metric_scope        
 def handler(event, context, metrics):
-    print(f"Event = {event}")
+    api_gateway_request_id = event.get("requestContext").get("requestId")
+    print(f"RequestID: {api_gateway_request_id} Event = {event}")
+    metrics.set_property("ApiRequestId", api_gateway_request_id)
+    metrics.set_property("LambdaRequestId", context.aws_request_id)
+    
     body = json.loads(event['body'])
     payload = body.get("sub_requests")[0]
 
     reply = {}
     reply['recommendations'] = []
-    reply["request_id"] = event.get("requestContext").get("requestId")
+    reply["request_id"] = api_gateway_request_id
     reply["container_position"] = 0
     
     reply["widget_id"] = payload.get("widget_id")
@@ -178,17 +181,17 @@ def handler(event, context, metrics):
             #capitalize as in model we have Anonymous and its case sensitive
 
 
-        print(f"RequestRecommendations = {arguments}")
+        print(f"RequestID: {api_gateway_request_id} RequestRecommendations = {arguments}")
         before_request = time.time_ns()
         response = personalize_cli.get_recommendations(**arguments)
         after_request = time.time_ns()
 
         metrics.put_metric("PersonalizeRequestTime", (int(after_request-before_request)/1000000), "Milliseconds")
         
-        print(f"RawRecommendations = {response['itemList']}")
+        print(f"RequestID: {api_gateway_request_id} RawRecommendations = {response['itemList']}")
         
         metrics.put_metric("ReturnRecommendations", (len(response['itemList'])), "None")
-        metrics.put_metric("MissingRecommendations", (arguments["numResults"] - len(response['itemList']) - 1), "None")
+        metrics.put_metric("MissingRecommendations", (arguments["numResults"] - len(response['itemList'])), "None")
 
         #reply['recommendations_debug'] = response['itemList']
         reply['recommendationId'] = response['recommendationId']
@@ -225,26 +228,27 @@ def handler(event, context, metrics):
           'ContentType'.lower()          : 'content_type',
           'ContentRestriction'.lower()   : 'protection_product',
           'ContentType'.lower()          : 'content_type',
+          'Label'.lower()                : 'label'
         }
 
         try:
             if (len(response['itemList']) > 0):
                 before_request = time.time_ns()
-                deserialized_item = get_dynamo_data(sophi3_table_name, sort_key_name_sophi3, attributes_to_get_sophi3, response['itemList'], False, True)
+                deserialized_item = get_dynamo_data(sophi3_table_name, sort_key_name_sophi3, attributes_to_get_sophi3, response['itemList'], False, True, api_gateway_request_id)
                 after_request = time.time_ns()
                 metrics.put_metric("DynamoSophi2ReuqestTime", (int(after_request-before_request)/1000000), "Milliseconds")
                 
                 before_request = time.time_ns()
-                images_map = get_dynamo_data(sophi2_table_name, sort_key_name_sophi2, attributes_to_get_sophi2, response['itemList'], True, False)
+                images_map = get_dynamo_data(sophi2_table_name, sort_key_name_sophi2, attributes_to_get_sophi2, response['itemList'], True, False, api_gateway_request_id)
                 after_request = time.time_ns()
                 metrics.put_metric("DynamoSophi3ReuqestTime", (int(after_request-before_request)/1000000), "Milliseconds")
                 
-                #print(f"Images map: {images_map}")
-                #print(f"Recommendation list: {deserialized_item}")
+                #print(f"RequestID: {api_gateway_request_id} Images map: {images_map}")
+                #print(f"RequestID: {api_gateway_request_id} Recommendation list: {deserialized_item}")
                 
 
         except ClientError as e:
-            print(f"Key Error: {e}")
+            print(f"RequestID: {api_gateway_request_id} Key Error: {e}")
 
         else:
             if (len(deserialized_item) > 0):
@@ -291,11 +295,11 @@ def handler(event, context, metrics):
                 reply["recommendations"] = reply["recommendations"][:arguments["numResults"] - 1] 
         return {'statusCode': '200', 'body': json.dumps([reply], cls=DecimalEncoder)}
     except personalize_cli.exceptions.ResourceNotFoundException as e:
-        print(f"Personalize Error: {e}")
+        print(f"RequestID: {api_gateway_request_id} Personalize Error: {e}")
         return {'statusCode': '500', 'body': json.dumps("Campaign Not Found")}
     except personalize_cli.exceptions.InvalidInputException as e:
-        print(f"Invalid Input Error: {e}")
+        print(f"RequestID: {api_gateway_request_id} Invalid Input Error: {e}")
         return {'statusCode': '400', 'body': json.dumps("Invalid Input")}
     except KeyError as e:
-        print(f"Key Error: {e}")
+        print(f"RequestID: {api_gateway_request_id} Key Error: {e}")
         return {'statusCode': '400', 'body': json.dumps("Key Error")}

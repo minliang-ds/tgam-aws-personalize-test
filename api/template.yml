@@ -538,7 +538,7 @@ Resources:
       StageName: !Ref StageName
       AccessLogSetting: 
         DestinationArn: !GetAtt APIStageLogGroup.Arn
-        Format: '$context.identity.sourceIp $context.identity.caller $context.identity.user [$context.requestTime] "$context.httpMethod $context.resourcePath $context.protocol" $context.status $context.responseLength $context.requestId'
+        Format: '$context.identity.sourceIp $context.identity.caller $context.identity.user [$context.requestTime] "$context.httpMethod $context.resourcePath $context.protocol" $context.status $context.responseLength $context.requestId $context.integration.requestId $context.integration.latency $context.responseLatency'
       Description: !Ref StageName
       MethodSettings: 
         - ResourcePath: "/*"
