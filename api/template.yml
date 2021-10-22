@@ -333,6 +333,9 @@ Resources:
       MemorySize: 192
       Layers:
         - !Ref PythonMetricsLayer
+      AutoPublishAlias: "getRecommendations"
+      ProvisionedConcurrencyConfig: 
+        ProvisionedConcurrentExecutions: 20
       Environment:
         Variables:
           CAMPAIGN_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}'
