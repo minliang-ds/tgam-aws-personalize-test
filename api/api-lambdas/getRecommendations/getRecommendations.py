@@ -184,8 +184,14 @@ def handler(event, context, metrics):
         after_request = time.time_ns()
 
         metrics.put_metric("PersonalizeRequestTime", (int(after_request-before_request)/1000000), "Milliseconds")
+        
         print(f"RawRecommendations = {response['itemList']}")
         
+        len(response['itemList']
+        
+        metrics.put_metric("ReturnRecommendations", (len(response['itemList'])), "None")
+        metrics.put_metric("MissingRecommendations", (arguments["numResults"] - 1 - len(response['itemList'])), "None")
+
         #reply['recommendations_debug'] = response['itemList']
         reply['recommendationId'] = response['recommendationId']
         
