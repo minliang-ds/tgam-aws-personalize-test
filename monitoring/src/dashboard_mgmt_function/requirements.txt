@@ -1,2 +1,0 @@
-# Other dependencies bundled in layer
-chevron==0.13.1
