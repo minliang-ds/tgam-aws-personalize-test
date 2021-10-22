@@ -69,9 +69,9 @@ aws s3 cp ./params.json s3://<input-bucket-name>
 
 ## Deploy Recommendations API
 
-1. \[In CloudShell\]: Request certificate for domain dev: **recoapi-ng-dev.theglobeandmail.ca** prod: **recoapi-ng-prod.theglobeandmail.ca**
+1. \[In CloudShell\]: Request certificate for domain dev: **recoapi-ng-dev.theglobeandmail.com** prod: **recoapi-ng-prod.theglobeandmail.com**
 ```bash
-aws acm request-certificate --domain-name recoapi-ng-dev.theglobeandmail.ca --validation-method DNS
+aws acm request-certificate --domain-name recoapi-ng-dev.theglobeandmail.com --validation-method DNS
 ```
 2. Request DNS entry CNAME record to validate certificate.
 3. \[In CloudShell\]: Navigate into the *mlops/personalize-step-functions* directory:
@@ -103,7 +103,7 @@ sam deploy --stack-name tgam-personalize-api-test  \
   ParameterKey=FiltersPrefix,ParameterValue=tgam-personalize-mlops-test \
   ParameterKey=Sophi3DynamoDbTableName,ParameterValue=Sophi3ContentMetaData \
   ParameterKey=Sophi2DynamoDbTableName,ParameterValue=arc_content \
-  ParameterKey=ExternalDomain,ParameterValue=recoapi-ng-dev.theglobeandmail.ca \
+  ParameterKey=ExternalDomain,ParameterValue=recoapi-ng-dev.theglobeandmail.com \
   ParameterKey=CertificateARN,ParameterValue=arn:aws:acm:us-east-1:727304503525:certificate/2d541648-2f71-4b97-89ed-26d252d496b9 \
   ParameterKey=DefaultNotificationEmail,ParameterValue=mlinliu@amazon.com
   
@@ -218,6 +218,7 @@ Example of request data:
 | Sophi3ContentMetaData | ContentType        | content_type | N/A |  |
 | Sophi3ContentMetaData | ContentRestriction | protection_product | N/A |  |
 | Sophi3ContentMetaData | ContentType        | content_type | N/A |  |
+| Sophi3ContentMetaData | Label              | label | N/A |  |
 | arc_content           | StoryRel           | story_rel | only url220 key from data | from sophi2  | |
 | arc_content           | AuthorRel          | author_rel | only url220 key from data | from sophi2 | |
 | arc_content           | PictureRel         | promo_image | copy from PictureRel only url220 key from data | from sophi2  | |
@@ -233,7 +234,7 @@ Example of request data:
 | byline | String | Chris Hannay and Jeff Gray |
 | content_type | String | news |
 | protection_product | String | yellow |
-| label | String | ?? |
+| label | String | Top Links |
 | article.author_rel[0].url220 | String | https://www.theglobeandmail.com/resizer/IH6n5vARBLydpQBlwj6xHVlsk44=/220x0/smart/filters:quality(80)/s3.amazonaws.com/arc-authors/tgam/8d3dea3c-6a55-40bc-9a12-187ea6329b31.png |
 | article.promo_image.urls["220"] | String | https://www.theglobeandmail.com/resizer/gtrV3TKZSo-O9-r6sNnvuXAn4SY=/220x0/smart/filters:quality(80)/cloudfront-us-east-1.images.arcpublishing.com/tgam/YDAY4VZRYRH5LGUHO3QMJXR6JA.JPG |
 | article.picture_rel[0].url220 | String | https://www.theglobeandmail.com/resizer/gtrV3TKZSo-O9-r6sNnvuXAn4SY=/220x0/smart/filters:quality(80)/cloudfront-us-east-1.images.arcpublishing.com/tgam/YDAY4VZRYRH5LGUHO3QMJXR6JA.JPG |

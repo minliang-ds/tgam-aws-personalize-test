@@ -20,6 +20,18 @@ Globals:
         EventsTZ: "America/Toronto"
         TestTZ: "America/Toronto"
       
+Mappings: 
+  EnvironmentMap: 
+    dev: 
+      Domain: "recoapi-ng-dev.theglobeandmail.com"
+      ProvisionedConcurrent: 10
+    prod: 
+      Domain: "recoapi-ng-prod.theglobeandmail.com"
+      ProvisionedConcurrent: 100
+    stg: 
+      Domain: "recoapi-ng-stg.theglobeandmail.com"
+      ProvisionedConcurrent: 10
+
 Parameters:
   ResourcesPrefix:
     Type: String
@@ -125,17 +137,9 @@ Parameters:
     Description: FiltersPrefix for personalize
     Default: arc_content
 
-  ExternalDomain:
-    Type: String
-    Default: "NONE"
-    AllowedValues:
-      - "recoapi-ng-dev.theglobeandmail.ca"
-      - "recoapi-ng-prod.theglobeandmail.ca"
-      - "NONE"
-
   CertificateARN:
     Type: String
-    Default: "arn:aws:acm:us-east-1:727304503525:certificate/2d541648-2f71-4b97-89ed-26d252d496b9"
+    Default: "arn:aws:acm:us-east-1:727304503525:certificate/b6598508-3ff5-46ab-8099-4b802e625711"
 
   DefaultNotificationEmail:
     Type: String
@@ -157,7 +161,7 @@ Resources:
   APIDomain:
     Type: 'AWS::ApiGateway::DomainName'
     Properties:
-      DomainName: !Ref ExternalDomain
+      DomainName: !FindInMap [EnvironmentMap, !Ref Environment, Domain]
       CertificateArn: !Ref CertificateARN
       SecurityPolicy: TLS_1_2
       EndpointConfiguration:
@@ -173,8 +177,10 @@ Resources:
         
   APIMapping:
       Type: AWS::ApiGateway::BasePathMapping
+      DependsOn:
+        - APIDomain
       Properties: 
-        DomainName: !Ref ExternalDomain
+        DomainName: !FindInMap [EnvironmentMap, !Ref Environment, Domain]
         RestApiId: !Ref ApiGatewayEndpoint
         Stage: !Ref APIStage
         BasePath: !Ref StageName
@@ -335,7 +341,7 @@ Resources:
         - !Ref PythonMetricsLayer
       AutoPublishAlias: "getRecommendations"
       ProvisionedConcurrencyConfig: 
-        ProvisionedConcurrentExecutions: 20
+        ProvisionedConcurrentExecutions: !FindInMap [EnvironmentMap, !Ref Environment, ProvisionedConcurrent]
       Environment:
         Variables:
           CAMPAIGN_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}'
@@ -1150,7 +1156,7 @@ Outputs:
     Value: !Ref PutContent
   PutEvents:
     Value: !Ref PutEvents
-  POSTRecommendationsApiGatewayInvokeURL:
-    Value: !Sub "https://${ExternalDomain}/${StageName}/recommendations"
+  #POSTRecommendationsApiGatewayInvokeURL:
+  #  Value: !Sub "https://${FindInMap [EnvironmentMap, !Ref Environment, Domain]}/${StageName}/recommendations"
   APIKEY:
     Value: !Sub "https://console.aws.amazon.com/apigateway/home?region=${AWS::Region}#/api-keys/${APIKey}"
