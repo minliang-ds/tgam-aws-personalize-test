@@ -868,7 +868,7 @@ Resources:
                 "properties": {
                     "metrics": [
                         [ "AWS/ApiGateway", "4XXError", "ApiName", "tgam-personalize-dev-39464c60", "Stage", "${StageName}" ],
-                        [ ".", "5XXError", ".", ".", ".", ".",  ],
+                        [ ".", "5XXError", ".", ".", ".", ".", { "color": "#d62728" } ],
                         [ ".", "Latency", ".", ".", ".", ".", { "yAxis": "right", "stat": "Average" } ],
                         [ ".", "Count", ".", ".", ".", "." ],
                         [ ".", "IntegrationLatency", ".", ".", ".", ".", { "stat": "Average", "yAxis": "right" } ]
@@ -972,8 +972,38 @@ Resources:
             },
             {
                 "height": 6,
-                "width": 12,
+                "width": 24,
                 "y": 30,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                    "metrics": [
+                      [ "PersonalizeCustomMetrics", "ReturnRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "right", "stat": "Minimum" } ],
+                      [ "PersonalizeCustomMetrics", "MissingRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": true,
+                    "region": "${AWS::Region}",
+                    "stat": "Average",
+                    "period": 300,
+                    "title": "GetRecommendations Health",
+                    "yAxis": {
+                        "left": {
+                            "label": "Avg Missing Recommendations",
+                            "showUnits": false
+                        },
+                        "right": {
+                            "label": "Min Returned Recommendations",
+                            "showUnits": false
+                        }
+                    }
+                }
+            },
+
+            {
+                "height": 6,
+                "width": 12,
+                "y": 36,
                 "x": 0,
                 "type": "metric",
                 "properties": {
@@ -994,7 +1024,7 @@ Resources:
             {
                 "height": 6,
                 "width": 12,
-                "y": 36,
+                "y": 42,
                 "x": 0,
                 "type": "metric",
                 "properties": {
@@ -1015,7 +1045,7 @@ Resources:
             {
                 "height": 6,
                 "width": 12,
-                "y": 30,
+                "y": 36,
                 "x": 12,
                 "type": "metric",
                 "properties": {
@@ -1036,7 +1066,7 @@ Resources:
             {
                 "height": 6,
                 "width": 12,
-                "y": 42,
+                "y": 48,
                 "x": 0,
                 "type": "metric",
                 "properties": {
@@ -1062,7 +1092,7 @@ Resources:
             {
                 "height": 6,
                 "width": 12,
-                "y": 42,
+                "y": 48,
                 "x": 12,
                 "type": "metric",
                 "properties": {
@@ -1087,7 +1117,7 @@ Resources:
             },
             {
                 "type": "alarm",
-                "y": 48,
+                "y": 54,
                 "x": 0,
                 "width": 24,
                 "height": 3,

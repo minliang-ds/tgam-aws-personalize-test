@@ -188,7 +188,7 @@ def handler(event, context, metrics):
         print(f"RawRecommendations = {response['itemList']}")
         
         metrics.put_metric("ReturnRecommendations", (len(response['itemList'])), "None")
-        metrics.put_metric("MissingRecommendations", (arguments["numResults"] - 1 - len(response['itemList'])), "None")
+        metrics.put_metric("MissingRecommendations", (arguments["numResults"] - len(response['itemList']) - 1), "None")
 
         #reply['recommendations_debug'] = response['itemList']
         reply['recommendationId'] = response['recommendationId']
