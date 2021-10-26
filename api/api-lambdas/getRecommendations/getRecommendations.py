@@ -63,12 +63,19 @@ account_id        = os.environ['CurretnAccountId']
 filter_prefix     = os.environ['FiltersPrefix']
 sophi3_table_name = os.environ['Sophi3DynamoDbTableName']
 sophi2_table_name = os.environ['Sophi2DynamoDbTableName']
+origin_prefix     = os.environ.get('CorsDomainOrigin')
 
 attributes_to_get_sophi3 = [ 'Title', 'Deck', 'Byline', 'Category', 'Section', 'Keywords', 'State', 'CanonicalURL', 'CreditLine', 'Ownership', 'Sponsored', 'ContentId', 'ContentType', 'ContentRestriction', 'PublishedDate', 'WordCount', 'Caption', 'UpdatedDate', 'Label']
 attributes_to_get_sophi2 = ['ContentID', 'StoryRel', 'AuthorRel', 'PictureRel'];
 sort_key_name_sophi3     = "ContentId"
 sort_key_name_sophi2     = "ContentID"
 
+return_headers = {
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Origin':  '*',
+    'Access-Control-Allow-Methods': 'OPTIONS,POST'
+}
+        
 
 def get_dynamo_data(dynamo_table, sort_key_name, attributes, item_list, return_type_map=False, return_type_list=False, api_gateway_request_id="NONE"):
     #item_list.insert(0,{'itemId': 'MTDKSOO7GJBNDE2OMQIF62ULEM'})
@@ -128,6 +135,10 @@ def handler(event, context, metrics):
     
     body = json.loads(event['body'])
     payload = body.get("sub_requests")[0]
+
+    try:
+        if event.get('multiValueHeaders').get('origin')[0].endswith(origin_prefix):
+            return_headers['Access-Control-Allow-Origin'] = event.get('multiValueHeaders').get('origin')[0]
 
     reply = {}
     reply['recommendations'] = []
@@ -293,13 +304,13 @@ def handler(event, context, metrics):
                   reply["recommendations"].append(row)
                   
                 reply["recommendations"] = reply["recommendations"][:arguments["numResults"] - 1] 
-        return {'statusCode': '200', 'body': json.dumps([reply], cls=DecimalEncoder)}
+        return {'statusCode': '200', 'headers': return_headers, 'body': json.dumps([reply], cls=DecimalEncoder)}
     except personalize_cli.exceptions.ResourceNotFoundException as e:
         print(f"RequestID: {api_gateway_request_id} Personalize Error: {e}")
-        return {'statusCode': '500', 'body': json.dumps("Campaign Not Found")}
+        return {'statusCode': '500', 'headers': return_headers, 'body': json.dumps("Campaign Not Found")}
     except personalize_cli.exceptions.InvalidInputException as e:
         print(f"RequestID: {api_gateway_request_id} Invalid Input Error: {e}")
-        return {'statusCode': '400', 'body': json.dumps("Invalid Input")}
+        return {'statusCode': '400', 'headers': return_headers, 'body': json.dumps("Invalid Input")}
     except KeyError as e:
         print(f"RequestID: {api_gateway_request_id} Key Error: {e}")
-        return {'statusCode': '400', 'body': json.dumps("Key Error")}
+        return {'statusCode': '400', 'headers': return_headers, 'body': json.dumps("Key Error")}

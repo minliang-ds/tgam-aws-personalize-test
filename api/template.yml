@@ -25,12 +25,19 @@ Mappings:
     dev: 
       Domain: "recoapi-ng-dev.theglobeandmail.com"
       ProvisionedConcurrent: 10
+      ThrottlingRateLimit: 100
+      ThrottlingBurstLimit: 200
     prod: 
       Domain: "recoapi-ng-prod.theglobeandmail.com"
       ProvisionedConcurrent: 100
+      ThrottlingRateLimit: 200
+      ThrottlingBurstLimit: 400
     stg: 
       Domain: "recoapi-ng-stg.theglobeandmail.com"
       ProvisionedConcurrent: 10
+      ThrottlingRateLimit: 100
+      ThrottlingBurstLimit: 200
+
 
 Parameters:
   ResourcesPrefix:
@@ -145,6 +152,10 @@ Parameters:
     Type: String
     Default: "mlinliu@amazon.com"
 
+  CorsDomainOrigin:
+    Type: String
+    Default: "theglobeandmail.com"
+    Description: Value of Access-Control-Allow-Origin header
 #Conditions:
 #  FallbackApi: !Not 
 #    - !Equals
@@ -350,6 +361,7 @@ Resources:
           Sophi2DynamoDbTableName: !Ref Sophi2DynamoDbTableName
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
           AWS_EMF_SERVICE_NAME: "GetRecommendations"
+          AllowOriginDomains: !Ref CorsDomainOrigin
   PutEvents:
     DependsOn:
       - EventLambdaPolicies
@@ -555,6 +567,9 @@ Resources:
           MetricsEnabled: 'true'
           DataTraceEnabled: 'false'
           LoggingLevel: "INFO"
+          ThrottlingBurstLimit: !FindInMap [EnvironmentMap, !Ref Environment, ThrottlingBurstLimit]
+          ThrottlingRateLimit: !FindInMap [EnvironmentMap, !Ref Environment, ThrottlingRateLimit]
+
       RestApiId: !Ref "ApiGatewayEndpoint"
       DeploymentId: !Ref apiGatewayDeployment
       Tags:
@@ -645,9 +660,9 @@ Resources:
           ResponseModels:
             'application/json': 'Empty'
           ResponseParameters:
-            'method.response.header.Access-Control-Allow-Headers': 'false'
-            'method.response.header.Access-Control-Allow-Methods': 'false'
-            'method.response.header.Access-Control-Allow-Origin': 'false'
+            'method.response.header.Access-Control-Allow-Headers': 'true'
+            'method.response.header.Access-Control-Allow-Methods': 'true'
+            'method.response.header.Access-Control-Allow-Origin': 'true'
 # Deploy your API endpoint
 
 

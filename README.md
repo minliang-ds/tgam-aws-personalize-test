@@ -144,8 +144,19 @@ This solution will provide 3 [AWS Lambda](https://aws.amazon.com/lambda/) fucnti
 ## Put Content api documentation
 
 ## Get recommendation api documentation
+| Settings   | Enviroment | Value | Comment |  
+| ---------- | ---------- |------ | ------- |
+| Domain     | dev        | recoapi-ng-dev.theglobeandmail.com |          |
+| Domain     | dev       | recoapi-ng-prd.theglobeandmail.com |          |
+| ProvisionedConcurrent     | dev        | 10 |          |
+| ProvisionedConcurrent     | prd        | 100 |          |
+| ThrottlingRateLimit     | dev        | 100 |          |
+| ThrottlingRateLimit     | prd        | 200 |          |
+| ThrottlingBurstLimit     | dev        | 200 |          |
+| ThrottlingBurstLimit     | prd        | 400 |          |
 
-## Request Fields
+
+### Request Fields
 | Field Name   | Required | Type   | Default | Comment |  
 | ------------ | -------- | ------ |-------- | ---------------------- |
 | visitor_id   | **Required** | String |         | userID for personalize |
@@ -201,9 +212,9 @@ Example of request data:
 }
 ```
 
-## Reply Fields
+### Reply Fields
 
-## Data convertion between dynamoDB and reply
+### Data convertion between dynamoDB and reply
 | DynamoDB Table        | Field in DynamoDB  | Field in reply | Additional convertion | Comment | 
 | --------------------- | ------------------ | -------------- | --------------------- |-------- | 
 | Sophi3ContentMetaData | Byline             | byline | join list of string with separator ' and ' |  |
@@ -223,7 +234,7 @@ Example of request data:
 | arc_content           | AuthorRel          | author_rel | only url220 key from data | from sophi2 | |
 | arc_content           | PictureRel         | promo_image | copy from PictureRel only url220 key from data | from sophi2  | |
 
-## Frontend fields requiremetns
+### Frontend fields requiremetns
 | Field name | Type | Example | 
 | ----------------- | -------------- |-------- | 
 | published_at  |  String | 2021-10-20 06:00:00 |
