@@ -5,9 +5,11 @@ phases:
         python: 3.8
     commands:
       - pip install awscli --upgrade --quiet
-      - pip install cfn-lint --quiet              
+      - pip install cfn-lint --quiet      
+      - gem install cfn-nag
   build:
     commands:
+      - cfn_nag_scan -i ${SAM_TEMPLATE} 
       - cfn-lint ${SAM_TEMPLATE} 
       - cfn-lint -i W -t ${SAM_TEMPLATE}
       - sam validate --template ${SAM_TEMPLATE} 

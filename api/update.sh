@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e 
+cfn_nag_scan -i template.yml || true
 cfn-lint template.yml
 bandit -r api-lambdas/getRecommendations/
 sam validate
