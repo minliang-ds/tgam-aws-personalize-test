@@ -146,12 +146,12 @@ This solution will provide 3 [AWS Lambda](https://aws.amazon.com/lambda/) fucnti
 ## Get recommendation api documentation
 | Settings   | Enviroment | Value | Comment |  
 | ---------- | ---------- |------ | ------- |
-| Domain     | dev        | recoapi-ng-dev.theglobeandmail.com |          |
-| Domain     | dev       | recoapi-ng-prd.theglobeandmail.com |          |
-| ProvisionedConcurrent     | dev        | 10 |          |
-| ProvisionedConcurrent     | prd        | 100 |          |
-| ThrottlingRateLimit     | dev        | 100 |          |
-| ThrottlingRateLimit     | prd        | 200 |          |
+| Domain                   | dev        | recoapi-ng-dev.theglobeandmail.com |          |
+| Domain                   | dev        | recoapi-ng-prd.theglobeandmail.com |          |
+| ProvisionedConcurrent    | dev        | 10  |          |
+| ProvisionedConcurrent    | prd        | 100 |          |
+| ThrottlingRateLimit      | dev        | 100 |          |
+| ThrottlingRateLimit      | prd        | 200 |          |
 | ThrottlingBurstLimit     | dev        | 200 |          |
 | ThrottlingBurstLimit     | prd        | 400 |          |
 
