@@ -111,8 +111,8 @@ sam deploy --stack-name tgam-personalize-api-test  \
 
 6. \[In CloudShell\]: As cloudromation do not allow easy set log retention for log group from lambda we need to manually update time for cloudwatch logs retation
 ```bash 
-aws logs put-retention-policy --log-group-name /aws/lambda/${name of put event lambda from output} --retention-in-days 30
-aws logs put-retention-policy --log-group-name /aws/lambda/${name of put content lambda from output --retention-in-days 30
+aws logs put-retention-policy --log-group-name /aws/lambda/${name of put event lambda from output} --retention-in-days 7
+aws logs put-retention-policy --log-group-name /aws/lambda/${name of put content lambda from output --retention-in-days 7
 aws logs put-retention-policy --log-group-name /aws/lambda/${name of get recommendation lambda from output --retention-in-days 30
 ```
 
