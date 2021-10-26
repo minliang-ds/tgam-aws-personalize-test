@@ -139,7 +139,7 @@ def handler(event, context, metrics):
         if event.get('multiValueHeaders').get('origin')[0].endswith("theglobeandmail.com"):
             return_headers['Access-Control-Allow-Origin'] = event.get('multiValueHeaders').get('origin')[0]
     except:
-        return_headers['Access-Control-Allow-Origin'] = '*'
+        pass
         
     reply = {}
     reply['recommendations'] = []
