@@ -5,6 +5,10 @@ Description: >
 
 Globals:
   Function:
+    VpcConfig:
+      SecurityGroupIds:
+        - !Ref LambdaSecurityGroup
+      SubnetIds: !Ref LambdaPrivateSubnetIDs
     Timeout: 3
     Tags:
       Environment: !Ref Environment
@@ -53,6 +57,15 @@ Parameters:
       - "stg"
       - "prod"
 
+  LambdaVPC: 
+    Description: VPC ID for lambda deployments
+    Type: "AWS::EC2::VPC::Id"
+
+
+  LambdaPrivateSubnetIDs: 
+    Description: Subnet IDs
+    Type: "List<AWS::EC2::Subnet::Id>"
+    
   StageName:
     Type: String
     Default: v1
@@ -60,11 +73,6 @@ Parameters:
   MetricsNamespace:
     Type: String
     Default: PersonalizeCustomMetrics
-    
-  #OldAPIUlr:
-  #  Type: String
-  #  Default: "NONE"
-  #  #"https://recoapi-prd.theglobeandmail.ca/v1/recommendations"
 
   ManagedBy:
     Type: String
@@ -156,16 +164,28 @@ Parameters:
     Type: String
     Default: "theglobeandmail.com"
     Description: Value of Access-Control-Allow-Origin header
-#Conditions:
-#  FallbackApi: !Not 
-#    - !Equals
-#      - !Ref OldAPIUlr
-#      - "NONE"
-#  EnabledApi: !Equals 
-#    - !Ref OldAPIUlr
-#    - "NONE"
+
     
 Resources:
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: "Security Group for Lambdas for tgam-personalize project"
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
+      VpcId: !Ref LambdaVPC
+      SecurityGroupEgress:
+      - CidrIp: 127.0.0.1/32
+        IpProtocol: "-1"
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
 
 # # DDB History table
 # Lambda functions
@@ -209,6 +229,7 @@ Resources:
             Action: 'sts:AssumeRole'
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/CloudWatchFullAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       Tags:
         - Key: "Environment"
           Value: !Ref Environment
@@ -250,8 +271,8 @@ Resources:
               Service: lambda.amazonaws.com
             Action: 'sts:AssumeRole'
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonPersonalizeFullAccess
         - arn:aws:iam::aws:policy/CloudWatchFullAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       Tags:
         - Key: "Environment"
           Value: !Ref Environment
@@ -268,7 +289,7 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
-              - "personalize:*"
+              - "personalize:PutEvents"
             Resource: "*"
           - Effect: Allow
             Action:
@@ -295,8 +316,8 @@ Resources:
               Service: lambda.amazonaws.com
             Action: 'sts:AssumeRole'
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonPersonalizeFullAccess
         - arn:aws:iam::aws:policy/CloudWatchFullAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       Tags:
         - Key: "Environment"
           Value: !Ref Environment
@@ -313,7 +334,7 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
-              - "personalize:*"
+              - "personalize:PutItems"
             Resource: "*"
           - Effect: Allow
             Action:
@@ -536,6 +557,11 @@ Resources:
 
   APIStageLogGroup:
     Type: AWS::Logs::LogGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W84
+            reason: "Access logs for api gateway - skipping encryption at rest"
     Properties: 
       LogGroupName: !Join
         - "-"
@@ -620,6 +646,11 @@ Resources:
   LambdaGetRecommendationsMethod:
     Type: "AWS::ApiGateway::Method"
  #   Condition: EnabledApi
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W59
+            reason: "This is a public facing API."
     Properties:
       ApiKeyRequired: "false"
       RestApiId: !Ref ApiGatewayEndpoint
@@ -682,6 +713,12 @@ Resources:
 
   AlarmTopic:
     Type: AWS::SNS::Topic
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W47
+            reason: "This SNS topic is only for cloudwatch alarms and do not process confidential data"
+
     Properties: 
       TopicName: !Join
         - "-"

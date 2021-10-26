@@ -105,8 +105,10 @@ sam deploy --stack-name tgam-personalize-api-test  \
   ParameterKey=Sophi2DynamoDbTableName,ParameterValue=arc_content \
   ParameterKey=ExternalDomain,ParameterValue=recoapi-ng-dev.theglobeandmail.com \
   ParameterKey=CertificateARN,ParameterValue=arn:aws:acm:us-east-1:727304503525:certificate/2d541648-2f71-4b97-89ed-26d252d496b9 \
-  ParameterKey=DefaultNotificationEmail,ParameterValue=mlinliu@amazon.com
-  
+  ParameterKey=DefaultNotificationEmail,ParameterValue=mlinliu@amazon.com \
+  ParameterKey=LambdaVPC,ParameterValue=vpc-0a53827efb39f973f \
+  ParameterKey=LambdaPrivateSubnetIDs,ParameterValue="subnet-0efb9d6d3ea5016f9,subnet-0c7691b437e67ca01,subnet-02f1cad54fa47455c,subnet-08e56efdbcd9d5d6b"
+
 ```
 
 6. \[In CloudShell\]: As cloudromation do not allow easy set log retention for log group from lambda we need to manually update time for cloudwatch logs retation
