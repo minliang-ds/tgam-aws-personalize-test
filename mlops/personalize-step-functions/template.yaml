@@ -1460,6 +1460,40 @@ Resources:
             CreateFiltersArn: !GetAtt  CreateFilters.Arn
             NotifyArn: !GetAtt Notify.Arn
 
+  EventBridgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EventBridgePolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: !GetAtt [UpdateStateMachine, Arn]
+
+  UpdateStateMachineEventsRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: Event rule for UpdateStateMachine state machine
+      Name: UpdateStateMachine
+      ScheduleExpression: 'cron(0 6 ? * SUN *)' 
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt UpdateStateMachine.Arn
+          Id: Id1234
+          RoleArn: !GetAtt EventBridgeRole.Arn
+          Input: '{     "name": "userPersonalization",     "training_mode": "FULL" }'
+          
+
   UpdateStateMachine:
     Type: "AWS::StepFunctions::StateMachine"
     Properties:
