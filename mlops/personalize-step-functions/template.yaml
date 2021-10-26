@@ -597,6 +597,55 @@ Resources:
                 - personalize:DescribeFilter
                 - personalize:ListFilters
               Resource: "*"
+  
+  CreateSolutionVersion:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/create-solution-version/
+      Handler: solution-version.lambda_handler
+      Runtime: python3.7
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - personalize:CreateSolutionVersion
+              Resource: "*"
+  
+  UpdateCampaign:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/update-campaign/
+      Handler: update-campaign.lambda_handler
+      Runtime: python3.7
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - personalize:UpdateCampaign
+              Resource: "*"
+  
+  WaitCampaignUpdate:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/wait-campaign-update/
+      Handler: wait-campaign-update.lambda_handler
+      Runtime: python3.7
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - personalize:DescribeCampaign
+              Resource: "*"
+  
   DeleteAllDatasetGroupResources:
     Type: "AWS::StepFunctions::StateMachine"
     Properties:
@@ -1411,6 +1460,121 @@ Resources:
             CreateFiltersArn: !GetAtt  CreateFilters.Arn
             NotifyArn: !GetAtt Notify.Arn
 
+  UpdateStateMachine:
+    Type: "AWS::StepFunctions::StateMachine"
+    Properties:
+      RoleArn: !GetAtt [StatesExecutionRole, Arn]
+      DefinitionString:
+        !Sub
+          - |-
+            {
+              "Comment": "Create new solution version and update campaign",
+              "StartAt": "CreateSolutionVersion",
+              "States": {
+                "CreateSolutionVersion": {
+                  "Type": "Task",
+                  "Parameters": {
+                    "name.$": "$.name",
+                    "training_mode.$": "$.training_mode"
+                  },
+                  "Resource": "${CreateSolutionVersionArn}",
+                  "ResultPath": "$.solutionVersionArn",
+                  "Catch": [
+                    {
+                      "ErrorEquals": [
+                        "KeyError"
+                      ],
+                      "ResultPath": "$.serviceError",
+                      "Next": "Fail"
+                    }
+                  ],
+                  "Next": "WaitSolutionVersion"
+                },
+                "WaitSolutionVersion": {
+                  "Type": "Task",
+                  "Parameters": {
+                    "solutionVersionArn.$": "$.solutionVersionArn"
+                  },
+                  "Resource": "${WaitSolutionVersionArn}",
+                  "ResultPath": "$.solutionVersionStatus",
+                  "Retry": [
+                    {
+                      "ErrorEquals": [
+                        "ResourcePending"
+                      ],
+                      "IntervalSeconds": 60,
+                      "BackoffRate": 1.5,
+                      "MaxAttempts": 100
+                    }
+                  ],
+                  "Catch": [
+                    {
+                      "ErrorEquals": [
+                        "ResourceFailed"
+                      ],
+                      "ResultPath": "$.serviceError",
+                      "Next": "Fail"
+                    }
+                  ],
+                  "Next": "UpdateCampaign"
+                },
+                "UpdateCampaign": {
+                  "Type": "Task",
+                  "Parameters": {
+                    "name.$": "$.name",
+                    "solutionVersionArn.$": "$.solutionVersionArn"
+                  },
+                  "Resource": "${UpdateCampaignArn}",
+                  "Catch": [
+                    {
+                      "ErrorEquals": [
+                        "KeyError"
+                      ],
+                      "ResultPath": "$.serviceError",
+                      "Next": "Fail"
+                    }
+                  ],
+                  "ResultPath": "$.campaignArn",
+                  "Next": "WaitCampaignUpdate"
+                },
+                "WaitCampaignUpdate": {
+                  "Type": "Task",
+                  "Parameters": {
+                    "campaignArn.$": "$.campaignArn"
+                  },
+                  "Resource": "${WaitCampaignUpdateArn}",
+                  "ResultPath": "$.campaignUpdateStatus",
+                  "Retry": [
+                    {
+                      "ErrorEquals": [
+                        "ResourcePending"
+                      ],
+                      "IntervalSeconds": 2,
+                      "BackoffRate": 1.5,
+                      "MaxAttempts": 100
+                    }
+                  ],
+                  "Catch": [
+                    {
+                      "ErrorEquals": [
+                        "ResourceFailed"
+                      ],
+                      "ResultPath": "$.serviceError",
+                      "Next": "Fail"
+                    }
+                  ],
+                  "End": true
+                },
+                "Fail": {
+                  "Type": "Fail"
+                }
+              }
+            }
+          - CreateSolutionVersionArn: !GetAtt CreateSolutionVersion.Arn
+            WaitSolutionVersionArn: !GetAtt WaitSolutionVersion.Arn
+            UpdateCampaignArn: !GetAtt UpdateCampaign.Arn
+            WaitCampaignUpdateArn: !GetAtt WaitCampaignUpdate.Arn
+
   PersonalizeRole:
     Type: "AWS::IAM::Role"
     Properties:
@@ -1435,31 +1599,6 @@ Resources:
                   - s3:GetObject
                   - s3:ListBucket
                 Resource: arn:aws:s3:::*
-
-#tgam-personalize-update-solution-and-campaign
-  UpdatePersonalizeRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action: "sts:AssumeRole"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - arn:aws:iam::aws:policy/service-role/AmazonPersonalizeFullAccess 
-
-#2 x role
-#4 x lambda
-#1 x step
-
-              
-#arn:aws:iam::727304503525:role/service-role/StepFunctions-tgam-personalize-update-solution-and-role-533c3580 
-#arn:aws:iam::727304503525:role/tgam-personalize-update-solution-and-campaign 
-
 
 Outputs:
   DeployStateMachineArn:
