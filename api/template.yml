@@ -390,6 +390,8 @@ Resources:
         rules_to_suppress:
           - id: W89
             reason: "Lambda is in VPC by default values - ignoring false positive"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: api-lambdas/getRecommendations
       Handler: getRecommendations.handler
