@@ -621,7 +621,7 @@ Resources:
     Type: "AWS::ApiGateway::Method"
  #   Condition: EnabledApi
     Properties:
-      ApiKeyRequired: "true"
+      ApiKeyRequired: "false"
       RestApiId: !Ref ApiGatewayEndpoint
       ResourceId: !Ref RecommendationsResource
       HttpMethod: "POST"
