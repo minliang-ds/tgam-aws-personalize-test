@@ -169,6 +169,14 @@ Parameters:
 Resources:
   LambdaSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W36
+            reason: "We have decscription - false positive"
+          - id: W5
+            reason: "Allow outgoing traffit to 0.0.0.0 on 443 port"
+
     Properties: 
       GroupDescription: "Security Group for Lambdas for tgam-personalize project"
       Tags:
@@ -282,6 +290,11 @@ Resources:
           Value: !Ref ManagedBy
   EventLambdaPolicies:
     Type: AWS::IAM::Policy
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W12
+            reason: "* for all events tracker"
     Properties:
       PolicyName: se-lambda-execution-policy
       PolicyDocument:
@@ -327,6 +340,11 @@ Resources:
           Value: !Ref ManagedBy
   ContentLambdaPolicies:
     Type: AWS::IAM::Policy
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W12
+            reason: "* for all events datasets"
     Properties:
       PolicyName: se-lambda-execution-policy
       PolicyDocument:
@@ -352,17 +370,26 @@ Resources:
       
   PythonMetricsLayer:
     Type: AWS::Serverless::LayerVersion
+    Metadata:
+      BuildMethod: python3.8              # Required to have AWS SAM build this layer
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "Lambda is in VPC by default values - ignoring false positive"
     Properties:
       ContentUri: api-lambdas/PythonMetricsLayer
       CompatibleRuntimes:
         - python3.8
-    Metadata:
-      BuildMethod: python3.8              # Required to have AWS SAM build this layer
-      
+
   GetRecommendations:
     DependsOn:
       - RecommendationsPolicy
     Type:  AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "Lambda is in VPC by default values - ignoring false positive"
     Properties:
       CodeUri: api-lambdas/getRecommendations
       Handler: getRecommendations.handler
@@ -372,6 +399,7 @@ Resources:
       Layers:
         - !Ref PythonMetricsLayer
       AutoPublishAlias: "getRecommendations"
+      #ReservedConcurrentExecutions: !FindInMap [EnvironmentMap, !Ref Environment, ProvisionedConcurrent]
       ProvisionedConcurrencyConfig: 
         ProvisionedConcurrentExecutions: !FindInMap [EnvironmentMap, !Ref Environment, ProvisionedConcurrent]
       Environment:
@@ -387,6 +415,13 @@ Resources:
     DependsOn:
       - EventLambdaPolicies
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "Lambda is in VPC by default values - ignoring false positive"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: api-lambdas/putevents
       Handler: putevents.handler
@@ -410,6 +445,13 @@ Resources:
     DependsOn:
       - ContentLambdaPolicies
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "Lambda is in VPC by default values - ignoring false positive"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: api-lambdas/putcontent
       Handler: putcontent.handler
