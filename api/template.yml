@@ -1176,7 +1176,9 @@ Outputs:
     Value: !Ref ApiGatewayEndpoint
   StageName:
     Value: !Ref StageName
-  #POSTRecommendationsApiGatewayInvokeURL:
-  #  Value: !Sub "https://${FindInMap [EnvironmentMap, !Ref Environment, Domain]}/${StageName}/recommendations"
+  POSTRecommendationsApiGatewayInvokeURL:
+    Value: !Sub
+      - https://${Domain}/${StageName}/recommendations
+      - { Domain: !FindInMap [EnvironmentMap, !Ref Environment, Domain] }
   APIKEY:
     Value: !Sub "https://console.aws.amazon.com/apigateway/home?region=${AWS::Region}#/api-keys/${APIKey}"
