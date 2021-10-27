@@ -1,12 +1,16 @@
 #!/bin/bash
 
+stack_name="tgam-personalize-api-test"
+deploy_region="us-east-1"
+
 set -e 
 cfn_nag_scan -i template.yml
 cfn-lint template.yml
 bandit -r api-lambdas/getRecommendations/
 sam validate
 sam build 
-sam deploy --stack-name tgam-personalize-api-test  \
+sam deploy --stack-name ${stack_name}  \
+  --region ${deploy_region} \
   --s3-bucket sam-dev-sophi-bucket-us-east-1  \
   --capabilities CAPABILITY_IAM  \
   --tags "Environment=dev CostAllocationProduct=amazon_personalize ManagedBy=CloudFormation" \
@@ -24,3 +28,10 @@ sam deploy --stack-name tgam-personalize-api-test  \
   ParameterKey=CampaignName,ParameterValue=userPersonalizationCampaign \
   ParameterKey=FiltersPrefix,ParameterValue=tgam-personalize-mlops-test
 
+api_id=`aws cloudformation describe-stacks --stack-name ${stack_name}  --region ${deploy_region} --query 'Stacks[0].Outputs' --output text | grep ^ApiId | awk {'print $2'}`
+stage_name=`aws cloudformation describe-stacks --stack-name ${stack_name}  --region ${deploy_region} --query 'Stacks[0].Outputs' --output text | grep ^StageName | awk {'print $2'}`
+
+aws apigateway create-deployment \
+    --region ${deploy_region} \
+    --rest-api-id ${api_id} \
+    --stage-name ${stage_name}

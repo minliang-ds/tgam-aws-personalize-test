@@ -153,6 +153,7 @@ Parameters:
 
     
 Resources:
+
   LambdaSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Metadata:
@@ -164,7 +165,7 @@ Resources:
             reason: "Allow outgoing traffit to 0.0.0.0 on 443 port"
 
     Properties: 
-      GroupDescription: "Security Group for Lambdas for tgam-personalize project"
+      GroupDescription: !Sub "Security Group for Lambdas for ${ResourcesPrefix} project env: ${Environment}"
       VpcId: !Ref LambdaVPC
       SecurityGroupEgress:
       - CidrIp: 127.0.0.1/32
@@ -174,8 +175,6 @@ Resources:
         ToPort: 443
         CidrIp: 0.0.0.0/0
 
-# # DDB History table
-# Lambda functions
   APIDomain:
     Type: 'AWS::ApiGateway::DomainName'
     Properties:
@@ -200,6 +199,7 @@ Resources:
   RecommendationsRole:
     Type: "AWS::IAM::Role"
     Properties:
+      Description: !Sub "IAM Role for recommendation Lambdas for ${ResourcesPrefix} project env: ${Environment}"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -236,6 +236,7 @@ Resources:
   EventApiLambdaRole:
     Type: "AWS::IAM::Role"
     Properties:
+      Description: !Sub "IAM Role for event processing Lambdas for ${ResourcesPrefix} project env: ${Environment}"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -279,6 +280,7 @@ Resources:
   ContentApiLambdaRole:
     Type: "AWS::IAM::Role"
     Properties:
+      Description: !Sub "IAM Role for content processing Lambdas for ${ResourcesPrefix} project env: ${Environment}"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -1170,6 +1172,10 @@ Outputs:
     Value: !Ref PutContent
   PutEvents:
     Value: !Ref PutEvents
+  ApiId:
+    Value: !Ref ApiGatewayEndpoint
+  StageName:
+    Value: !Ref StageName
   #POSTRecommendationsApiGatewayInvokeURL:
   #  Value: !Sub "https://${FindInMap [EnvironmentMap, !Ref Environment, Domain]}/${StageName}/recommendations"
   APIKEY:
