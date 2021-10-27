@@ -24,18 +24,21 @@ Mappings:
       ThrottlingRateLimit: 100
       ThrottlingBurstLimit: 200
       LogRotation: 7
-    prod: 
+      EventLogRotation: 7
+    prod:
       Domain: "recoapi-ng-prod.theglobeandmail.com"
       ProvisionedConcurrent: 100
       ThrottlingRateLimit: 200
       ThrottlingBurstLimit: 400
       LogRotation: 30
+      EventLogRotation: 7
     stg: 
       Domain: "recoapi-ng-stg.theglobeandmail.com"
       ProvisionedConcurrent: 10
       ThrottlingRateLimit: 100
       ThrottlingBurstLimit: 200
       LogRotation: 7
+      EventLogRotation: 7
 
 
 Parameters:
@@ -102,7 +105,7 @@ Parameters:
     Type: String
     Description: "Name of datasetGroup from params.json file"
     Default: "tgam-personalize-mlops-test"
-  
+
   EventTrackerIdParam:
     Type: String
     Description: Please enter your Amazon Personalize Event Tracker ID
@@ -195,137 +198,11 @@ Resources:
         Stage: !Ref APIStage
         BasePath: !Ref StageName
         
-#### Api part
-  RecommendationsRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      Description: !Sub "IAM Role for recommendation Lambdas for ${ResourcesPrefix} project env: ${Environment}"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/CloudWatchFullAccess
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
-  RecommendationsPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: se-lambda-execution-policy
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "personalize:GetRecommendations"
-            Resource:
-              - !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/*'
-              - !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:filter/*'
-          - Effect: Allow
-            Action:
-              - "dynamodb:BatchGetItem"
-            Resource:
-             - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Sophi3DynamoDbTableName}'
-             - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Sophi2DynamoDbTableName}'
-      Roles:
-        - !Ref RecommendationsRole
-        
-        
-  EventApiLambdaRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      Description: !Sub "IAM Role for event processing Lambdas for ${ResourcesPrefix} project env: ${Environment}"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/CloudWatchFullAccess
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
-  EventLambdaPolicies:
-    Type: AWS::IAM::Policy
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W12
-            reason: "* for all events tracker"
-    Properties:
-      PolicyName: se-lambda-execution-policy
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "personalize:PutEvents"
-            Resource: "*"
-          - Effect: Allow
-            Action:
-              - "kinesis:SubscribeToShard"
-              - "kinesis:ListShards"
-              - "kinesis:GetShardIterator"
-              - "kinesis:GetRecords"
-              - "kinesis:DescribeStream"
-              - "kinesis:DescribeStreamSummary"
-            Resource:
-              - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}'
-              - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}*'
-      Roles:
-        - !Ref EventApiLambdaRole
-      
-  ContentApiLambdaRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      Description: !Sub "IAM Role for content processing Lambdas for ${ResourcesPrefix} project env: ${Environment}"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/CloudWatchFullAccess
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
-
-  ContentLambdaPolicies:
-    Type: AWS::IAM::Policy
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W12
-            reason: "* for all events datasets"
-    Properties:
-      PolicyName: se-lambda-execution-policy
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "personalize:PutItems"
-            Resource: "*"
-          - Effect: Allow
-            Action:
-              - "kinesis:SubscribeToShard"
-              - "kinesis:ListShards"
-              - "kinesis:GetShardIterator"
-              - "kinesis:GetRecords"
-              - "kinesis:DescribeStream"
-              - "kinesis:DescribeStreamSummary"
-            Resource:
-              - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}'
-              - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}*'
-      Roles:
-        - !Ref ContentApiLambdaRole
-      
+#### Recommendation api lambda
   PythonMetricsLayer:
     Type: AWS::Serverless::LayerVersion
     Metadata:
-      BuildMethod: python3.8              # Required to have AWS SAM build this layer
+      BuildMethod: python3.8
       cfn_nag:
         rules_to_suppress:
           - id: W89
@@ -335,9 +212,53 @@ Resources:
       CompatibleRuntimes:
         - python3.8
 
+  CustomUpdateLogs:
+    Type: Custom::CustomUpdateLogs
+    Properties:
+      ServiceToken: !GetAtt UpdateLogsRetention.Arn
+      ContentLambdaName: !Ref PutContent
+      RecommendationsLambdaName: !Ref GetRecommendations
+      EventsLambdaName: !Ref PutEvents
+      ContentLogsRetention: !FindInMap [EnvironmentMap, !Ref Environment, LogRotation]
+      RecommendationsLogsRetention: !FindInMap [EnvironmentMap, !Ref Environment, LogRotation]
+      EventsLogsRetention: !FindInMap [EnvironmentMap, !Ref Environment, EventLogRotation]
+
+
+  UpdateLogsRetention:
+    Type:  AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "Lambda is in VPC by default values - ignoring false positive"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
+    Properties:
+      CodeUri: api-lambdas/updateLogs
+      Handler: updateLogs.handler
+      Runtime: python3.8
+      Policies:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - "logs:PutRetentionPolicy"
+                - "logs:CreateLogGroup"
+              Resource:
+                - '*'
+      MemorySize: 192
+      Environment:
+        Variables:
+          CAMPAIGN_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}'
+          FiltersPrefix: !Ref FiltersPrefix
+          Sophi3DynamoDbTableName: !Ref Sophi3DynamoDbTableName
+          Sophi2DynamoDbTableName: !Ref Sophi2DynamoDbTableName
+          AWS_EMF_NAMESPACE: !Ref MetricsNamespace
+          AWS_EMF_SERVICE_NAME: "GetRecommendations"
+          AllowOriginDomains: !Ref CorsDomainOrigin
+
   GetRecommendations:
-    DependsOn:
-      - RecommendationsPolicy
     Type:  AWS::Serverless::Function
     Metadata:
       cfn_nag:
@@ -350,13 +271,27 @@ Resources:
       CodeUri: api-lambdas/getRecommendations
       Handler: getRecommendations.handler
       Runtime: python3.8
-      Role: !GetAtt [RecommendationsRole, Arn]
+      Policies:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - "personalize:GetRecommendations"
+              Resource:
+                - !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/*'
+                - !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:filter/*'
+            - Effect: Allow
+              Action:
+                - "dynamodb:BatchGetItem"
+              Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Sophi3DynamoDbTableName}'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Sophi2DynamoDbTableName}'
       MemorySize: 192
       Layers:
         - !Ref PythonMetricsLayer
       AutoPublishAlias: "getRecommendations"
-      #ReservedConcurrentExecutions: !FindInMap [EnvironmentMap, !Ref Environment, ProvisionedConcurrent]
-      ProvisionedConcurrencyConfig: 
+      ProvisionedConcurrencyConfig:
         ProvisionedConcurrentExecutions: !FindInMap [EnvironmentMap, !Ref Environment, ProvisionedConcurrent]
       Environment:
         Variables:
@@ -367,9 +302,9 @@ Resources:
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
           AWS_EMF_SERVICE_NAME: "GetRecommendations"
           AllowOriginDomains: !Ref CorsDomainOrigin
+
+## Event Lambda
   PutEvents:
-    DependsOn:
-      - EventLambdaPolicies
     Type: AWS::Serverless::Function
     Metadata:
       cfn_nag:
@@ -382,9 +317,27 @@ Resources:
       CodeUri: api-lambdas/putevents
       Handler: putevents.handler
       Runtime: nodejs12.x
-      Role: !GetAtt [EventApiLambdaRole, Arn]
       MemorySize: 192
       Timeout: 30
+      Policies:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - "personalize:PutEvents"
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - "kinesis:SubscribeToShard"
+                - "kinesis:ListShards"
+                - "kinesis:GetShardIterator"
+                - "kinesis:GetRecords"
+                - "kinesis:DescribeStream"
+                - "kinesis:DescribeStreamSummary"
+              Resource:
+                - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}'
+                - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}*'
       Events:
         Stream:
           Type: Kinesis
@@ -397,9 +350,9 @@ Resources:
         Variables:
           TRACKING_ID: !Ref EventTrackerIdParam
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
+
+#Content Lambda
   PutContent:
-    DependsOn:
-      - ContentLambdaPolicies
     Type: AWS::Serverless::Function
     Metadata:
       cfn_nag:
@@ -412,7 +365,25 @@ Resources:
       CodeUri: api-lambdas/putcontent
       Handler: putcontent.handler
       Runtime: nodejs12.x
-      Role: !GetAtt [ContentApiLambdaRole, Arn]
+      Policies:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - "personalize:PutItems"
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - "kinesis:SubscribeToShard"
+                - "kinesis:ListShards"
+                - "kinesis:GetShardIterator"
+                - "kinesis:GetRecords"
+                - "kinesis:DescribeStream"
+                - "kinesis:DescribeStreamSummary"
+              Resource:
+                - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}'
+                - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}*'
       Timeout: 30
       Events:
         Stream:
@@ -428,11 +399,11 @@ Resources:
           TRACKING_ID: !Ref EventTrackerIdParam
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
           CONTENT_DATASET_ARN: !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:dataset/${ContentDatasetName}/ITEMS'
-          
+
   KinesisEventStreamConsumer:
     Type: "AWS::Kinesis::StreamConsumer"
     Properties:
-      StreamARN: !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}' 
+      StreamARN: !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}'
       ConsumerName: !Join
         - "-"
         - - !Ref ResourcesPrefix
@@ -446,11 +417,11 @@ Resources:
                 - !Split
                   - "/"
                   - !Ref "AWS::StackId"
-                  
+
   KinesisContentStreamConsumer:
     Type: "AWS::Kinesis::StreamConsumer"
     Properties:
-      StreamARN:  !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}' 
+      StreamARN:  !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}'
       ConsumerName: !Join
         - "-"
         - - !Ref ResourcesPrefix
@@ -463,7 +434,7 @@ Resources:
                 - 2
                 - !Split
                   - "/"
-                  - !Ref "AWS::StackId"    
+                  - !Ref "AWS::StackId"
 
 
 # APIGW
@@ -565,6 +536,7 @@ Resources:
         DestinationArn: !GetAtt APIStageLogGroup.Arn
         Format: '$context.identity.sourceIp $context.identity.caller $context.identity.user [$context.requestTime] "$context.httpMethod $context.resourcePath $context.protocol" $context.status $context.responseLength $context.requestId $context.integration.requestId $context.integration.latency $context.responseLatency'
       Description: !Ref StageName
+      TracingEnabled: 'false'
       MethodSettings: 
         - ResourcePath: "/*"
           HttpMethod: "*"
@@ -597,26 +569,9 @@ Resources:
         - RootResourceId
       PathPart: recommendations
       
-# Integrate with your Get Recommendations Lambda
-
-##Rollback just in case
-#  OldApiGetRecommendationsMethod:
-#    Type: "AWS::ApiGateway::Method"
-#    Condition: FallbackApi
-#    Properties:
-#      ApiKeyRequired: "true"
-#      RestApiId: !Ref ApiGatewayEndpoint
-#      ResourceId: !Ref RecommendationsResource
-#      HttpMethod: "ANY"
-#      AuthorizationType: "NONE"
-#      Integration:
-#        IntegrationHttpMethod: "ANY"
-#        Type: "HTTP"
-#        Uri: !Ref OldAPIUlr
 
   LambdaGetRecommendationsMethod:
     Type: "AWS::ApiGateway::Method"
- #   Condition: EnabledApi
     Metadata:
       cfn_nag:
         rules_to_suppress:
@@ -665,8 +620,6 @@ Resources:
             'method.response.header.Access-Control-Allow-Headers': 'true'
             'method.response.header.Access-Control-Allow-Methods': 'true'
             'method.response.header.Access-Control-Allow-Origin': 'true'
-# Deploy your API endpoint
-
 
 # Create the invoke permissions
   recommendationsLambdaApiGatewayInvokeGET:
@@ -680,7 +633,6 @@ Resources:
       FunctionName: !GetAtt "GetRecommendations.Arn"
       Principal: "apigateway.amazonaws.com"
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayEndpoint}/*/POST/recommendations"
-  
 
   AlarmTopic:
     Type: AWS::SNS::Topic

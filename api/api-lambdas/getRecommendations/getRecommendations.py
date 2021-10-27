@@ -258,7 +258,6 @@ def handler(event, context, metrics):
                 
                 #print(f"RequestID: {api_gateway_request_id} Images map: {images_map}")
                 #print(f"RequestID: {api_gateway_request_id} Recommendation list: {deserialized_item}")
-                
 
         except ClientError as e:
             print(f"RequestID: {api_gateway_request_id} Key Error: {e}")
