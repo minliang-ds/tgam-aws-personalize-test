@@ -1,5 +1,6 @@
 # Introduction
 
+
 This reporistory contains 3 [AWS Serverless Application Model](https://aws.amazon.com/serverless/sam/) projects, every in each own folder:
 - api - GetRecommendations, PutContent, PutEvents api  
 - mlops - MLOps pipeline for [Amazon Personalize](https://aws.amazon.com/personalize/) Recommender System
