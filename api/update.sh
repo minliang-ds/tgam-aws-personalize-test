@@ -20,7 +20,7 @@ sam deploy --stack-name tgam-personalize-api-test  \
   ParameterKey=ContentDatasetName,ParameterValue=tgam-personalize-mlops-test \
   ParameterKey=EventTrackerIdParam,ParameterValue=f843d3d9-7153-436b-b4be-ed5ce8375c57 \
   ParameterKey=EventTrackerArn,ParameterValue=arn:aws:personalize:us-east-1:727304503525:event-tracker/7a1a2aff \
-  ParameterKey=CampainProvisionedTPS,ParameterValue=1 \
+  ParameterKey=CampainProvisionedTPS,ParameterValue=10 \
   ParameterKey=CampaignName,ParameterValue=userPersonalizationCampaign \
   ParameterKey=FiltersPrefix,ParameterValue=tgam-personalize-mlops-test \
   ParameterKey=Sophi3DynamoDbTableName,ParameterValue=Sophi3ContentMetaData \
