@@ -8,11 +8,11 @@ This reporistory contains 3 [AWS Serverless Application Model](https://aws.amazo
 
 # Deployment steps
 
-All commands describe in this readme assume using (AWS CloudShell)[https://aws.amazon.com/cloudshell/] with content of this repository cloned into **amazon_personalize_streaming_event** folder 
+All commands describe in this readme assume using (AWS CloudShell)[https://aws.amazon.com/cloudshell/] with content of this repository cloned into **tgam-aws-personalize** folder 
 1. Start an AWS CloudShell session from the AWS console
 1. Clone the project repo:
 ```bash
-git clone codecommit::us-east-1://amazon_personalize_streaming_events
+git clone https://github.com/globeandmail/tgam-aws-personalize
 ```
 
 ## Prerequisite
@@ -33,11 +33,11 @@ In addition, the pipeline also deploys a scheduled (weekly on Sunday morning) AW
 
 The below diagram describes the architecture of the solution:
 
-![Architecture Diagram](images/architecture.png)
+![Architecture Diagram](mlops/images/architecture.png)
 
 The below diagram showcases the StepFunction workflow definition:
 
-![stepfunction definition](images/stepfunctions.png)
+![stepfunction definition](mlops/images/stepfunctions.png)
 
 
 1. \[In CloudShell\]: Navigate into the *mlops/personalize-step-functions* directory:
