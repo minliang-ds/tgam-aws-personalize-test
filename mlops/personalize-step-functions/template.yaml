@@ -103,7 +103,7 @@ Resources:
     Properties:
       CodeUri: lambdas/s3lambda/
       Handler: parse.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Role: !GetAtt TriggerRole.Arn
       Environment:
         Variables:
@@ -125,7 +125,7 @@ Resources:
     Properties:
       CodeUri: lambdas/s3lambda-update/
       Handler: parse-update.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Role: !GetAtt TriggerRole.Arn
       Environment:
         Variables:
@@ -190,7 +190,7 @@ Resources:
     Properties:
       CodeUri: lambdas/notify/
       Handler: notify.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref NotificationTopic
@@ -206,7 +206,7 @@ Resources:
     Properties:
       CodeUri: lambdas/notify-delete/
       Handler: notify-delete.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref NotificationTopic
@@ -225,7 +225,7 @@ Resources:
       Properties:
         ContentUri: shared/
         CompatibleRuntimes:
-          - python3.7
+          - python3.8
         RetentionPolicy: Delete
 
 # ------------------------
@@ -256,7 +256,7 @@ Resources:
     Properties:
       CodeUri: lambdas/create-datasetgroup/
       Handler: datasetgroup.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -272,7 +272,7 @@ Resources:
     Properties:
       CodeUri: lambdas/create-dataset/
       Handler: dataset.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -290,7 +290,7 @@ Resources:
     Properties:
       CodeUri: lambdas/import-data/
       Handler: datasetimport.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Environment:
@@ -313,7 +313,7 @@ Resources:
     Properties:
       CodeUri: lambdas/create-solution/
       Handler: solution.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -330,7 +330,7 @@ Resources:
     Properties:
       CodeUri: lambdas/wait-solution-version
       Handler: wait-solution-version.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -345,7 +345,7 @@ Resources:
     Properties:
       CodeUri: lambdas/create-campaign/
       Handler: campaign.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -362,7 +362,7 @@ Resources:
     Properties:
       CodeUri: lambdas/delete-campaign/
       Handler: delete-campaign.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -377,7 +377,7 @@ Resources:
     Properties:
       CodeUri: lambdas/delete-dataset/
       Handler: delete-dataset.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -392,7 +392,7 @@ Resources:
     Properties:
       CodeUri: lambdas/delete-datasetgroup/
       Handler: delete-datasetgroup.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -407,7 +407,7 @@ Resources:
     Properties:
       CodeUri: lambdas/delete-solution
       Handler: delete-solution.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -422,7 +422,7 @@ Resources:
     Properties:
       CodeUri: lambdas/delete-tracker
       Handler: delete-tracker.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -437,7 +437,7 @@ Resources:
     Properties:
       CodeUri: lambdas/list-campaigns
       Handler: list-campaigns.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -452,7 +452,7 @@ Resources:
     Properties:
       CodeUri: lambdas/list-datasets
       Handler: list-datasets.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -467,7 +467,7 @@ Resources:
     Properties:
       CodeUri: lambdas/list-solution-versions
       Handler: list-solution-versions.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -482,7 +482,7 @@ Resources:
     Properties:
       CodeUri: lambdas/list-solutions
       Handler: list-solutions.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -497,7 +497,7 @@ Resources:
     Properties:
       CodeUri: lambdas/list-trackers
       Handler: list-trackers.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -512,7 +512,7 @@ Resources:
     Properties:
       CodeUri: lambdas/wait-delete-campaign
       Handler: wait-delete-campaign.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -527,7 +527,7 @@ Resources:
     Properties:
       CodeUri: lambdas/wait-delete-dataset
       Handler: wait-delete-dataset.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -542,7 +542,7 @@ Resources:
     Properties:
       CodeUri: lambdas/wait-delete-datasetgroup
       Handler: wait-delete-datasetgroup.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -557,7 +557,7 @@ Resources:
     Properties:
       CodeUri: lambdas/wait-delete-solution
       Handler: wait-delete-solution.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -572,7 +572,7 @@ Resources:
     Properties:
       CodeUri: lambdas/wait-delete-tracker
       Handler: wait-delete-tracker.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -587,7 +587,7 @@ Resources:
     Properties:
       CodeUri: lambdas/event-tracker/
       Handler: eventTracker.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -605,7 +605,7 @@ Resources:
     Properties:
       CodeUri: lambdas/create-filters/
       Handler: filters.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -623,7 +623,7 @@ Resources:
     Properties:
       CodeUri: lambdas/create-solution-version/
       Handler: solution-version.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -639,7 +639,7 @@ Resources:
     Properties:
       CodeUri: lambdas/update-campaign/
       Handler: update-campaign.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -655,7 +655,7 @@ Resources:
     Properties:
       CodeUri: lambdas/wait-campaign-update/
       Handler: wait-campaign-update.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Layers:
         - !Ref SharedLayer
       Policies:
