@@ -1495,7 +1495,6 @@ Resources:
                   "Type": "Task",
                   "Parameters": {
                     "solutionName.$": "$.params.solutions.userPersonalization.name",
-                    "campaignName.$": "$.params.campaigns.userPersonalizationCampaign.name",
                     "trainingMode.$": "$.params.userPersonalizationUpdates.trainingMode"
                   },
                   "Resource": "${CreateSolutionVersionArn}",
@@ -1542,7 +1541,7 @@ Resources:
                 "UpdateCampaign": {
                   "Type": "Task",
                   "Parameters": {
-                    "name.$": "$.name",
+                    "campaignName.$": "$.params.campaigns.userPersonalizationCampaign.name",
                     "solutionVersionArn.$": "$.solutionVersionArn"
                   },
                   "Resource": "${UpdateCampaignArn}",
