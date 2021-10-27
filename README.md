@@ -35,10 +35,13 @@ The below diagram describes the architecture of the solution:
 
 ![Architecture Diagram](mlops/images/architecture.png)
 
-The below diagram showcases the StepFunction workflow definition:
+The below diagram showcases the campaign creation step functions workflow:
 
-![stepfunction definition](mlops/images/stepfunctions.png)
+![stepfunction definition](mlops/images/campaign_creation_step_functions.png)
 
+The below diagram showcases the campaign update step functions workflow:
+
+![stepfunction definition](mlops/images/campaign_update_step_functions.png)
 
 1. \[In CloudShell\]: Navigate into the *mlops/personalize-step-functions* directory:
 ```bash
@@ -63,7 +66,9 @@ Interactions/       # Interaction dataset(s) folder
 ```bash
 cd ~/mlops
 ```
-8. \[In CloudShell\]: Upload the `params.json` file to the **root directory of the InputBucket**. This step will trigger the step functions workflow.
+8. \[In CloudShell\]: Upload the `params.json` file to the **root directory of the InputBucket**. This step will trigger the campaign creation step functions workflow.
+- Note that future updates to the `params.json` file should follow the resource naming convention that uses the dataset group name as the prefix
+
 ```bash
 aws s3 cp ./params.json s3://<input-bucket-name>
 ```
