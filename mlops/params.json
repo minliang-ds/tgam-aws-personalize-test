@@ -140,7 +140,7 @@
    },
    "campaigns":{
       "userPersonalizationCampaign":{
-         "name":"tgam-personalize-dev-userPersonalizationCampaign",
+         "name":"tgam-personalize-userPersonalizationCampaign",
          "minProvisionedTPS":100,
          "campaignConfig":{
              "itemExplorationConfig":{
