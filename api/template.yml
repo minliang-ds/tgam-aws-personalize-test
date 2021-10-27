@@ -29,71 +29,77 @@ Mappings:
       ProvisionedConcurrent: 10
       ThrottlingRateLimit: 100
       ThrottlingBurstLimit: 200
+      LogRotation: 7
     prod: 
       Domain: "recoapi-ng-prod.theglobeandmail.com"
       ProvisionedConcurrent: 100
       ThrottlingRateLimit: 200
       ThrottlingBurstLimit: 400
+      LogRotation: 30
     stg: 
       Domain: "recoapi-ng-stg.theglobeandmail.com"
       ProvisionedConcurrent: 10
       ThrottlingRateLimit: 100
       ThrottlingBurstLimit: 200
+      LogRotation: 7
 
 
 Parameters:
   ResourcesPrefix:
     Type: String
     Default: "tgam-personalize"
+    Description: "Name prefix that will be added to most resources. This will allow deploy more than 1 versions of this cloudformation per AWS Account"
     AllowedPattern: "[A-Za-z0-9-_]+"
 
   Environment:
     Type: String
     Default: dev
+    Description: "Type of deployment. Environment name will be used in resources names as in mapping for limits"
     AllowedValues:
       - "dev"
       - "stg"
       - "prod"
 
   LambdaVPC: 
-    Description: VPC ID for lambda deployments
+    Description: VPC ID for Lambda, should have VPC Endpoints for DynamoDB, S3 (and Personalize in future)
     Type: "AWS::EC2::VPC::Id"
 
 
   LambdaPrivateSubnetIDs: 
-    Description: Subnet IDs
+    Description: Private Subnet IDs for Lambda deployments
     Type: "List<AWS::EC2::Subnet::Id>"
     
   StageName:
     Type: String
+    Description: "Name of stage deplyment for API Gateway, it will be used in urls ${domain}/${stage}/recommendations"
     Default: v1
 
   MetricsNamespace:
     Type: String
+    Description: "Name of metric Namespace where custom metrics will be published"
     Default: PersonalizeCustomMetrics
 
   ManagedBy:
     Type: String
+    Description: "Value for ManagedBy Tag for resources"
     Default: "CloudFormation"
     AllowedValues:
       - "CloudFormation"
 
   CostAllocationProduct:
     Type: String
+    Description: "Value for CostAllocationProduct Tag for resources"
     Default: "amazon_personalize"
 
   KinesisContentStream:
     Type: String
+    Description: "Name of sophi3 content kinesis stream"
     Default: "sophi3-unified-content-stream"
 
   KinesisEventStream:
     Type: String
+    Description: "Name of sophi3 event kinesis stream"
     Default: "sophi3-transformed-event-stream"
-
-  LogRotation:
-    Type: Number
-    Description: Number of days for log rotation in cloudwatch logs
-    Default: 30
 
   KinesisBatchSize:
     Type: Number
@@ -125,7 +131,7 @@ Parameters:
     Description: Please enter your Amazon Personalize Event Tracker ARN
     Default: "arn:aws:personalize:us-east-1:727304503525:event-tracker/7a1a2aff"
 
-  CampainProvisionedTPS:
+  CampaignProvisionedTPS:
     Type: Number
     Description: Minimum provisioned TPS for metrics
     Default: 1
@@ -619,7 +625,7 @@ Resources:
                 - !Split
                   - "/"
                   - !Ref "AWS::StackId"
-      RetentionInDays: !Ref LogRotation
+      RetentionInDays: !FindInMap [EnvironmentMap, !Ref Environment, LogRotation]
   
   APIStage:
     Type: AWS::ApiGateway::Stage
@@ -1067,7 +1073,7 @@ Resources:
                         "horizontal": [
                             {
                                 "label": "Provisioned TPS",
-                                "value": ${CampainProvisionedTPS}
+                                "value": ${CampaignProvisionedTPS}
                             }
                         ]
                     }
