@@ -21,9 +21,7 @@ Globals:
         ManagedBy: !Ref ManagedBy
         ResourcesPrefix: !Ref ResourcesPrefix
         CurretnAccountId: !Ref "AWS::AccountId"
-        EventsTZ: "America/Toronto"
-        TestTZ: "America/Toronto"
-      
+
 Mappings: 
   EnvironmentMap: 
     dev: 
