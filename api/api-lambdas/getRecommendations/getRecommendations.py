@@ -74,7 +74,6 @@ return_headers = {
     'Access-Control-Allow-Origin':  '*',
     'Access-Control-Allow-Methods': 'OPTIONS,POST'
 }
-        
 
 def get_dynamo_data(dynamo_table, sort_key_name, attributes, item_list, return_type_map=False, return_type_list=False, api_gateway_request_id="NONE"):
     #item_list.insert(0,{'itemId': 'MTDKSOO7GJBNDE2OMQIF62ULEM'})

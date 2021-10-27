@@ -17,36 +17,48 @@ def handler(event, context):
         ContentLogsRetention = event['ResourceProperties'].get('ContentLogsRetention')
         RecommendationsLogsRetention = event['ResourceProperties'].get('RecommendationsLogsRetention')
         EventsLogsRetention = event['ResourceProperties'].get('EventsLogsRetention')
-
-        #cretate for initial deployment
-        client.create_log_group(
-            logGroupName=f"/aws/lambda/{ContentLambdaName}",
-        )
-        client.create_log_group(
-            logGroupName=f"/aws/lambda/{RecommendationsLambdaName}",
-        )
-        client.create_log_group(
-            logGroupName=f"/aws/lambda/{EventsLambdaName}",
-        )
-
-        client.put_retention_policy(
-            logGroupName=f"/aws/lambda/{ContentLambdaName}",
-            retentionInDays=int(ContentLogsRetention)
-        )
-        client.put_retention_policy(
-            logGroupName=f"/aws/lambda/{RecommendationsLambdaName}",
-            retentionInDays=int(RecommendationsLogsRetention)
-        )
-
-        client.put_retention_policy(
-            logGroupName=f"/aws/lambda/{EventsLambdaName}",
-            retentionInDays=int(EventsLogsRetention)
-        )
-
-    except ClientError as e:
-        responseData = {}
-        responseData['Data'] = f"{e}"
     except:
         pass
+    else:
+        try:
+            client.create_log_group(
+                logGroupName=f"/aws/lambda/{ContentLambdaName}",
+            )
+        except:
+            pass
+
+        try:
+            client.create_log_group(
+                logGroupName=f"/aws/lambda/{RecommendationsLambdaName}",
+            )
+        except:
+            pass
+
+        try:
+            client.create_log_group(
+                logGroupName=f"/aws/lambda/{EventsLambdaName}",
+            )
+        except:
+            pass
+
+        try:
+            client.put_retention_policy(
+                logGroupName=f"/aws/lambda/{ContentLambdaName}",
+                retentionInDays=int(ContentLogsRetention)
+            )
+            client.put_retention_policy(
+                logGroupName=f"/aws/lambda/{RecommendationsLambdaName}",
+                retentionInDays=int(RecommendationsLogsRetention)
+            )
+
+            client.put_retention_policy(
+                logGroupName=f"/aws/lambda/{EventsLambdaName}",
+                retentionInDays=int(EventsLogsRetention)
+            )
+
+        except ClientError as e:
+            responseData = {}
+            responseData['Data'] = f"{e}"
+
 
     cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID")
