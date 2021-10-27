@@ -119,11 +119,20 @@
          "recipeArn":"arn:aws:personalize:::recipe/aws-user-personalization",
          "solutionConfig":{
              "algorithmHyperParameters":{
-                 "bptt":"9",
-                 "hidden_dimension":"132",
+                 "bptt":"30",
+                 "hidden_dimension":"56",
                  "recency_mask":"true"
              }
          }
+      },
+      "similarItems":{
+         "name":"similarItemsSolution",
+         "recipeArn":"arn:aws:personalize:::recipe/aws-similar-items",
+         "solutionConfig":{
+             "algorithmHyperParameters":{
+                 "item_id_hidden_dim":"195",
+                 "item_metadata_hidden_dim":"198"
+             }
       }
    },
    "eventTracker":{
@@ -132,13 +141,17 @@
    "campaigns":{
       "userPersonalizationCampaign":{
          "name":"userPersonalizationCampaign",
-         "minProvisionedTPS":10,
+         "minProvisionedTPS":100,
          "campaignConfig":{
              "itemExplorationConfig":{
                  "explorationWeight": "0.3",
                  "explorationItemAgeCutOff": "30"
              }
          }
+      },
+      "similarItemsCampaign":{
+         "name":"similarItemsCampaign",
+         "minProvisionedTPS":100
       }
    },
    "filters":

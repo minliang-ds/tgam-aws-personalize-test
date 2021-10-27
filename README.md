@@ -26,7 +26,9 @@ aws s3api create-bucket --bucket sam-${env}-sophi-bucket-us-east-1 --region us-e
 ## MLOps pipeline 
 MLOps pipeline for Amazon Personalize Recommender System
 
-This pipeline builds a User-Personalization Amazon Personalize campaign for Sophi from scatch, assuming input datasets have been pre-generated. As shown in the following architecture diagram, the pipeline uses AWS Serverless Application Model (SAM) to deploy an AWS Step Function Workflow containing AWS Lambda functions that call Amazon S3, Amazon Personalize, and Amazon SNS APIs.
+This pipeline builds a User-Personalization Amazon Personalize campaign for Sophi from scatch, assuming input datasets have been pre-generated. The pipeline uses AWS Serverless Application Model (SAM) to deploy an AWS Step Functions workflow containing AWS Lambda functions that call Amazon S3, Amazon Personalize, and Amazon SNS APIs.
+
+In addition, the pipeline also deploys a scheduled (weekly on Sunday morning) AWS Step Functions workflow that fully trains a new User-Personalization solution version with the latest data and updates the live campaign with the new solution version.
 
 The below diagram describes the architecture of the solution:
 
@@ -108,7 +110,7 @@ sam deploy --stack-name tgam-personalize-api-test  \
   ParameterKey=DefaultNotificationEmail,ParameterValue=mlinliu@amazon.com \
   ParameterKey=LambdaVPC,ParameterValue=vpc-0a53827efb39f973f \
   ParameterKey=LambdaPrivateSubnetIDs,ParameterValue="subnet-0efb9d6d3ea5016f9,subnet-0c7691b437e67ca01,subnet-02f1cad54fa47455c,subnet-08e56efdbcd9d5d6b"
-
+  
 ```
 
 6. \[In CloudShell\]: As cloudromation do not allow easy set log retention for log group from lambda we need to manually update time for cloudwatch logs retation

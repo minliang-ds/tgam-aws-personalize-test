@@ -1258,25 +1258,25 @@ Resources:
                           }
                         }
                       },{
-                        "StartAt": "Create SIMS Solution",
+                        "StartAt": "Create Similar-Items Solution",
                         "States": {
-                          "Create SIMS Solution": {
+                          "Create Similar-Items Solution": {
                             "Type": "Task",
                             "Resource": "${CreateSolutionArn}",
                             "Parameters": {
                               "solution.$": "$.params.solutions",
-                              "solutionType": "sims",
+                              "solutionType": "similarItems",
                               "datasetGroupArn.$": "$.datasetGroupArn"
                             },
                             "Catch": [{
                               "ErrorEquals": ["KeyError"],
                               "ResultPath": "$.serviceError",
-                              "Next": "SIMS Not Available"
+                              "Next": "Similar-Items Not Available"
                             }],
                             "ResultPath": "$.solutionVersionArn",
-                            "Next": "Wait SIMS Solution Version"
+                            "Next": "Wait Similar-Items Solution Version"
                           },
-                          "Wait SIMS Solution Version": {
+                          "Wait Similar-Items Solution Version": {
                             "Type": "Task",
                             "Resource": "${WaitSolutionVersionArn}",
                             "ResultPath": "$.solutionVersionStatus",
@@ -1289,15 +1289,15 @@ Resources:
                             "Catch": [{
                               "ErrorEquals": ["ResourceFailed"],
                               "ResultPath": "$.serviceError",
-                              "Next": "SIMS Fail"
+                              "Next": "Similar-Items Fail"
                             }],
-                            "Next": "Create SIMS Campaign"
+                            "Next": "Create Similar-Items Campaign"
                           },
-                          "Create SIMS Campaign": {
+                          "Create Similar-Items Campaign": {
                             "Type": "Task",
                             "Resource": "${CreateCampaignArn}",
                             "Parameters": {
-                              "campaign.$": "$.params.campaigns.simsCampaign",
+                              "campaign.$": "$.params.campaigns.similarItemsCampaign",
                               "solutionVersionArn.$": "$.solutionVersionArn"
                             },
                             "ResultPath": "$.campaignArn",
@@ -1310,19 +1310,19 @@ Resources:
                             "Catch": [{
                               "ErrorEquals": ["ResourceFailed"],
                               "ResultPath": "$.serviceError",
-                              "Next": "SIMS Fail"
+                              "Next": "Similar-Items Fail"
                             }],
                             "End": true
                           },
-                          "SIMS Not Available": {
+                          "Similar-Items Not Available": {
                             "Type": "Pass",
-                            "Result": "SIMS solution config not available",
+                            "Result": "Similar-Items solution config not available",
                             "End": true
                           },
-                          "SIMS Fail": {
+                          "Similar-Items Fail": {
                             "Type": "Fail",
-                            "Cause": "SIMS solution failed at create",
-                            "Error": "SIMS solution failed"
+                            "Cause": "Similar-Items solution failed at create",
+                            "Error": "Similar-Items solution failed"
                           }
                         }
                       },{
@@ -1459,41 +1459,7 @@ Resources:
             AttachEventTrackerArn: !GetAtt  AttachEventTracker.Arn
             CreateFiltersArn: !GetAtt  CreateFilters.Arn
             NotifyArn: !GetAtt Notify.Arn
-
-  EventBridgeRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: events.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: EventBridgePolicy
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - states:StartExecution
-                Resource: !GetAtt [UpdateStateMachine, Arn]
-
-  UpdateStateMachineEventsRule:
-    Type: 'AWS::Events::Rule'
-    Properties:
-      Description: Event rule for UpdateStateMachine state machine
-      Name: UpdateStateMachine
-      ScheduleExpression: 'cron(0 6 ? * SUN *)' 
-      State: ENABLED
-      Targets:
-        - Arn: !GetAtt UpdateStateMachine.Arn
-          Id: Id1234
-          RoleArn: !GetAtt EventBridgeRole.Arn
-          Input: '{     "name": "userPersonalization",     "training_mode": "FULL" }'
           
-
   UpdateStateMachine:
     Type: "AWS::StepFunctions::StateMachine"
     Properties:
@@ -1608,6 +1574,39 @@ Resources:
             WaitSolutionVersionArn: !GetAtt WaitSolutionVersion.Arn
             UpdateCampaignArn: !GetAtt UpdateCampaign.Arn
             WaitCampaignUpdateArn: !GetAtt WaitCampaignUpdate.Arn
+
+  EventBridgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EventBridgePolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: !GetAtt [UpdateStateMachine, Arn]
+
+  UpdateStateMachineScheduler:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: Scheduler for UpdateStateMachine state machine
+      Name: UpdateStateMachineScheduler
+      ScheduleExpression: 'cron(0 6 ? * SUN *)' 
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt UpdateStateMachine.Arn
+          Id: Id1234
+          RoleArn: !GetAtt EventBridgeRole.Arn
+          Input: '{     "name": "userPersonalization",     "training_mode": "FULL" }'
 
   PersonalizeRole:
     Type: "AWS::IAM::Role"
