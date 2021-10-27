@@ -9,6 +9,7 @@ sam build
 sam deploy --stack-name tgam-personalize-api-test  \
   --s3-bucket sam-dev-sophi-bucket-us-east-1  \
   --capabilities CAPABILITY_IAM  \
+  --tags "Environment=dev CostAllocationProduct=amazon_personalize ManagedBy=CloudFormation" \
   --parameter-overrides \
   ParameterKey=ResourcesPrefix,ParameterValue=tgam-personalize \
   ParameterKey=DefaultNotificationEmail,ParameterValue="mlinliu@amazon.com" \

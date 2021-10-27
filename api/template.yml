@@ -10,15 +10,9 @@ Globals:
         - !Ref LambdaSecurityGroup
       SubnetIds: !Ref LambdaPrivateSubnetIDs
     Timeout: 3
-    Tags:
-      Environment: !Ref Environment
-      CostAllocationProduct: !Ref CostAllocationProduct
-      ManagedBy: !Ref ManagedBy
     Environment:
       Variables:
         Environment: !Ref Environment  
-        CostAllocationProduct: !Ref CostAllocationProduct  
-        ManagedBy: !Ref ManagedBy
         ResourcesPrefix: !Ref ResourcesPrefix
         CurretnAccountId: !Ref "AWS::AccountId"
 
@@ -78,18 +72,6 @@ Parameters:
     Type: String
     Description: "Name of metric Namespace where custom metrics will be published"
     Default: PersonalizeCustomMetrics
-
-  ManagedBy:
-    Type: String
-    Description: "Value for ManagedBy Tag for resources"
-    Default: "CloudFormation"
-    AllowedValues:
-      - "CloudFormation"
-
-  CostAllocationProduct:
-    Type: String
-    Description: "Value for CostAllocationProduct Tag for resources"
-    Default: "amazon_personalize"
 
   KinesisContentStream:
     Type: String
@@ -183,13 +165,6 @@ Resources:
 
     Properties: 
       GroupDescription: "Security Group for Lambdas for tgam-personalize project"
-      Tags:
-        - Key: "Environment"
-          Value: !Ref Environment
-        - Key: "CostAllocationProduct"
-          Value: !Ref CostAllocationProduct
-        - Key: "ManagedBy"
-          Value: !Ref ManagedBy
       VpcId: !Ref LambdaVPC
       SecurityGroupEgress:
       - CidrIp: 127.0.0.1/32
@@ -210,14 +185,7 @@ Resources:
       EndpointConfiguration:
         Types: 
           - "EDGE"
-      Tags:
-        - Key: "Environment"
-          Value: !Ref Environment
-        - Key: "CostAllocationProduct"
-          Value: !Ref CostAllocationProduct
-        - Key: "ManagedBy"
-          Value: !Ref ManagedBy
-        
+
   APIMapping:
       Type: AWS::ApiGateway::BasePathMapping
       DependsOn:
@@ -242,13 +210,6 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/CloudWatchFullAccess
         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
-      Tags:
-        - Key: "Environment"
-          Value: !Ref Environment
-        - Key: "CostAllocationProduct"
-          Value: !Ref CostAllocationProduct
-        - Key: "ManagedBy"
-          Value: !Ref ManagedBy
   RecommendationsPolicy:
     Type: AWS::IAM::Policy
     Properties:
@@ -285,13 +246,6 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/CloudWatchFullAccess
         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
-      Tags:
-        - Key: "Environment"
-          Value: !Ref Environment
-        - Key: "CostAllocationProduct"
-          Value: !Ref CostAllocationProduct
-        - Key: "ManagedBy"
-          Value: !Ref ManagedBy
   EventLambdaPolicies:
     Type: AWS::IAM::Policy
     Metadata:
@@ -335,13 +289,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/CloudWatchFullAccess
         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
-      Tags:
-        - Key: "Environment"
-          Value: !Ref Environment
-        - Key: "CostAllocationProduct"
-          Value: !Ref CostAllocationProduct
-        - Key: "ManagedBy"
-          Value: !Ref ManagedBy
+
   ContentLambdaPolicies:
     Type: AWS::IAM::Policy
     Metadata:
@@ -537,13 +485,7 @@ Resources:
                   - "/"
                   - !Ref "AWS::StackId"
       Description: "Amazon Personalize Streaming Events Enpoint"
-      Tags:
-        - Key: "Environment"
-          Value: !Ref Environment
-        - Key: "CostAllocationProduct"
-          Value: !Ref CostAllocationProduct
-        - Key: "ManagedBy"
-          Value: !Ref ManagedBy
+
 #Create the response model for you api
   ApiGatewayModel:
     Type: AWS::ApiGateway::Model
@@ -568,13 +510,6 @@ Resources:
       StageKeys:
       - RestApiId: !Ref ApiGatewayEndpoint
         StageName: !Ref StageName
-      Tags:
-        - Key: "Environment"
-          Value: !Ref Environment
-        - Key: "CostAllocationProduct"
-          Value: !Ref CostAllocationProduct
-        - Key: "ManagedBy"
-          Value: !Ref ManagedBy
   usagePlan:
     DependsOn:
       - APIKey
@@ -586,13 +521,6 @@ Resources:
           Stage: !Ref APIStage
       Description: Customer ABC's usage plan
       UsagePlanName: 'se-usage-plan'
-      Tags:
-        - Key: "Environment"
-          Value: !Ref Environment
-        - Key: "CostAllocationProduct"
-          Value: !Ref CostAllocationProduct
-        - Key: "ManagedBy"
-          Value: !Ref ManagedBy
   usagePlanKey:
     DependsOn:
     #  - APIKey
@@ -646,13 +574,6 @@ Resources:
 
       RestApiId: !Ref "ApiGatewayEndpoint"
       DeploymentId: !Ref apiGatewayDeployment
-      Tags:
-        - Key: "Environment"
-          Value: !Ref Environment
-        - Key: "CostAllocationProduct"
-          Value: !Ref CostAllocationProduct
-        - Key: "ManagedBy"
-          Value: !Ref ManagedBy
   apiGatewayDeployment:
     Type: "AWS::ApiGateway::Deployment"
     DependsOn:
@@ -782,13 +703,6 @@ Resources:
                 - !Split
                   - "/"
                   - !Ref "AWS::StackId"
-      Tags:
-        - Key: "Environment"
-          Value: !Ref Environment
-        - Key: "CostAllocationProduct"
-          Value: !Ref CostAllocationProduct
-        - Key: "ManagedBy"
-          Value: !Ref ManagedBy
 
   AlarmSubscription:
     Type: AWS::SNS::Subscription
