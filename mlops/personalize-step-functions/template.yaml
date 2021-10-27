@@ -120,6 +120,26 @@ Resources:
                 Rules:
                 - Name: prefix
                   Value: !Ref ParameterFile
+  S3LambdaUpdateStateMachine:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/s3lambda-update/
+      Handler: parse-update.lambda_handler
+      Runtime: python3.7
+      Role: !GetAtt TriggerRole.Arn
+      Environment:
+        Variables:
+          STEP_FUNCTIONS_ARN: !Ref UpdateStateMachine
+          PARAMS_FILE: !Ref ParameterFile
+          INPUT_BUCKET: !Ref InputBucket
+      Events:
+        CWSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: 'cron(0 6 ? * SUN *)'
+            Name: AmazonPersonalizeUpdateSchedule
+            Description: Update schedule for Amazon Personalize
+            Enabled: true
   TriggerRole:
     Type: AWS::IAM::Role
     Properties:
@@ -1036,7 +1056,7 @@ Resources:
                             "Resource": "${CreateDatasetArn}",
                             "Parameters": {
                               "datasets.$": "$.params.datasets",
-                              "datasetGroupName.$": "$.params.grep ",
+                              "datasetGroupName.$": "$.params.datasetGroup.name",
                               "datasetGroupArn.$": "$.datasetGroupArn",
                               "datasetType": "Users"
                             },
@@ -1474,8 +1494,9 @@ Resources:
                 "CreateSolutionVersion": {
                   "Type": "Task",
                   "Parameters": {
-                    "name.$": "$.name",
-                    "training_mode.$": "$.training_mode"
+                    "solutionName.$": "$.params.solutions.userPersonalization.name",
+                    "campaignName.$": "$.params.campaigns.userPersonalizationCampaign.name",
+                    "trainingMode.$": "$.params.userPersonalizationUpdates.trainingMode"
                   },
                   "Resource": "${CreateSolutionVersionArn}",
                   "ResultPath": "$.solutionVersionArn",
@@ -1574,39 +1595,6 @@ Resources:
             WaitSolutionVersionArn: !GetAtt WaitSolutionVersion.Arn
             UpdateCampaignArn: !GetAtt UpdateCampaign.Arn
             WaitCampaignUpdateArn: !GetAtt WaitCampaignUpdate.Arn
-
-  EventBridgeRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: events.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: EventBridgePolicy
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - states:StartExecution
-                Resource: !GetAtt [UpdateStateMachine, Arn]
-
-  UpdateStateMachineScheduler:
-    Type: 'AWS::Events::Rule'
-    Properties:
-      Description: Scheduler for UpdateStateMachine state machine
-      Name: UpdateStateMachineScheduler
-      ScheduleExpression: 'cron(0 6 ? * SUN *)' 
-      State: ENABLED
-      Targets:
-        - Arn: !GetAtt UpdateStateMachine.Arn
-          Id: Id1234
-          RoleArn: !GetAtt EventBridgeRole.Arn
-          Input: '{     "name": "userPersonalization",     "training_mode": "FULL" }'
 
   PersonalizeRole:
     Type: "AWS::IAM::Role"

@@ -9,9 +9,9 @@ def lambda_handler(event, context):
     solutionArn = ARN.format(
         region=environ['AWS_REGION'],
         account=LOADER.account_id,
-        name=event['name']+'Solution'
+        name=event['solutionName']
     )
-    trainingMode = event['training_mode']
+    trainingMode = event['trainingMode']
     
     create_solution_version_response = LOADER.personalize_cli.create_solution_version(
         solutionArn = solutionArn,
