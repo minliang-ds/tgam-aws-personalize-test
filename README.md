@@ -56,14 +56,12 @@ The below diagram showcases the campaign creation step functions workflow:
 
 ![stepfunction definition](mlops/images/campaign_creation_step_functions.png)
 
-<<<<<<< HEAD
 The below diagram showcases the campaign update step functions workflow:
 
 ![stepfunction definition](mlops/images/campaign_update_step_functions.png)
-=======
+
 ### Deployment Prerequisite
 - ${notification_email} - Email address to send ml pipeline notification 
->>>>>>> development
 
 ### Deployment steps 
 > **Information**: Steps 2-3 can be executed by running ./update.sh in mlops folder!
