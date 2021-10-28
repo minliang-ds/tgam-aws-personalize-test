@@ -1,6 +1,6 @@
 {
    "datasetGroup":{
-      "name":"tgam-personalize-mlops-test"
+      "name":"tgam-personalize"
    },
    "datasets":{
       "Interactions":{
@@ -115,7 +115,7 @@
    },
    "solutions":{
       "userPersonalization":{
-         "name":"userPersonalizationSolution",
+         "name":"tgam-personalize-userPersonalizationSolution",
          "recipeArn":"arn:aws:personalize:::recipe/aws-user-personalization",
          "solutionConfig":{
              "algorithmHyperParameters":{
@@ -126,21 +126,16 @@
          }
       },
       "similarItems":{
-         "name":"similarItemsSolution",
-         "recipeArn":"arn:aws:personalize:::recipe/aws-similar-items",
-         "solutionConfig":{
-             "algorithmHyperParameters":{
-                 "item_id_hidden_dim":"195",
-                 "item_metadata_hidden_dim":"198"
-             }
+         "name":"tgam-personalize-similarItemsSolution",
+         "recipeArn":"arn:aws:personalize:::recipe/aws-similar-items"
       }
    },
    "eventTracker":{
-      "name":"tgam-personalize-mlops-test-event-tracker"
+      "name":"tgam-personalize-event-tracker"
    },
    "campaigns":{
       "userPersonalizationCampaign":{
-         "name":"userPersonalizationCampaign",
+         "name":"tgam-personalize-userPersonalizationCampaign",
          "minProvisionedTPS":100,
          "campaignConfig":{
              "itemExplorationConfig":{
@@ -150,22 +145,25 @@
          }
       },
       "similarItemsCampaign":{
-         "name":"similarItemsCampaign",
+         "name":"tgam-personalize-similarItemsCampaign",
          "minProvisionedTPS":100
       }
+   },
+   "userPersonalizationUpdates":{
+       "trainingMode": "FULL"
    },
    "filters":
    [
        {
-            "name":"tgam-personalize-mlops-test-category",
+            "name":"tgam-personalize-category",
             "filterExpression":"INCLUDE ItemID WHERE Items.Category IN ($category)"
        },
        {
-            "name":"tgam-personalize-mlops-test-read",
+            "name":"tgam-personalize-read",
             "filterExpression":"INCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\")"
        },
        {
-            "name":"tgam-personalize-mlops-test-unread",
+            "name":"tgam-personalize-unread",
             "filterExpression":"EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\")"
        }
    ]

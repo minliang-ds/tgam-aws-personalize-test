@@ -52,9 +52,13 @@ The below diagram describes the architecture of the solution:
 
 ![Architecture Diagram](mlops/images/architecture.png)
 
-The below diagram showcases the StepFunction workflow definition:
+The below diagram showcases the campaign creation step functions workflow:
 
-![stepfunction definition](mlops/images/stepfunctions.png)
+![stepfunction definition](mlops/images/campaign_creation_step_functions.png)
+
+The below diagram showcases the campaign update step functions workflow:
+
+![stepfunction definition](mlops/images/campaign_update_step_functions.png)
 
 ### Deployment Prerequisite
 - ${notification_email} - Email address to send ml pipeline notification 
@@ -81,7 +85,7 @@ sam deploy --stack-name tgam-personalize-mlops-test  \
   --parameter-overrides ParameterKey=Email,ParameterValue=${notification_email}
 ````
 5. Navigate to your email inbox and confirm your subscription to the SNS topic
-6. \[In CloudShell\]: Once deployed, the pipeline will create the **InputBucket** which you can find in the CloudFormation stack output. Use it to upload your CSV datasets using the following structure:
+6. [In CloudShell]: Once deployed, the pipeline will create the **InputBucket** which you can find in the CloudFormation stack output. Use it to upload your CSV datasets using the following structure:
 ```bash
 Items/              # Items dataset(s) folder
 Interactions/       # Interaction dataset(s) folder
@@ -90,7 +94,8 @@ Interactions/       # Interaction dataset(s) folder
 ```bash
 cd ~/mlops
 ```
-8. [In CloudShell]: Upload the `params.json` file to the **root directory of the InputBucket**. This step will trigger the step functions workflow.
+8. [In CloudShell]: Upload the `params.json` file to the **root directory of the InputBucket**. This step will trigger the campaign creation step functions workflow.
+- Note that future updates to the `params.json` file should follow the resource naming convention that uses the dataset group name as the prefix
 ```bash
 aws s3 cp ./params.json s3://<input-bucket-name>
 ```

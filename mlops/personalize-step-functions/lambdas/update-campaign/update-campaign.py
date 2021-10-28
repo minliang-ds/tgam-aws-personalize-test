@@ -9,7 +9,7 @@ def lambda_handler(event, context):
     campaignArn = ARN.format(
         region=environ['AWS_REGION'],
         account=LOADER.account_id,
-        name=event['name']+'Campaign'
+        name=event['campaignName']
     )
     solutionVersionArn = event['solutionVersionArn']
 
