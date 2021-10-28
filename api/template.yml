@@ -404,7 +404,7 @@ Resources:
         Variables:
           TRACKING_ID: !Ref EventTrackerIdParam
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
-          CONTENT_DATASET_ARN: !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:dataset/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/datasetGroupName}}/ITEMS'
+          CONTENT_DATASET_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:dataset/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/datasetGroupName}}/ITEMS'
 
   KinesisEventStreamConsumer:
     Type: "AWS::Kinesis::StreamConsumer"
