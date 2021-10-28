@@ -67,5 +67,21 @@ def lambda_handler(event, context):
         status = LOADER.personalize_cli.describe_dataset(datasetArn=datasetArn
                                                         )['dataset']
 
+    try:
+        prefix_name=environ.get('ResourcesPrefix')
+        env_name=environ.get('Environment')
+
+        LOADER.ssm_cli.put_parameter(
+            Name=f"/personalize/{prefix_name}/{env_name}/DataSetName",
+            Description=f"Parameter with dataset name for: {prefix_name} env: ${env_name}",
+            Value=status.get("name"),
+            Type='String',
+            Overwrite=True,
+            Tier='Standard',
+            DataType='string'
+        )
+    except:
+        pass
+
     actions.take_action(status['status'])
     return datasetArn

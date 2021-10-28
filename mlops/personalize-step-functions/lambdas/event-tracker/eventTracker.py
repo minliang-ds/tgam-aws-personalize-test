@@ -1,6 +1,7 @@
 from os import environ
 import actions
 from loader import Loader
+import ssm_parameters
 
 LOADER = Loader()
 
@@ -25,6 +26,13 @@ def lambda_handler(event, context):
         status = LOADER.personalize_cli.describe_event_tracker(
             eventTrackerArn=eventTrackerArn
         )['eventTracker']
-    
+
+    try:
+        ssm_parameters.put_parameter("eventTrackerArn", eventTrackerArn)
+        ssm_parameters.put_parameter("eventTrackerId", status['trackingId'])
+    except:
+        pass
+
+
     actions.take_action(status['status'])
     return eventTrackerArn

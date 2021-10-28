@@ -1,6 +1,8 @@
 from os import environ
 from loader import Loader
 import actions
+import ssm_parameters
+
 
 LOADER = Loader()
 
@@ -10,6 +12,9 @@ def lambda_handler(event, context):
         response = LOADER.personalize_cli.delete_dataset_group(
             datasetGroupArn=event['datasetGroupArn']
         )
-    except Exception as e:
+        ssm_parameters.delete_parameter("datasetGroupName")
+
+except Exception as e:
         LOADER.logger.error(f'Error deleting dataset group: {e}')
         raise e
+

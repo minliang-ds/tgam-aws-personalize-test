@@ -1,6 +1,8 @@
 from os import environ
 import actions
 from loader import Loader
+import ssm_parameters
+
 
 ARN = 'arn:aws:personalize:{region}:{account}:dataset-group/{name}'
 LOADER = Loader()
@@ -25,6 +27,8 @@ def lambda_handler(event, context):
         status = LOADER.personalize_cli.describe_dataset_group(
             datasetGroupArn=datasetGroupArn
         )['datasetGroup']
+
+    ssm_parameters.put_parameter("datasetGroupName", event['datasetGroup']['name'])
 
     actions.take_action(status['status'])
     return datasetGroupArn

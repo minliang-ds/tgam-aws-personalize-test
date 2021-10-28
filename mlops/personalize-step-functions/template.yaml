@@ -5,15 +5,9 @@ Description: >
 Globals:
   Function:
     Timeout: 300
-    Tags:
-      Environment: !Ref Environment
-      CostAllocationProduct: !Ref CostAllocationProduct
-      ManagedBy: !Ref ManagedBy
     Environment:
       Variables:
         Environment: !Ref Environment  
-        CostAllocationProduct: !Ref CostAllocationProduct  
-        ManagedBy: !Ref ManagedBy
         ResourcesPrefix: !Ref ResourcesPrefix
         CurretnAccountId: !Ref "AWS::AccountId"
         
@@ -40,19 +34,6 @@ Parameters:
       - "stg"
       - "prod"
 
-  ManagedBy:
-    Type: String
-    Default: "CloudFormation"
-    AllowedValues:
-      - "CloudFormation"
-
-  CostAllocationProduct:
-    Type: String
-    Default: "amazon_personalize"
-    AllowedValues:
-      - "amazon_personalize"
-      
-
 Resources:
 
 # ------------------------
@@ -60,6 +41,21 @@ Resources:
 # ------------------------
   InputBucket:
     Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref Environment
+          - 'input'
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
     Metadata:
       cfn_nag:
         rules_to_suppress:
@@ -100,11 +96,18 @@ Resources:
                   - !Ref InputBucket
   S3Lambda:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/s3lambda/
       Handler: parse.lambda_handler
       Runtime: python3.8
-      Role: !GetAtt TriggerRole.Arn
+      Role: !GetAtt S3TriggerRole.Arn
       Environment:
         Variables:
           STEP_FUNCTIONS_ARN: !Ref DeployStateMachine
@@ -118,15 +121,22 @@ Resources:
             Filter:
               S3Key:
                 Rules:
-                - Name: prefix
-                  Value: !Ref ParameterFile
+                  - Name: prefix
+                    Value: !Ref ParameterFile
   S3LambdaUpdateStateMachine:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/s3lambda-update/
       Handler: parse-update.lambda_handler
       Runtime: python3.8
-      Role: !GetAtt TriggerRole.Arn
+      Role: !GetAtt UpdateStateTriggerRole.Arn
       Environment:
         Variables:
           STEP_FUNCTIONS_ARN: !Ref UpdateStateMachine
@@ -140,7 +150,7 @@ Resources:
             Name: AmazonPersonalizeUpdateSchedule
             Description: Update schedule for Amazon Personalize
             Enabled: true
-  TriggerRole:
+  S3TriggerRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -152,24 +162,87 @@ Resources:
                 - !Sub lambda.${AWS::Region}.amazonaws.com
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess
-        - arn:aws:iam::aws:policy/CloudWatchFullAccess
-        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: LambdaExecutionPolicy
           PolicyDocument:
-            Version: 2012-10-17
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
-                  - lambda:InvokeFunction
-                Resource: "*"
+                  - s3:GetObject
+                Resource: !Join
+                  - ""
+                  - - "arn:aws:s3:::"
+                    - !Ref ResourcesPrefix
+                    - "-"
+                    - !Ref Environment
+                    - "-"
+                    - 'input'
+                    - "-"
+                    - !Select
+                      - 0
+                      - !Split
+                        - "-"
+                        - !Select
+                          - 2
+                          - !Split
+                            - "/"
+                            - !Ref "AWS::StackId"
+                    - "/"
+                    - !Ref ParameterFile
+
               - Effect: Allow
                 Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: arn:aws:logs:*:*:*
+                  - states:StartExecution
+                Resource: !Ref DeployStateMachine
+  UpdateStateTriggerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - !Sub lambda.${AWS::Region}.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: LambdaExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Join
+                  - ""
+                  - - "arn:aws:s3:::"
+                    - !Ref ResourcesPrefix
+                    - "-"
+                    - !Ref Environment
+                    - "-"
+                    - 'input'
+                    - "-"
+                    - !Select
+                      - 0
+                      - !Split
+                        - "-"
+                        - !Select
+                          - 2
+                          - !Split
+                            - "/"
+                            - !Ref "AWS::StackId"
+                    - "/"
+                    - !Ref ParameterFile
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: !Ref DeployStateMachine
+
+
 # ------------------------
 # SNS Topic
 # ------------------------
@@ -187,6 +260,13 @@ Resources:
           Protocol: email
   Notify:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/notify/
       Handler: notify.lambda_handler
@@ -200,9 +280,16 @@ Resources:
             - Effect: Allow
               Action:
                 - sns:Publish
-              Resource: "*"
+              Resource: !Ref NotificationTopic
   NotifyDelete:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/notify-delete/
       Handler: notify-delete.lambda_handler
@@ -216,7 +303,7 @@ Resources:
             - Effect: Allow
               Action:
                 - sns:Publish
-              Resource: "*"
+              Resource: !Ref NotificationTopic
 # ------------------------
 # Custom Shared Layer
 # ------------------------
@@ -228,11 +315,29 @@ Resources:
           - python3.8
         RetentionPolicy: Delete
 
-# ------------------------
+  SSMLambdaPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'ssm:PutParameter'
+              - 'ssm:DeleteParameter'
+              - 'ssm:GetParameters'
+            Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/personalize/${ResourcesPrefix}/${Environment}/*"
+
+  # ------------------------
 # Create Steps Definition
 # ------------------------
   StatesExecutionRole:
     Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W76
+            reason: "Listing resources as per security requirement"
     Properties:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -250,9 +355,44 @@ Resources:
               - Effect: Allow
                 Action:
                   - "lambda:InvokeFunction"
-                Resource: "*"
+                Resource:
+                  - !GetAtt CreateDatasetGroup.Arn
+                  - !GetAtt CreateDataset.Arn
+                  - !GetAtt CreateSolution.Arn
+                  - !GetAtt CreateSolutionVersion.Arn
+                  - !GetAtt CreateCampaign.Arn
+                  - !GetAtt CreateFilters.Arn
+                  - !GetAtt WaitSolutionVersion.Arn
+                  - !GetAtt WaitDeleteCampaign.Arn
+                  - !GetAtt WaitDeleteDataset.Arn
+                  - !GetAtt WaitDeleteDatasetgroup.Arn
+                  - !GetAtt WaitDeleteSolution.Arn
+                  - !GetAtt WaitDeleteTracker.Arn
+                  - !GetAtt WaitCampaignUpdate.Arn
+                  - !GetAtt AttachEventTracker.Arn
+                  - !GetAtt ImportData.Arn
+                  - !GetAtt UpdateCampaign.Arn
+                  - !GetAtt ListCampaigns.Arn
+                  - !GetAtt ListDatasets.Arn
+                  - !GetAtt ListSolutionVersions.Arn
+                  - !GetAtt ListSolutions.Arn
+                  - !GetAtt ListTrackers.Arn
+                  - !GetAtt DeleteCampaign.Arn
+                  - !GetAtt DeleteDataset.Arn
+                  - !GetAtt DeleteDatasetGroup.Arn
+                  - !GetAtt DeleteSolution.Arn
+                  - !GetAtt DeleteTracker.Arn
   CreateDatasetGroup:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/create-datasetgroup/
       Handler: datasetgroup.lambda_handler
@@ -260,6 +400,7 @@ Resources:
       Layers:
         - !Ref SharedLayer
       Policies:
+        - !Ref SSMLambdaPolicy
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
@@ -269,6 +410,15 @@ Resources:
               Resource: "*"
   CreateDataset:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/create-dataset/
       Handler: dataset.lambda_handler
@@ -276,6 +426,7 @@ Resources:
       Layers:
         - !Ref SharedLayer
       Policies:
+        - !Ref SSMLambdaPolicy
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
@@ -287,6 +438,15 @@ Resources:
               Resource: "*"
   ImportData:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/import-data/
       Handler: datasetimport.lambda_handler
@@ -310,6 +470,15 @@ Resources:
               Resource: !GetAtt PersonalizeRole.Arn
   CreateSolution:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/create-solution/
       Handler: solution.lambda_handler
@@ -317,6 +486,7 @@ Resources:
       Layers:
         - !Ref SharedLayer
       Policies:
+        - !Ref SSMLambdaPolicy
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
@@ -327,6 +497,15 @@ Resources:
               Resource: "*"
   WaitSolutionVersion:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/wait-solution-version
       Handler: wait-solution-version.lambda_handler
@@ -342,6 +521,15 @@ Resources:
               Resource: "*"
   CreateCampaign:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/create-campaign/
       Handler: campaign.lambda_handler
@@ -349,6 +537,7 @@ Resources:
       Layers:
         - !Ref SharedLayer
       Policies:
+        - !Ref SSMLambdaPolicy
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
@@ -359,6 +548,15 @@ Resources:
               Resource: "*"
   DeleteCampaign:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/delete-campaign/
       Handler: delete-campaign.lambda_handler
@@ -366,6 +564,7 @@ Resources:
       Layers:
         - !Ref SharedLayer
       Policies:
+        - !Ref SSMLambdaPolicy
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
@@ -374,6 +573,15 @@ Resources:
               Resource: "*"
   DeleteDataset:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/delete-dataset/
       Handler: delete-dataset.lambda_handler
@@ -381,6 +589,7 @@ Resources:
       Layers:
         - !Ref SharedLayer
       Policies:
+        - !Ref SSMLambdaPolicy
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
@@ -389,6 +598,15 @@ Resources:
               Resource: "*"
   DeleteDatasetGroup:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/delete-datasetgroup/
       Handler: delete-datasetgroup.lambda_handler
@@ -396,6 +614,7 @@ Resources:
       Layers:
         - !Ref SharedLayer
       Policies:
+        - !Ref SSMLambdaPolicy
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
@@ -404,6 +623,15 @@ Resources:
               Resource: "*"
   DeleteSolution:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/delete-solution
       Handler: delete-solution.lambda_handler
@@ -411,6 +639,7 @@ Resources:
       Layers:
         - !Ref SharedLayer
       Policies:
+        - !Ref SSMLambdaPolicy
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
@@ -419,6 +648,15 @@ Resources:
               Resource: "*"
   DeleteTracker:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/delete-tracker
       Handler: delete-tracker.lambda_handler
@@ -426,6 +664,7 @@ Resources:
       Layers:
         - !Ref SharedLayer
       Policies:
+        - !Ref SSMLambdaPolicy
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
@@ -434,6 +673,15 @@ Resources:
               Resource: "*"
   ListCampaigns:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/list-campaigns
       Handler: list-campaigns.lambda_handler
@@ -449,6 +697,15 @@ Resources:
               Resource: "*"
   ListDatasets:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/list-datasets
       Handler: list-datasets.lambda_handler
@@ -464,6 +721,15 @@ Resources:
               Resource: "*"
   ListSolutionVersions:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/list-solution-versions
       Handler: list-solution-versions.lambda_handler
@@ -479,6 +745,15 @@ Resources:
               Resource: "*"
   ListSolutions:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/list-solutions
       Handler: list-solutions.lambda_handler
@@ -494,6 +769,15 @@ Resources:
               Resource: "*"
   ListTrackers:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/list-trackers
       Handler: list-trackers.lambda_handler
@@ -509,6 +793,15 @@ Resources:
               Resource: "*"
   WaitDeleteCampaign:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/wait-delete-campaign
       Handler: wait-delete-campaign.lambda_handler
@@ -524,6 +817,15 @@ Resources:
               Resource: "*"
   WaitDeleteDataset:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/wait-delete-dataset
       Handler: wait-delete-dataset.lambda_handler
@@ -539,6 +841,15 @@ Resources:
               Resource: "*"
   WaitDeleteDatasetgroup:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/wait-delete-datasetgroup
       Handler: wait-delete-datasetgroup.lambda_handler
@@ -554,6 +865,15 @@ Resources:
               Resource: "*"
   WaitDeleteSolution:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/wait-delete-solution
       Handler: wait-delete-solution.lambda_handler
@@ -569,6 +889,15 @@ Resources:
               Resource: "*"
   WaitDeleteTracker:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/wait-delete-tracker
       Handler: wait-delete-tracker.lambda_handler
@@ -584,6 +913,15 @@ Resources:
               Resource: "*"
   AttachEventTracker:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/event-tracker/
       Handler: eventTracker.lambda_handler
@@ -599,9 +937,17 @@ Resources:
                 - personalize:DescribeEventTracker
                 - personalize:ListEventTrackers
               Resource: "*"
-
   CreateFilters:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/create-filters/
       Handler: filters.lambda_handler
@@ -617,9 +963,17 @@ Resources:
                 - personalize:DescribeFilter
                 - personalize:ListFilters
               Resource: "*"
-  
   CreateSolutionVersion:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/create-solution-version/
       Handler: solution-version.lambda_handler
@@ -633,9 +987,17 @@ Resources:
               Action:
                 - personalize:CreateSolutionVersion
               Resource: "*"
-  
   UpdateCampaign:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/update-campaign/
       Handler: update-campaign.lambda_handler
@@ -643,15 +1005,24 @@ Resources:
       Layers:
         - !Ref SharedLayer
       Policies:
+        - !Ref SSMLambdaPolicy
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - personalize:UpdateCampaign
               Resource: "*"
-  
   WaitCampaignUpdate:
     Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
       CodeUri: lambdas/wait-campaign-update/
       Handler: wait-campaign-update.lambda_handler
@@ -665,7 +1036,6 @@ Resources:
               Action:
                 - personalize:DescribeCampaign
               Resource: "*"
-  
   DeleteAllDatasetGroupResources:
     Type: "AWS::StepFunctions::StateMachine"
     Properties:
@@ -1542,6 +1912,7 @@ Resources:
                   "Type": "Task",
                   "Parameters": {
                     "campaignName.$": "$.params.campaigns.userPersonalizationCampaign.name",
+                    "minProvisionedTPS.$": "$.params.campaigns.userPersonalizationCampaign.minProvisionedTPS",
                     "solutionVersionArn.$": "$.solutionVersionArn"
                   },
                   "Resource": "${UpdateCampaignArn}",
@@ -1618,7 +1989,44 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:ListBucket
-                Resource: arn:aws:s3:::*
+                Resource:
+                  - !Join
+                    - ""
+                    - - "arn:aws:s3:::"
+                      - !Ref ResourcesPrefix
+                      - "-"
+                      - !Ref Environment
+                      - "-"
+                      - 'input'
+                      - "-"
+                      - !Select
+                        - 0
+                        - !Split
+                          - "-"
+                          - !Select
+                            - 2
+                            - !Split
+                              - "/"
+                              - !Ref "AWS::StackId"
+                  - !Join
+                    - ""
+                    - - "arn:aws:s3:::"
+                      - !Ref ResourcesPrefix
+                      - "-"
+                      - !Ref Environment
+                      - "-"
+                      - 'input'
+                      - "-"
+                      - !Select
+                        - 0
+                        - !Split
+                          - "-"
+                          - !Select
+                            - 2
+                            - !Split
+                              - "/"
+                              - !Ref "AWS::StackId"
+                      - "/*"
 
 Outputs:
   DeployStateMachineArn:

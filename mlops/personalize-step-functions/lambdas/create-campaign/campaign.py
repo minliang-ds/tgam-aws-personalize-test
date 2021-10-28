@@ -1,6 +1,7 @@
 from os import environ
 import actions
 from loader import Loader
+import ssm_parameters
 
 ARN = 'arn:aws:personalize:{region}:{account}:campaign/{name}'
 LOADER = Loader()
@@ -44,6 +45,13 @@ def lambda_handler(event, context):
         status = LOADER.personalize_cli.describe_campaign(
             campaignArn=campaignArn
         )['campaign']
+
+    try:
+        ssm_parameters.put_parameter("campaignArn", campaignArn)
+        ssm_parameters.put_parameter("campaignName", event['campaign']['name'])
+        ssm_parameters.put_parameter("minProvisionedTPS", event['campaign']['minProvisionedTPS'])
+    except:
+        pass
 
     actions.take_action(status['status'])
     return campaignArn

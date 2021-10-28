@@ -15,6 +15,7 @@ Globals:
         Environment: !Ref Environment  
         ResourcesPrefix: !Ref ResourcesPrefix
         CurretnAccountId: !Ref "AWS::AccountId"
+        FilterAppId: !Ref FilterAppId
 
 Mappings: 
   EnvironmentMap: 
@@ -100,11 +101,16 @@ Parameters:
     Type: Number
     Description: Alarm value for IteratorAge
     Default: 10000
-    
-  ContentDatasetName:
+
+  FilterAppId:
     Type: String
-    Description: "Name of datasetGroup from params.json file"
-    Default: "tgam-personalize-mlops-test"
+    Description: "Value of sp_app_id to filter event streams"
+    Default: "theglobeandmail-website"
+
+  #ContentDatasetName:
+  #  Type: String
+  #  Description: "Name of datasetGroup from params.json file"
+  #  Default: "tgam-personalize-mlops-test"
 
   EventTrackerIdParam:
     Type: String
@@ -398,7 +404,7 @@ Resources:
         Variables:
           TRACKING_ID: !Ref EventTrackerIdParam
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
-          CONTENT_DATASET_ARN: !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:dataset/${ContentDatasetName}/ITEMS'
+          CONTENT_DATASET_ARN: !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:dataset/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/datasetGroupName}}/ITEMS'
 
   KinesisEventStreamConsumer:
     Type: "AWS::Kinesis::StreamConsumer"
