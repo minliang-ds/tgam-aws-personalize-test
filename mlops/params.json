@@ -133,8 +133,8 @@
                 "item_id_hidden_dim":"195",
                 "item_metadata_hidden_dim":"198"
             }
-        }
-     }
+         }
+      }
    },
    "eventTracker":{
       "name":"tgam-personalize-event-tracker"
