@@ -129,11 +129,12 @@
          "name":"tgam-personalize-similarItemsSolution",
          "recipeArn":"arn:aws:personalize:::recipe/aws-similar-items",
          "solutionConfig":{
-             "algorithmHyperParameters":{
-                 "item_id_hidden_dim":"195",
-                 "item_metadata_hidden_dim":"198"
-             }
-      }
+            "algorithmHyperParameters":{
+                "item_id_hidden_dim":"195",
+                "item_metadata_hidden_dim":"198"
+            }
+        }
+     }
    },
    "eventTracker":{
       "name":"tgam-personalize-event-tracker"
