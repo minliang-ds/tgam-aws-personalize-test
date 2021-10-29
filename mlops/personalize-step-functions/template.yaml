@@ -328,7 +328,7 @@ Resources:
               - 'ssm:GetParameters'
             Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/personalize/${ResourcesPrefix}/${Environment}/*"
 
-  # ------------------------
+# ------------------------
 # Create Steps Definition
 # ------------------------
   StatesExecutionRole:
@@ -382,6 +382,8 @@ Resources:
                   - !GetAtt DeleteDatasetGroup.Arn
                   - !GetAtt DeleteSolution.Arn
                   - !GetAtt DeleteTracker.Arn
+                  - !GetAtt Notify.Arn
+                  - !GetAtt NotifyDelete.Arn
   CreateDatasetGroup:
     Type: AWS::Serverless::Function
     Metadata:
