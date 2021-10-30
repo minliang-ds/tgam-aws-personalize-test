@@ -9,7 +9,6 @@ Globals:
       SecurityGroupIds:
         - !Ref LambdaSecurityGroup
       SubnetIds: !Ref LambdaPrivateSubnetIDs
-    Timeout: 3
     Environment:
       Variables:
         Environment: !Ref Environment  
@@ -26,6 +25,8 @@ Mappings:
       ThrottlingBurstLimit: 200
       LogRotation: 7
       EventLogRotation: 7
+      GetRecoomendationsHttpTimeoutMs: 3000
+      GetRecoomendationsLambdaTimeout: 4
     prod:
       Domain: "recoapi-ng-prod.theglobeandmail.com"
       ProvisionedConcurrent: 100
@@ -33,6 +34,10 @@ Mappings:
       ThrottlingBurstLimit: 400
       LogRotation: 30
       EventLogRotation: 7
+      HttpTimeoutMs: 3000
+      GetRecoomendationsHttpTimeoutMs: 3000
+      GetRecoomendationsLambdaTimeout: 4
+
     stg: 
       Domain: "recoapi-ng-stg.theglobeandmail.com"
       ProvisionedConcurrent: 10
@@ -40,6 +45,9 @@ Mappings:
       ThrottlingBurstLimit: 200
       LogRotation: 7
       EventLogRotation: 7
+      GetRecoomendationsHttpTimeoutMs: 3000
+      GetRecoomendationsLambdaTimeout: 4
+
 
 
 Parameters:
@@ -294,6 +302,7 @@ Resources:
                 - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Sophi3DynamoDbTableName}'
                 - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Sophi2DynamoDbTableName}'
       MemorySize: 192
+      Timeout: !FindInMap [EnvironmentMap, !Ref Environment, GetRecoomendationsLambdaTimeout]
       Layers:
         - !Ref PythonMetricsLayer
       AutoPublishAlias: "getRecommendations"
@@ -592,6 +601,7 @@ Resources:
       Integration:
         IntegrationHttpMethod: "POST"
         Type: "AWS_PROXY"
+        TimeoutInMillis: !FindInMap [EnvironmentMap, !Ref Environment, GetRecoomendationsHttpTimeoutMs]
         Uri: !Sub
           - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations"
           - lambdaArn: !GetAtt "GetRecommendations.Arn"

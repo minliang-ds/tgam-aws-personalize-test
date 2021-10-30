@@ -33,11 +33,17 @@ inputs
   "hash_id": ""
 }
 """
-import time 
+import time
+
 
 from boto3 import client
-personalize_cli = client('personalize-runtime')
-dynamodb = client('dynamodb')
+import botocore
+config = botocore.config.Config(
+    connect_timeout=1, read_timeout=1,
+    retries={'max_attempts': 2})
+
+personalize_cli = client('personalize-runtime', config=config)
+dynamodb = client('dynamodb', config=config)
 
 from boto3.dynamodb.types import TypeDeserializer
 deserializer = TypeDeserializer()
@@ -57,7 +63,7 @@ class DecimalEncoder(json.JSONEncoder):
             else:
                 return int(o)
         return super(DecimalEncoder, self).default(o)
-        
+
 region            = os.environ['AWS_REGION']
 account_id        = os.environ['CurretnAccountId']
 filter_prefix     = os.environ['FiltersPrefix']
@@ -89,9 +95,9 @@ def get_dynamo_data(dynamo_table, sort_key_name, attributes, item_list, return_t
                     items_limit = 100
                 else:
                     items_limit = len(item_list) - processed_items
-                    
+
                 request_batch = [{sort_key_name: {'S': item["itemId"]}} for item in item_list[processed_items:processed_items+items_limit]]
-                
+
                 while request_batch:
                     db_response = dynamodb.batch_get_item(
                         RequestItems={
@@ -104,12 +110,12 @@ def get_dynamo_data(dynamo_table, sort_key_name, attributes, item_list, return_t
                     )
                     items = db_response['Responses'].get(dynamo_table)
                     deserialized_iteration= [{k.lower(): deserializer.deserialize(v) for k, v in element.items()} for element in items]
-                    
+
                     deserialized_item.extend(deserialized_iteration)
                     request_batch = db_response.get("UnprocessedKeys",  None)
-                
+
                 processed_items += items_limit
-                
+
         except ClientError as e:
             print(f"RequestID: {api_gateway_request_id} Key Error: {e}")
 
@@ -120,17 +126,17 @@ def get_dynamo_data(dynamo_table, sort_key_name, attributes, item_list, return_t
         if return_type_map:
             return_map = {element['contentid']: element for element in deserialized_item}
             return return_map;
-        
+
         if return_type_list:
             return deserialized_item;
 
-@metric_scope        
+@metric_scope
 def handler(event, context, metrics):
     api_gateway_request_id = event.get("requestContext").get("requestId")
     print(f"RequestID: {api_gateway_request_id} Event = {event}")
     metrics.set_property("ApiRequestId", api_gateway_request_id)
     metrics.set_property("LambdaRequestId", context.aws_request_id)
-    
+
     body = json.loads(event['body'])
     payload = body.get("sub_requests")[0]
 
@@ -140,19 +146,21 @@ def handler(event, context, metrics):
     except:
         #no pass as security scanner will complain More Info: https://bandit.readthedocs.io/en/latest/plugins/b110_try_except_pass.html
         return_headers['Access-Control-Allow-Origin'] = '*'
-        
+
+    deserialized_item = []
+
     reply = {}
     reply['recommendations'] = []
     reply["request_id"] = api_gateway_request_id
     reply["container_position"] = 0
-    
+
     reply["widget_id"] = payload.get("widget_id")
-    
+
     try:
         payload["limit"] = int(payload.get("limit"))
     except:
         payload["limit"] = 25
-  
+
     try:
         arguments={
             'campaignArn'  : os.environ['CAMPAIGN_ARN'],
@@ -161,17 +169,17 @@ def handler(event, context, metrics):
             'filterValues' : {},
             'context'      : {}
         }
-        
+
         #Add one to limit in case when personalize will return last_content_ids in reply
         arguments["numResults"] += 1
 
         #input validation
         if arguments["numResults"] > 500:
             arguments["numResults"] = 500
-            
+
         if payload.get("context") == "art_same_section_mostpopular":
             arguments["filterArn"] =  f'arn:aws:personalize:{region}:{account_id}:filter/{filter_prefix}-category'
-            
+
             #section can be /canada/ or /canada/alberta/
             #in both cases we need category to be "canada"
             category = payload.get("section").split("/")
@@ -179,7 +187,7 @@ def handler(event, context, metrics):
                 category = category[1]
             else:
                 category = payload.get("section")
-            
+
             arguments["filterValues"]["category"] = f'\"{category}\"';
         else:
             arguments["filterArn"] = f'arn:aws:personalize:{region}:{account_id}:filter/{filter_prefix}-unread'
@@ -199,15 +207,15 @@ def handler(event, context, metrics):
         after_request = time.time_ns()
 
         metrics.put_metric("PersonalizeRequestTime", (int(after_request-before_request)/1000000), "Milliseconds")
-        
+
         print(f"RequestID: {api_gateway_request_id} RawRecommendations = {response['itemList']}")
-        
+
         metrics.put_metric("ReturnRecommendations", (len(response['itemList'])), "None")
         metrics.put_metric("MissingRecommendations", (arguments["numResults"] - len(response['itemList'])), "None")
 
         #reply['recommendations_debug'] = response['itemList']
         reply['recommendationId'] = response['recommendationId']
-        
+
         #UpdatedDate => updated_at
         #promo_image - not sure how it converted
         #Section => section_meta_title and some convertion
@@ -217,30 +225,30 @@ def handler(event, context, metrics):
         #State ?
         #CanonicalURL => url
         #CreditLine > credit and some convertion
-        #Sponsored ?? 
+        #Sponsored ??
         #ContentId => content_id
         #ContentType => content_type
         #ContentRestriction => protection_product
         #PublishedDate => published_at
         #WordCount => word_count
         #byline = what if we have 2 ?
-        
-        
-        
+
+
+
         #Mapping convertion fields from dynamo table to reply
-        names_key = { 
-          'WordCount'.lower()            : 'word_count' ,
-          'ContentType'.lower()          : 'content_type' ,
-          'PublishedDate'.lower()        : 'published_at', 
-          'UpdatedDate'.lower()          : 'updated_at',
-          'Section'.lower()              : 'section_meta_title',
-          'CanonicalURL'.lower()         : 'url',
-          'CreditLine'.lower()           : 'credit',
-          'ContentId'.lower()            : 'content_id',
-          'ContentType'.lower()          : 'content_type',
-          'ContentRestriction'.lower()   : 'protection_product',
-          'ContentType'.lower()          : 'content_type',
-          'Label'.lower()                : 'label'
+        names_key = {
+            'WordCount'.lower()            : 'word_count' ,
+            'ContentType'.lower()          : 'content_type' ,
+            'PublishedDate'.lower()        : 'published_at',
+            'UpdatedDate'.lower()          : 'updated_at',
+            'Section'.lower()              : 'section_meta_title',
+            'CanonicalURL'.lower()         : 'url',
+            'CreditLine'.lower()           : 'credit',
+            'ContentId'.lower()            : 'content_id',
+            'ContentType'.lower()          : 'content_type',
+            'ContentRestriction'.lower()   : 'protection_product',
+            'ContentType'.lower()          : 'content_type',
+            'Label'.lower()                : 'label'
         }
 
         try:
@@ -249,12 +257,15 @@ def handler(event, context, metrics):
                 deserialized_item = get_dynamo_data(sophi3_table_name, sort_key_name_sophi3, attributes_to_get_sophi3, response['itemList'], False, True, api_gateway_request_id)
                 after_request = time.time_ns()
                 metrics.put_metric("DynamoSophi2ReuqestTime", (int(after_request-before_request)/1000000), "Milliseconds")
-                
+                metrics.put_metric("MissingDataDynamoSophi2", (arguments["numResults"] - len(deserialized_item)), "None")
+
                 before_request = time.time_ns()
                 images_map = get_dynamo_data(sophi2_table_name, sort_key_name_sophi2, attributes_to_get_sophi2, response['itemList'], True, False, api_gateway_request_id)
                 after_request = time.time_ns()
                 metrics.put_metric("DynamoSophi3ReuqestTime", (int(after_request-before_request)/1000000), "Milliseconds")
-                
+                metrics.put_metric("MissingDataDynamoSophi3", (arguments["numResults"] - len(images_map)), "None")
+
+
                 #print(f"RequestID: {api_gateway_request_id} Images map: {images_map}")
                 #print(f"RequestID: {api_gateway_request_id} Recommendation list: {deserialized_item}")
 
@@ -267,43 +278,43 @@ def handler(event, context, metrics):
 
                 for row in deserialized_item:
 
-                  #Updaete formating of keys to match reply requirements
-                  for k, v in names_key.items():
-                    for old_name in list(row):
-                      if k == old_name:
-                        row[v] = row.pop(old_name)
-                    
-                  #byline in Dynamo is list of strings (sometimes empty) and we need to return it as string
-                  if row.get('byline') and (type(row.get('byline')) is list):
-                    if len(row['byline']) > 0:
-                        row['byline'] = ' and '.join(row['byline'])
-                    else:
-                        row['byline'] = ''
-            
-                  #Exlude last_content_ids from result 
-                  current_content_id = row.get('content_id')
-                  if payload.get("last_content_ids") and current_content_id == payload.get("last_content_ids"):
-                    continue;
-                    
-                  #Merging information about images from sophi2 table
-                  if images_map.get(current_content_id):
-                      row['author_rel'] = [{}]
-                      if images_map[current_content_id].get('authorrel') and len(images_map[current_content_id].get('authorrel')) > 0:
-                          row['author_rel'][0]['url220'] = images_map[current_content_id].get('authorrel')[0].get('url220', "")
+                    #Updaete formating of keys to match reply requirements
+                    for k, v in names_key.items():
+                        for old_name in list(row):
+                            if k == old_name:
+                                row[v] = row.pop(old_name)
 
-                      row['picture_rel'] = [{}]
-                      if images_map[current_content_id].get('picturerel') and len(images_map[current_content_id].get('picturerel')) > 0:
-                        row['picture_rel'][0]['url220'] = images_map[current_content_id].get('picturerel')[0].get('url220', "")
+                    #byline in Dynamo is list of strings (sometimes empty) and we need to return it as string
+                    if row.get('byline') and (type(row.get('byline')) is list):
+                        if len(row['byline']) > 0:
+                            row['byline'] = ' and '.join(row['byline'])
+                        else:
+                            row['byline'] = ''
 
-                      #copy formatted from arc_content.PictureRel
-                      row['promo_image'] = {}
-                      row['promo_image']['urls'] = {}
-                      if images_map[current_content_id].get('picturerel') and len(images_map[current_content_id].get('picturerel')) > 0:
-                        row['promo_image']['urls']['url220'] = images_map[current_content_id].get('picturerel')[0].get('url220', "")
+                    #Exlude last_content_ids from result
+                    current_content_id = row.get('content_id')
+                    if payload.get("last_content_ids") and current_content_id == payload.get("last_content_ids"):
+                        continue;
 
-                  reply["recommendations"].append(row)
-                  
-                reply["recommendations"] = reply["recommendations"][:arguments["numResults"] - 1] 
+                    #Merging information about images from sophi2 table
+                    if images_map.get(current_content_id):
+                        row['author_rel'] = [{}]
+                        if images_map[current_content_id].get('authorrel') and len(images_map[current_content_id].get('authorrel')) > 0:
+                            row['author_rel'][0]['url220'] = images_map[current_content_id].get('authorrel')[0].get('url220', "")
+
+                        row['picture_rel'] = [{}]
+                        if images_map[current_content_id].get('picturerel') and len(images_map[current_content_id].get('picturerel')) > 0:
+                            row['picture_rel'][0]['url220'] = images_map[current_content_id].get('picturerel')[0].get('url220', "")
+
+                        #copy formatted from arc_content.PictureRel
+                        row['promo_image'] = {}
+                        row['promo_image']['urls'] = {}
+                        if images_map[current_content_id].get('picturerel') and len(images_map[current_content_id].get('picturerel')) > 0:
+                            row['promo_image']['urls']['url220'] = images_map[current_content_id].get('picturerel')[0].get('url220', "")
+
+                    reply["recommendations"].append(row)
+
+                reply["recommendations"] = reply["recommendations"][:arguments["numResults"] - 1]
         return {'statusCode': '200', 'headers': return_headers, 'body': json.dumps([reply], cls=DecimalEncoder)}
     except personalize_cli.exceptions.ResourceNotFoundException as e:
         print(f"RequestID: {api_gateway_request_id} Personalize Error: {e}")
