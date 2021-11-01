@@ -11,9 +11,9 @@ set -e
 cd personalize-step-functions 
 cfn-lint template.yaml
 cfn_nag_scan -i template.yaml
-sam validate
-sam build 
-sam deploy --stack-name ${stack_name}  \
+sam validate ${profile_arg}
+sam build ${profile_arg}
+sam deploy ${profile_arg} --stack-name ${stack_name}  \
   --force-upload \
   --s3-bucket sam-dev-sophi-bucket-us-east-1 \
   --capabilities CAPABILITY_IAM  \
