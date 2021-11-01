@@ -25,6 +25,7 @@ Mappings:
       ThrottlingBurstLimit: 200
       LogRotation: 7
       EventLogRotation: 7
+      HttpTimeoutMs: 3000
       GetRecoomendationsHttpTimeoutMs: 3000
       GetRecoomendationsLambdaTimeout: 4
     prod:
@@ -115,44 +116,14 @@ Parameters:
     Description: "Value of sp_app_id to filter event streams"
     Default: "theglobeandmail-website"
 
-  #ContentDatasetName:
-  #  Type: String
-  #  Description: "Name of datasetGroup from params.json file"
-  #  Default: "tgam-personalize-mlops-test"
-
-  EventTrackerIdParam:
-    Type: String
-    Description: Please enter your Amazon Personalize Event Tracker ID
-    Default: f843d3d9-7153-436b-b4be-ed5ce8375c57
-  
-  EventTrackerArn:
-    Type: String
-    Description: Please enter your Amazon Personalize Event Tracker ARN
-    Default: "arn:aws:personalize:us-east-1:727304503525:event-tracker/7a1a2aff"
-
-  CampaignProvisionedTPS:
-    Type: Number
-    Description: Minimum provisioned TPS for metrics
-    Default: 1
-
-  CampaignName:
-    Type: String
-    Description: Please enter your Amazon Personalize Personalize CampaignARN where you would like to get recommendations 
-    Default: userPersonalizationCampaign
-  
-  FiltersPrefix:
-    Type: String
-    Description: FiltersPrefix for personalize
-    Default: tgam-personalize-mlops-test
-
   Sophi3DynamoDbTableName:
     Type: String
-    Description: FiltersPrefix for personalize
+    Description: Dynamo Table name with Sophi3 Data
     Default: Sophi3ContentMetaData
 
   Sophi2DynamoDbTableName:
     Type: String
-    Description: FiltersPrefix for personalize
+    Description: Dynamo Table name with Sophi3 Data
     Default: arc_content
 
   CertificateARN:
@@ -264,8 +235,8 @@ Resources:
       MemorySize: 192
       Environment:
         Variables:
-          CAMPAIGN_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}'
-          FiltersPrefix: !Ref FiltersPrefix
+          CAMPAIGN_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}'
+          FiltersPrefix: !Sub '{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}'
           Sophi3DynamoDbTableName: !Ref Sophi3DynamoDbTableName
           Sophi2DynamoDbTableName: !Ref Sophi2DynamoDbTableName
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
@@ -310,8 +281,8 @@ Resources:
         ProvisionedConcurrentExecutions: !FindInMap [EnvironmentMap, !Ref Environment, ProvisionedConcurrent]
       Environment:
         Variables:
-          CAMPAIGN_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}'
-          FiltersPrefix: !Ref FiltersPrefix
+          CAMPAIGN_ARN: !Sub "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}"
+          FiltersPrefix: !Sub '{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}'
           Sophi3DynamoDbTableName: !Ref Sophi3DynamoDbTableName
           Sophi2DynamoDbTableName: !Ref Sophi2DynamoDbTableName
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
@@ -363,7 +334,7 @@ Resources:
             ParallelizationFactor: !Ref KinesisParallelizationFactor
       Environment:
         Variables:
-          TRACKING_ID: !Ref EventTrackerIdParam
+          TRACKING_ID: !Sub '{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/eventTrackerId}}'
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
 
 #Content Lambda
@@ -411,7 +382,7 @@ Resources:
 
       Environment:
         Variables:
-          TRACKING_ID: !Ref EventTrackerIdParam
+          TRACKING_ID: !Sub '{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/eventTrackerId}}'
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
           CONTENT_DATASET_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:dataset/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/datasetGroupName}}/ITEMS'
 
@@ -824,7 +795,7 @@ Resources:
           Metric:
             Dimensions:
               - Name: CampaignArn
-                Value: !Sub "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}"
+                Value: !Sub "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}"
             MetricName: GetRecommendations
             Namespace: AWS/Personalize
           Period: 300
@@ -923,7 +894,7 @@ Resources:
                 "type": "metric",
                 "properties": {
                     "metrics": [
-                      [ "AWS/Personalize", "GetRecommendations5XXErrors", "CampaignArn", "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}", { "color": "#d62728" } ],
+                      [ "AWS/Personalize", "GetRecommendations5XXErrors", "CampaignArn", "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}", { "color": "#d62728" } ],
                       [ ".", "GetRecommendations4XXErrors", ".", "." ],
                       [ ".", "GetRecommendationsLatency", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ],
                       [ ".", "GetRecommendations", ".", "." ]
@@ -933,7 +904,7 @@ Resources:
                     "region": "${AWS::Region}",
                     "stat": "Sum",
                     "period": 300,
-                    "title": "Amazon Personalize Requests Campain: ${CampaignName}"
+                    "title": "Amazon Personalize Requests Campain: {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}"
                 }
             },
             {
@@ -945,19 +916,19 @@ Resources:
                 "properties": {
                     "metrics": [
                       [ { "expression": "m1/300", "label": "TPS", "id": "e1" } ],
-                      [ "AWS/Personalize", "GetRecommendations", "CampaignArn", "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/${CampaignName}", { "id": "m1", "visible": false} ]
+                      [ "AWS/Personalize", "GetRecommendations", "CampaignArn", "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}", { "id": "m1", "visible": false} ]
                     ],
                     "view": "timeSeries",
                     "stacked": false,
                     "region": "${AWS::Region}",
                     "stat": "Sum",
                     "period": 300,
-                    "title": "Amazon Personalize Actial vs Provisioned  TPS: ${CampaignName}",
+                    "title": "Amazon Personalize Actial vs Provisioned  TPS: {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}",
                     "annotations": {
                         "horizontal": [
                             {
                                 "label": "Provisioned TPS",
-                                "value": ${CampaignProvisionedTPS}
+                                "value": {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/minProvisionedTPS}}
                             }
                         ]
                     }
@@ -1022,7 +993,7 @@ Resources:
                 "type": "metric",
                 "properties": {
                     "metrics": [
-                        [ "AWS/Personalize", "putEvents4xxErrors", "EventTrackerArn", "${EventTrackerArn}", { "color": "#ff7f0e" } ],
+                        [ "AWS/Personalize", "putEvents4xxErrors", "EventTrackerArn", "{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/eventTrackerArn}}", { "color": "#ff7f0e" } ],
                         [ ".", "putEvents5xxErrors", ".", ".", { "color": "#d62728" } ],
                         [ ".", "putEventsRequests", ".", "." ],
                         [ ".", "putEventLatency", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ]
@@ -1032,7 +1003,7 @@ Resources:
                     "region": "${AWS::Region}",
                     "stat": "Sum",
                     "period": 300,
-                    "title": "PutEvents Personalize Tracker: ${EventTrackerArn}"
+                    "title": "PutEvents Personalize Tracker: {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/eventTrackerArn}}"
                 }
             },
             {

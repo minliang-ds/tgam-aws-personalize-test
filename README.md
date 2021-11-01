@@ -104,17 +104,21 @@ aws s3 cp ./params.json s3://<input-bucket-name>
 
 ## Deploy Recommendations API
 
+/personalize/${ResourcesPrefix}/${Environment}/datasetGroupName
+
 ### Prerequisite
+- ${enviroment} - type of enviroment dev/prod/stg 
+- ${resource_prefix} - individual prefix for resources, should match resource prefix for mlops
 - ${monitoring_email_address} - email address where CloudWatch alarms will send notification
 - ${vpc_id} - VPC id where lambdas will be deployed
 - ${private_subnet_ids} - list of private subnets in provided VPC 
 - ${acm_certificate_arn} - arn of valid and issued certificate
-- ${dataset_name} - name of Personalize dataset
-- ${event_tracker_id} - id of Amazon Personalize tracker
-- ${even_tracker_arn} - ARN of Amazon Personalize tracker
-- ${campaign_tps} - value of provisioned TPS for campaign
-- ${campaign_name} - name of Amazon Personalize
-- ${filter_prefix} - prefix of filter names in Amazon Personalize
+#- ${dataset_name} - name of Personalize dataset
+#- ${event_tracker_id} - id of Amazon Personalize tracker
+#- ${even_tracker_arn} - ARN of Amazon Personalize tracker
+#- ${campaign_tps} - value of provisioned TPS for campaign
+#- ${campaign_name} - name of Amazon Personalize
+
 
 #### Create ACM Certificate
 1. To deploy API Gateway using custom domain we need to create [AWS Certificate Manager](https://aws.amazon.com/certificate-manager/) public certificate. Because validation require DNS changes outside access of cloudformation this step needs to be done manualy.
@@ -136,7 +140,34 @@ RESOURCERECORD  _0131f324147dc2ca4e625bb893dab9a8.recoapi-ng-dev.theglobeandmail
 ```bash
 aws acm describe-certificate --certificate-arn ${certificate_arn} --query 'Certificate.Status'
 ```
+#### First deployment
+First deployment should be done after step function pipeline is finished and ssm parameters are available. To check parameters status run:
+```bash
+export enviroment="dev"
+export resource_prefix="tgam-personalize"
 
+aws ssm get-parameter --name /personalize/${resource_prefix}/${enviroment}/campaignArn
+aws ssm get-parameter --name /personalize/${resource_prefix}/${enviroment}/campaignName
+aws ssm get-parameter --name /personalize/${resource_prefix}/${enviroment}/datasetGroupName
+aws ssm get-parameter --name /personalize/${resource_prefix}/${enviroment}/eventTrackerArn
+aws ssm get-parameter --name /personalize/${resource_prefix}/${enviroment}/eventTrackerId
+aws ssm get-parameter --name /personalize/${resource_prefix}/${enviroment}/minProvisionedTPS
+```
+
+If you want to create api before step functions finished with pipeline you need to create dummy parameters that will be updated during step function execution:
+```bash
+export enviroment="dev"
+export resource_prefix="tgam-personalize"
+aws_account_id=`aws sts get-caller-identity --query 'Account' --output text`
+aws ssm put-parameter --name /personalize/${resource_prefix}/${enviroment}/campaignArn --value "arn:aws:personalize:us-east-1:${aws_account_id}:campaign/tgam-personalize" --type "String" 
+aws ssm put-parameter --name /personalize/${resource_prefix}/${enviroment}/campaignName --value "tgam-personalize" --type "String" 
+aws ssm put-parameter --name /personalize/${resource_prefix}/${enviroment}/datasetGroupName --value "tgam-personalize" --type "String" 
+aws ssm put-parameter --name /personalize/${resource_prefix}/${enviroment}/eventTrackerArn --value "arn:aws:personalize:us-east-1:${aws_account_id}:event-tracker/12345678" --type "String" 
+aws ssm put-parameter --name /personalize/${resource_prefix}/${enviroment}/eventTrackerId --value "8522dc75-1234-1234-1234-0317c07ab6f8" --type "String" 
+aws ssm put-parameter --name /personalize/${resource_prefix}/${enviroment}/minProvisionedTPS --value "10" --type "String" 
+
+```
+####
 
 1. [In CloudShell]: Request certificate for domain dev: **recoapi-ng-dev.theglobeandmail.com** prod: **recoapi-ng-prod.theglobeandmail.com**
 ```bash
@@ -163,13 +194,7 @@ sam deploy --stack-name tgam-personalize-api-test  \
   ParameterKey=Environment,ParameterValue=dev \
   ParameterKey=LambdaVPC,ParameterValue=${vpc_id} \
   ParameterKey=LambdaPrivateSubnetIDs,ParameterValue="${private_subnet_ids}" \
-  ParameterKey=CertificateARN,ParameterValue=${acm_certificate_arn} \
-  ParameterKey=ContentDatasetName,ParameterValue=${dataset_name} \ 
-  ParameterKey=EventTrackerIdParam,ParameterValue=${event_tracker_id} \ 
-  ParameterKey=EventTrackerArn,ParameterValue=${even_tracker_arn} \ 
-  ParameterKey=CampainProvisionedTPS,ParameterValue=${campain_tps} \
-  ParameterKey=CampaignName,ParameterValue=${campain_name} \
-  ParameterKey=FiltersPrefix,ParameterValue=${filter_prefix}
+  ParameterKey=CertificateARN,ParameterValue=${acm_certificate_arn} 
 ```
 
 6. [In CloudShell]: As cloudromation do not allow easy set log retention for log group from lambda we need to manually update time for cloudwatch logs retation

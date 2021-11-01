@@ -252,7 +252,7 @@ def handler(event, context, metrics):
         }
 
         try:
-            if (len(response['itemList']) > 0):
+            if (len(response.get('itemList', [])) > 0):
                 before_request = time.time_ns()
                 deserialized_item = get_dynamo_data(sophi3_table_name, sort_key_name_sophi3, attributes_to_get_sophi3, response['itemList'], False, True, api_gateway_request_id)
                 after_request = time.time_ns()
