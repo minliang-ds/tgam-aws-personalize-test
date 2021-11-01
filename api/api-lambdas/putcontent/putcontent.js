@@ -67,7 +67,7 @@ exports.handler = (event, context, callback) => {
                       'WordCount': payload.WordCount,
                       'Published': payload.Published,
                       'ContentType': payload.ContentType,
-                      'CREATION_TIMESTAMP': Math.floor(eventDate.getTime() / 1000),
+                      'CREATION_TIMESTAMP': eventDate.getTime(),
                   }
                 },
             ]
