@@ -180,6 +180,23 @@ Resources:
               VendorName: AWS
               Name: AWSManagedRulesCommonRuleSet
               ExcludedRules: [ ]
+        - Name: BlockXssAttack
+          Priority: 1
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 503
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: BlockXssAttackMetric
+          Statement:
+            XssMatchStatement:
+              FieldToMatch:
+                AllQueryArguments: {}
+              TextTransformations:
+                - Priority: 1
+                  Type: NONE
 
   ApiWafAssociation:
     Type: AWS::WAFv2::WebACLAssociation
