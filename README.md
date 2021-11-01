@@ -22,6 +22,7 @@ To deploy SAM models we need to create private [Amazon S3](https://aws.amazon.co
 ```bash
 export env="dev"
 aws s3api create-bucket --bucket sam-${env}-sophi-bucket-us-east-1 --region us-east-1
+aws s3api put-bucket-encryption  --bucket sam-${env}-sophi-bucket-us-east-1  --server-side-encryption-configuration '{"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]}'
 ```
 
 ### Install requirement tools 

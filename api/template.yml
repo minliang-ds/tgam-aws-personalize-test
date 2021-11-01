@@ -141,7 +141,6 @@ Parameters:
 
     
 Resources:
-
   LambdaSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Metadata:
@@ -490,6 +489,56 @@ Resources:
       KeyType: API_KEY
       UsagePlanId: !Ref usagePlan
 
+  logGroupKey:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: KMS key for cloudwatch logs for api gateway and lambdas
+      EnableKeyRotation: true
+      PendingWindowInDays: 20
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: key-default-1
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub  'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow administration of the key
+            Effect: Allow
+            Principal:
+              Service: !Sub 'logs.${AWS::Region}.amazonaws.com'
+            Action:
+              - "kms:Encrypt*"
+              - "kms:Decrypt*"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:Describe*"
+            Resource: '*'
+  logKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Join
+        - ""
+        - - "alias/"
+          - !Ref ResourcesPrefix
+          - "-"
+          - !Ref Environment
+          - "-"
+          - "loggroup"
+          - "-"
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
+      TargetKeyId: !Ref logGroupKey
+
   APIStageLogGroup:
     Type: AWS::Logs::LogGroup
     Metadata:
@@ -497,7 +546,8 @@ Resources:
         rules_to_suppress:
           - id: W84
             reason: "Access logs for api gateway - skipping encryption at rest"
-    Properties: 
+    Properties:
+      KmsKeyId: !GetAtt logGroupKey.Arn
       LogGroupName: !Join
         - "-"
         - - !Ref ResourcesPrefix

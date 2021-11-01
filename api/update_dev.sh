@@ -14,7 +14,7 @@ bandit -r api-lambdas/getRecommendations/
 sam validate ${profile_arg}
 sam build ${profile_arg}
 sam deploy ${profile_arg} --stack-name ${stack_name}  \
-  --force-upload \ 
+  --force-upload \
   --region ${deploy_region} \
   --s3-bucket sam-dev-sophi-bucket-us-east-1  \
   --capabilities CAPABILITY_IAM  \
