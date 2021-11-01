@@ -141,15 +141,61 @@ Parameters:
 
     
 Resources:
+# WAF
+  ApiGatewayWebACL:
+    Type: 'AWS::WAFv2::WebACL'
+    Properties:
+      Name: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref Environment
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
+      Scope: REGIONAL
+      Description: !Sub "This is WAF for api gateway for ${ResourcesPrefix} env: ${Environment}"
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: PersonalizeApiWebACLMetric
+      Rules:
+        - Name: RuleWithAWSManagedRules
+          Priority: 0
+          OverrideAction:
+            Count: { }
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: RuleWithAWSManagedRulesMetric
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+              ExcludedRules: [ ]
+
+  ApiWafAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Properties:
+      ResourceArn: !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/${ApiGatewayEndpoint}/stages/${APIStage}"
+      WebACLArn: !GetAtt ApiGatewayWebACL.Arn
+
   LambdaSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Metadata:
       cfn_nag:
         rules_to_suppress:
           - id: W36
-            reason: "We have decscription - false positive"
+            reason: "We have description - false positive"
           - id: W5
-            reason: "Allow outgoing traffit to 0.0.0.0 on 443 port"
+            reason: "Allow outgoing traffic to 0.0.0.0 on 443 port"
 
     Properties: 
       GroupDescription: !Sub "Security Group for Lambdas for ${ResourcesPrefix} project env: ${Environment}"
