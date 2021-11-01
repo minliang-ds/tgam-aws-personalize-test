@@ -14,6 +14,7 @@ cfn_nag_scan -i template.yaml
 sam validate
 sam build 
 sam deploy --stack-name ${stack_name}  \
+  --force-upload \
   --s3-bucket sam-dev-sophi-bucket-us-east-1 \
   --capabilities CAPABILITY_IAM  \
   --tags "Environment=dev CostAllocationProduct=amazon_personalize ManagedBy=CloudFormation" \
