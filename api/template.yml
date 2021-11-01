@@ -52,6 +52,11 @@ Mappings:
 
 
 Parameters:
+  UpdateTimestamp:
+    Type: String
+    Default: "1635797505"
+    Description: "Timestamp to force redeploy ssm parameters"
+
   ResourcesPrefix:
     Type: String
     Default: "tgam-personalize"
@@ -304,6 +309,7 @@ Resources:
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
           AWS_EMF_SERVICE_NAME: "GetRecommendations"
           AllowOriginDomains: !Ref CorsDomainOrigin
+          UpdateTimestamp: !Ref UpdateTimestamp
 
   GetRecommendations:
     Type:  AWS::Serverless::Function
@@ -344,12 +350,13 @@ Resources:
       Environment:
         Variables:
           CAMPAIGN_ARN: !Sub "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}"
-          FiltersPrefix: !Sub '{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}'
+          FiltersPrefix: !Sub '{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/datasetGroupName}}'
           Sophi3DynamoDbTableName: !Ref Sophi3DynamoDbTableName
           Sophi2DynamoDbTableName: !Ref Sophi2DynamoDbTableName
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
           AWS_EMF_SERVICE_NAME: "GetRecommendations"
           AllowOriginDomains: !Ref CorsDomainOrigin
+          UpdateTimestamp: !Ref UpdateTimestamp
 
 ## Event Lambda
   PutEvents:
@@ -398,6 +405,7 @@ Resources:
         Variables:
           TRACKING_ID: !Sub '{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/eventTrackerId}}'
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
+          UpdateTimestamp: !Ref UpdateTimestamp
 
 #Content Lambda
   PutContent:
@@ -447,6 +455,7 @@ Resources:
           TRACKING_ID: !Sub '{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/eventTrackerId}}'
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
           CONTENT_DATASET_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:dataset/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/datasetGroupName}}/ITEMS'
+          UpdateTimestamp: !Ref UpdateTimestamp
 
   KinesisEventStreamConsumer:
     Type: "AWS::Kinesis::StreamConsumer"
@@ -1199,7 +1208,7 @@ Resources:
                 "width": 24,
                 "height": 3,
                 "properties": {
-                    "title": "Lambda Alarm Status",
+                    "title": "${UpdateTimestamp} Lambda Alarm Status",
                     "alarms": [
                         "${GetRecommendationsErrorAlarm.Arn}",
                         "${RecThrottlesAlarm.Arn}",

@@ -25,7 +25,8 @@ sam deploy ${profile_arg} --stack-name ${stack_name}  \
   ParameterKey=Environment,ParameterValue=dev \
   ParameterKey=LambdaVPC,ParameterValue=vpc-0a53827efb39f973f \
   ParameterKey=LambdaPrivateSubnetIDs,ParameterValue="subnet-0efb9d6d3ea5016f9,subnet-0c7691b437e67ca01,subnet-02f1cad54fa47455c,subnet-08e56efdbcd9d5d6b" \
-  ParameterKey=CertificateARN,ParameterValue=arn:aws:acm:us-east-1:727304503525:certificate/b6598508-3ff5-46ab-8099-4b802e625711
+  ParameterKey=CertificateARN,ParameterValue=arn:aws:acm:us-east-1:727304503525:certificate/b6598508-3ff5-46ab-8099-4b802e625711 \
+  ParameterKey=UpdateTimestamp,ParameterValue=$(date +"%s")
 
 api_id=`aws cloudformation describe-stacks ${profile_arg} --stack-name ${stack_name}  --region ${deploy_region} --query 'Stacks[0].Outputs' --output text | grep ^ApiId | awk {'print $2'}`
 stage_name=`aws cloudformation describe-stacks ${profile_arg} --stack-name ${stack_name}  --region ${deploy_region} --query 'Stacks[0].Outputs' --output text | grep ^StageName | awk {'print $2'}`
