@@ -236,7 +236,7 @@ Resources:
       Environment:
         Variables:
           CAMPAIGN_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}'
-          FiltersPrefix: !Sub '{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}'
+          FiltersPrefix: !Sub '{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/datasetGroupName}}'
           Sophi3DynamoDbTableName: !Ref Sophi3DynamoDbTableName
           Sophi2DynamoDbTableName: !Ref Sophi2DynamoDbTableName
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
