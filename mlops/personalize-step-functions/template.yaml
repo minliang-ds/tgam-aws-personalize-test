@@ -152,7 +152,24 @@ Resources:
           Type: Schedule
           Properties:
             Schedule: 'cron(0 6 ? * SUN *)'
-            Name: AmazonPersonalizeUpdateSchedule
+            Name: !Join
+              - ""
+              - - "sched-"
+                - !Ref ResourcesPrefix
+                - "-"
+                - !Ref Environment
+                - "-"
+                - 'input'
+                - "-"
+                - !Select
+                  - 0
+                  - !Split
+                    - "-"
+                    - !Select
+                      - 2
+                      - !Split
+                        - "/"
+                        - !Ref "AWS::StackId"
             Description: Update schedule for Amazon Personalize
             Enabled: true
   S3TriggerRole:
