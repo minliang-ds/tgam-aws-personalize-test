@@ -119,8 +119,8 @@ def get_dynamo_data(dynamo_table, sort_key_name, attributes, item_list, return_t
         except ClientError as e:
             print(f"RequestID: {api_gateway_request_id} Key Error: {e}")
 
-        else:
-            print(f"RequestID: {api_gateway_request_id} RawDynamoReply = {db_response}")
+        #else:
+        #    print(f"RequestID: {api_gateway_request_id} RawDynamoReply = {db_response}")
 
 
         if return_type_map:
@@ -208,32 +208,13 @@ def handler(event, context, metrics):
 
         metrics.put_metric("PersonalizeRequestTime", (int(after_request-before_request)/1000000), "Milliseconds")
 
-        print(f"RequestID: {api_gateway_request_id} RawRecommendations = {response['itemList']}")
+        #print(f"RequestID: {api_gateway_request_id} RawRecommendations = {response['itemList']}")
 
         metrics.put_metric("ReturnRecommendations", (len(response['itemList'])), "None")
         metrics.put_metric("MissingRecommendations", (arguments["numResults"] - len(response['itemList'])), "None")
 
         #reply['recommendations_debug'] = response['itemList']
         reply['recommendationId'] = response['recommendationId']
-
-        #UpdatedDate => updated_at
-        #promo_image - not sure how it converted
-        #Section => section_meta_title and some convertion
-        #caption ??
-        #video_duration ??
-        #author_rel ??
-        #State ?
-        #CanonicalURL => url
-        #CreditLine > credit and some convertion
-        #Sponsored ??
-        #ContentId => content_id
-        #ContentType => content_type
-        #ContentRestriction => protection_product
-        #PublishedDate => published_at
-        #WordCount => word_count
-        #byline = what if we have 2 ?
-
-
 
         #Mapping convertion fields from dynamo table to reply
         names_key = {
