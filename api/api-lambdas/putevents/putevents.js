@@ -33,7 +33,7 @@ exports.handler = (event, context, callback) => {
         metrics.putDimensions({ Type: "PutEvents" });
 
         var payload = Buffer.from(record.kinesis.data, 'base64').toString('ascii');
-        console.debug('Decoded payload:', payload);
+        //console.debug('Decoded payload:', payload);
         payload = JSON.parse(payload);
 
         if (payload.sp_event_id != undefined){
