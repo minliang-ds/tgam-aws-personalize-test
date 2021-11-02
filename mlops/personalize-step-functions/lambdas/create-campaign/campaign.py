@@ -20,7 +20,7 @@ def lambda_handler(event, context):
         try:
             ssm_parameters.put_parameter("campaignArn", campaignArn)
             ssm_parameters.put_parameter("campaignName", event['campaign']['name'])
-            ssm_parameters.put_parameter("minProvisionedTPS", event['campaign']['minProvisionedTPS'])
+            ssm_parameters.put_parameter("minProvisionedTPS", str(event['campaign']['minProvisionedTPS']))
         except:
             pass
         # Point to new campaign if the new solution version is not the one listed in the campaign
