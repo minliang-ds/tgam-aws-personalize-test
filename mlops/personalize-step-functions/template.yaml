@@ -9,7 +9,7 @@ Globals:
       Variables:
         Environment: !Ref Environment  
         ResourcesPrefix: !Ref ResourcesPrefix
-        CurretnAccountId: !Ref "AWS::AccountId"
+        CurrentAccountId: !Ref "AWS::AccountId"
         
 Parameters:
   Email:

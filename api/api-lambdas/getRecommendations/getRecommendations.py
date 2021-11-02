@@ -65,7 +65,7 @@ class DecimalEncoder(json.JSONEncoder):
         return super(DecimalEncoder, self).default(o)
 
 region            = os.environ['AWS_REGION']
-account_id        = os.environ['CurretnAccountId']
+account_id        = os.environ['CurrentAccountId']
 filter_prefix     = os.environ['FiltersPrefix']
 sophi3_table_name = os.environ['Sophi3DynamoDbTableName']
 sophi2_table_name = os.environ['Sophi2DynamoDbTableName']
