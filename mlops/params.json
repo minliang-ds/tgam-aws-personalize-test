@@ -156,7 +156,7 @@
    [
        {
             "name":"tgam-personalize-category",
-            "filterExpression":"INCLUDE ItemID WHERE Items.Category IN ($category)"
+            "filterExpression":"INCLUDE ItemID WHERE Items.Category IN ($category) | EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\")"
        },
        {
             "name":"tgam-personalize-read",
