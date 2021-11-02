@@ -8,7 +8,7 @@ Globals:
     VpcConfig:
       SecurityGroupIds:
         - !Ref LambdaSecurityGroup
-      SubnetIds: !Ref LambdaPrivateSubnetIDs
+      SubnetIds: !FindInMap [EnvironmentMap, !Ref Environment, SubnetIds]
     Environment:
       Variables:
         Environment: !Ref Environment  
@@ -20,6 +20,7 @@ Mappings:
   EnvironmentMap: 
     dev: 
       Domain: "recoapi-ng-dev.theglobeandmail.com"
+      CertId: "b6598508-3ff5-46ab-8099-4b802e625711"
       ProvisionedConcurrent: 10
       ThrottlingRateLimit: 100
       ThrottlingBurstLimit: 200
@@ -28,8 +29,15 @@ Mappings:
       HttpTimeoutMs: 3000
       GetRecoomendationsHttpTimeoutMs: 3000
       GetRecoomendationsLambdaTimeout: 4
+      VPCid: vpc-0a53827efb39f973f
+      SubnetIds:
+        - subnet-0efb9d6d3ea5016f9
+        - subnet-0c7691b437e67ca01
+        - subnet-02f1cad54fa47455c
+        - subnet-08e56efdbcd9d5d6b
     prod:
       Domain: "recoapi-ng-prod.theglobeandmail.com"
+      CertId: "e130c648-129f-4a3b-910c-e73f88d8d331"
       ProvisionedConcurrent: 100
       ThrottlingRateLimit: 200
       ThrottlingBurstLimit: 400
@@ -38,9 +46,14 @@ Mappings:
       HttpTimeoutMs: 3000
       GetRecoomendationsHttpTimeoutMs: 3000
       GetRecoomendationsLambdaTimeout: 4
-
-    stg: 
+      VPCid: vpc-0e3bad5456a335c22
+      SubnetIds:
+        - subnet-06399800ea3a0ab1c
+        - subnet-08f23425f7a169c2c
+        - subnet-044000fe72fe7d92b
+    stg:
       Domain: "recoapi-ng-stg.theglobeandmail.com"
+      CertId: "none"
       ProvisionedConcurrent: 10
       ThrottlingRateLimit: 100
       ThrottlingBurstLimit: 200
@@ -48,7 +61,12 @@ Mappings:
       EventLogRotation: 7
       GetRecoomendationsHttpTimeoutMs: 3000
       GetRecoomendationsLambdaTimeout: 4
-
+      VPCid: vpc-
+      SubnetIds:
+        - subnet-
+        - subnet-
+        - subnet-
+        - subnet-
 
 
 Parameters:
@@ -72,15 +90,6 @@ Parameters:
       - "stg"
       - "prod"
 
-  LambdaVPC: 
-    Description: VPC ID for Lambda, should have VPC Endpoints for DynamoDB, S3 (and Personalize in future)
-    Type: "AWS::EC2::VPC::Id"
-
-
-  LambdaPrivateSubnetIDs: 
-    Description: Private Subnet IDs for Lambda deployments
-    Type: "List<AWS::EC2::Subnet::Id>"
-    
   StageName:
     Type: String
     Description: "Name of stage deplyment for API Gateway, it will be used in urls ${domain}/${stage}/recommendations"
@@ -130,10 +139,6 @@ Parameters:
     Type: String
     Description: Dynamo Table name with Sophi3 Data
     Default: arc_content
-
-  CertificateARN:
-    Type: String
-    Default: "arn:aws:acm:us-east-1:727304503525:certificate/b6598508-3ff5-46ab-8099-4b802e625711"
 
   DefaultNotificationEmail:
     Type: String
@@ -221,7 +226,7 @@ Resources:
 
     Properties: 
       GroupDescription: !Sub "Security Group for Lambdas for ${ResourcesPrefix} project env: ${Environment}"
-      VpcId: !Ref LambdaVPC
+      VpcId: !FindInMap [EnvironmentMap, !Ref Environment, VPCid]
       SecurityGroupEgress:
       - CidrIp: 127.0.0.1/32
         IpProtocol: "-1"
@@ -234,7 +239,12 @@ Resources:
     Type: 'AWS::ApiGateway::DomainName'
     Properties:
       DomainName: !FindInMap [EnvironmentMap, !Ref Environment, Domain]
-      CertificateArn: !Ref CertificateARN
+      CertificateArn: !Join
+        - ""
+        - - "arn:aws:acm:"
+          - AWS::Region
+          - "::certificate/"
+          - !FindInMap [EnvironmentMap, !Ref Environment, CertId]
       SecurityPolicy: TLS_1_2
       EndpointConfiguration:
         Types: 

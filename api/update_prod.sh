@@ -4,10 +4,11 @@ if [[ -n "${profile}" ]]; then
 profile_arg="--profile ${profile}"
 fi
 
-stack_name="tgam-personalize-api-prod"
+env="prod"
+stack_name="tgam-personalize-api-${env}"
 deploy_region="us-east-1"
 
-set -e 
+set -e
 cfn_nag_scan -i template.yml
 cfn-lint template.yml
 bandit -r api-lambdas/getRecommendations/
@@ -16,16 +17,13 @@ sam build ${profile_arg}
 sam deploy ${profile_arg} --stack-name ${stack_name}  \
   --force-upload \
   --region ${deploy_region} \
-  --s3-bucket sam-prod-sophi-bucket-us-east-1  \
+  --s3-bucket sam-${env}-sophi-bucket-us-east-1  \
   --capabilities CAPABILITY_IAM  \
-  --tags "Environment=prod CostAllocationProduct=amazon_personalize ManagedBy=CloudFormation" \
+  --tags "Environment=${env} CostAllocationProduct=amazon_personalize ManagedBy=CloudFormation" \
   --parameter-overrides \
   ParameterKey=ResourcesPrefix,ParameterValue=tgam-personalize \
   ParameterKey=DefaultNotificationEmail,ParameterValue="mlinliu@amazon.com" \
-  ParameterKey=Environment,ParameterValue=prod \
-  ParameterKey=LambdaVPC,ParameterValue=vpc-0a53827efb39f973f \
-  ParameterKey=LambdaPrivateSubnetIDs,ParameterValue="subnet-0efb9d6d3ea5016f9,subnet-0c7691b437e67ca01,subnet-02f1cad54fa47455c,subnet-08e56efdbcd9d5d6b" \
-  ParameterKey=CertificateARN,ParameterValue=arn:aws:acm:us-east-1:727304503525:certificate/b6598508-3ff5-46ab-8099-4b802e625711 \
+  ParameterKey=Environment,ParameterValue=${env} \
   ParameterKey=UpdateTimestamp,ParameterValue=$(date +"%s")
 
 api_id=`aws cloudformation describe-stacks ${profile_arg} --stack-name ${stack_name}  --region ${deploy_region} --query 'Stacks[0].Outputs' --output text | grep ^ApiId | awk {'print $2'}`

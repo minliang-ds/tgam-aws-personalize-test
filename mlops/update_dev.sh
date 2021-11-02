@@ -4,6 +4,7 @@ if [[ -n "${profile}" ]]; then
 profile_arg="--profile ${profile}"
 fi
 
+env="dev"
 deploy_region=us-east-1
 stack_name="tgam-personalize-mlops-test"
 set -e
@@ -15,12 +16,12 @@ sam validate ${profile_arg}
 sam build ${profile_arg}
 sam deploy ${profile_arg} --stack-name ${stack_name}  \
   --force-upload \
-  --s3-bucket sam-dev-sophi-bucket-us-east-1 \
+  --s3-bucket sam-${env}-sophi-bucket-us-east-1 \
   --capabilities CAPABILITY_IAM  \
-  --tags "Environment=dev CostAllocationProduct=amazon_personalize ManagedBy=CloudFormation" \
+  --tags "Environment=${env} CostAllocationProduct=amazon_personalize ManagedBy=CloudFormation" \
   --parameter-overrides ParameterKey=Email,ParameterValue=mlinliu@amazon.com \
   ParameterKey=ResourcesPrefix,ParameterValue=tgam-personalize \
-  ParameterKey=Environment,ParameterValue=dev
+  ParameterKey=Environment,ParameterValue=${env}
 
 
 input_bucket=`aws cloudformation describe-stacks ${profile_arg} --stack-name ${stack_name}  --region ${deploy_region} --query 'Stacks[0].Outputs' --output table | grep InputBucketName  | awk -F \| {'print $4'} | awk {'print $1'}`
