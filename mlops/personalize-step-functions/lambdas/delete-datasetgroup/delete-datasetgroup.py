@@ -14,7 +14,7 @@ def lambda_handler(event, context):
         )
         ssm_parameters.delete_parameter("datasetGroupName")
 
-except Exception as e:
-        LOADER.logger.error(f'Error deleting dataset group: {e}')
-        raise e
+    except Exception as e:
+            LOADER.logger.error(f'Error deleting dataset group: {e}')
+            raise e
 
