@@ -242,8 +242,10 @@ Resources:
       CertificateArn: !Join
         - ""
         - - "arn:aws:acm:"
-          - AWS::Region
-          - "::certificate/"
+          - !Ref "AWS::Region"
+          - ":"
+          - !Ref "AWS::AccountId"
+          - ":certificate/"
           - !FindInMap [EnvironmentMap, !Ref Environment, CertId]
       SecurityPolicy: TLS_1_2
       EndpointConfiguration:
