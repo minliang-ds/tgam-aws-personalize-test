@@ -140,7 +140,7 @@
          "campaignConfig":{
              "itemExplorationConfig":{
                  "explorationWeight": "0.3",
-                 "explorationItemAgeCutOff": "30"
+                 "explorationItemAgeCutOff": "1"
              }
          }
       },
