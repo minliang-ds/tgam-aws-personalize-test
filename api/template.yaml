@@ -816,7 +816,7 @@ Resources:
       Namespace: AWS/Lambda
       Period: 300
       Statistic: Sum
-      Threshold: '1'
+      Threshold: '10'
   PutEventsErrorAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -831,7 +831,7 @@ Resources:
       Namespace: AWS/Lambda
       Period: 300
       Statistic: Sum
-      Threshold: '1'
+      Threshold: '10'
       
   PutContentThrottlesAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -890,7 +890,7 @@ Resources:
       Dimensions:
         - Name: FunctionName
           Value: !Ref PutEvents
-      EvaluationPeriods: 2
+      EvaluationPeriods: 10
       MetricName: IteratorAge
       Namespace: AWS/Lambda
       Period: 300
