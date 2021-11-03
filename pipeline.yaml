@@ -1,10 +1,29 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
 Parameters:
+  GitHubOwner:
+    Type: String
+    Default: "globeandmail"
+
+  GitHubRepo:
+    Type: String
+    Default: " tgam-aws-personalize"
+
+  GitHubBranch:
+    Type: String
+    Default: "development"
+
   ResourcesPrefix:
     Type: String
     Default: "tgam-personalize"
     AllowedPattern: "[A-Za-z0-9-_]+"
+
+  PipelineType:
+    Type: String
+    Default: "mlops"
+    AllowedValues:
+      - "mlops"
+      - "api"
 
   Environment:
     Type: String
@@ -25,51 +44,44 @@ Parameters:
     Default: "amazon_personalize"
     AllowedValues:
       - "amazon_personalize"
-      
-  RepoName:
-    Type: String
-    Default: amazon_personalize_streaming_events
-    AllowedPattern: "[A-Za-z0-9-_]+"
 
-  RepoBranch:
+  Email:
     Type: String
-    Default: development
-    AllowedPattern: "[A-Za-z0-9-]+"
+    Default: "noreply@example.com"
 
-  ApplicationStackName:
-    Type: String
-    Default: amazon-personalize-app
-    AllowedPattern: "[A-Za-z0-9-]+"
+Mappings:
+  EnvironmentMap:
+    api:
+      Path: "api"
+    mlops:
+      Path: "mlops/personalize-step-functions"
 
-  EventTrackerIdParam:
-    Type: String
-    Description: Please enter your Amazon Personalize Event Tracker ID
-    Default: 9bec3974-v6bd-5fcf
-  
-  CampaignARNParam:
-    Type: String
-    Description: Please enter your Amazon Personalize Personalize CampaignARN where you would like to get recommendations from
-    Default: campaignARNDefault
+Conditions:
+  IsPipelineApprovalStageCondition: !Equals [!Ref Environment, 'prod']
+  IsPipelineTypeApi: !Equals [!Ref PipelineType, 'api']
 
-  ExistingKinesisStreamARN:
-    Type: String
-    Default: "NONE"
 
-  ExistingSecondaryKinesisStreamARN:
-    Type: String
-    Default: "NONE"
-  
-  ContentDatasetARN:
-    Type: String
-    Default: "NONE"
-    
 Resources:
   PipelineArtifactsBucket:
     Type: AWS::S3::Bucket
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W35
+            reason: "Ignore access logs for S3 bucket"
+          - id: W51
+            reason: "Ignore need for bucket policy"
+
     Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'AES256'
+            BucketKeyEnabled: true
       BucketName: !Join
         - "-"
         - - !Ref ResourcesPrefix
+          - !Ref PipelineType
           - !Ref Environment
           - !Select
             - 0
@@ -94,10 +106,16 @@ Resources:
     
   CodeBuildLogs:    
     Type: AWS::Logs::LogGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W84
+            reason: "CFN build logs do not need encryption at rest"
     Properties: 
       LogGroupName: !Join
         - "-"
         - - !Ref ResourcesPrefix
+          - !Ref PipelineType
           - !Ref Environment
           - !Select
             - 0
@@ -111,8 +129,8 @@ Resources:
       RetentionInDays: 90
     
   CodeBuildRole:
-    Description: Creating service role in IAM for AWS CodeBuild
     Properties:
+      Description: Creating service role in IAM for AWS CodeBuild
       Tags:
         - Key: "Environment"
           Value: !Ref Environment
@@ -128,14 +146,141 @@ Resources:
             Service: codebuild.amazonaws.com
       Path: /
     Type: AWS::IAM::Role
-    
-  CodeBuildProject:
+
+  DeployProject:
+    Type: AWS::CodeBuild::Project
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: E1029
+            reason: "warnings because of inline bash script"
+    Properties:
+      Name: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref PipelineType
+          - !Ref Environment
+          - "deploy"
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      LogsConfig:
+        CloudWatchLogs:
+          GroupName: !Ref CodeBuildLogs
+          Status: ENABLED
+          StreamName: SamBuild
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_LARGE
+        Image: aws/codebuild/standard:4.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: TESTING_CLOUDFORMATION_EXECUTION_ROLE
+            Type: PLAINTEXT
+            Value: !GetAtt CloudformationRole.Arn
+          - Name: TESTING_ARTIFACTS_BUCKET
+            Type: PLAINTEXT
+            Value: !Ref PipelineArtifactsBucket
+          - Name: SAM_CLI_TELEMETRY
+            Type: PLAINTEXT
+            Value: "0"
+          - Name: SAM_TEMPLATE
+            Type: PLAINTEXT
+            Value: "template.yaml"
+          - Name: Environment
+            Type: PLAINTEXT
+            Value: !Ref Environment
+          - Name: CostAllocationProduct
+            Type: PLAINTEXT
+            Value: !Ref CostAllocationProduct
+          - Name: ManagedBy
+            Type: PLAINTEXT
+            Value: !Ref ManagedBy
+          - Name: ResourcesPrefix
+            Type: PLAINTEXT
+            Value: !Ref ResourcesPrefix
+          - Name: Email
+            Type: PLAINTEXT
+            Value: !Ref Email
+          - Name: PipelineType
+            Type: PLAINTEXT
+            Value: !Ref PipelineType
+          - Name: TemplatePath
+            Type: PLAINTEXT
+            Value: !FindInMap [EnvironmentMap, !Ref PipelineType, Path]
+      Source:
+        Type: NO_SOURCE
+        BuildSpec: !If
+          - IsPipelineTypeApi
+          - |
+            version: 0.2
+            phases:
+              install:
+                runtime-versions:
+                  python: 3.8
+                commands:
+                  - pip install awscli --upgrade --quiet
+                  - pip install cfn-lint --quiet
+                  - gem install cfn-nag
+              build:
+                commands:
+                  - cd ${TemplatePath}
+                  - cfn_nag_scan -i ${SAM_TEMPLATE}
+                  - cfn-lint ${SAM_TEMPLATE}
+                  - cfn-lint -i W -t ${SAM_TEMPLATE}
+                  - sam validate --template ${SAM_TEMPLATE}
+                  - sam build --template ${SAM_TEMPLATE}
+                  - sam deploy --stack-name ${ResourcesPrefix}-${PipelineType}-${Environment} --capabilities CAPABILITY_IAM  --s3-bucket ${TESTING_ARTIFACTS_BUCKET} --no-fail-on-empty-changeset --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE}  --no-confirm-changeset   --parameter-overrides ParameterKey=Email,ParameterValue=${Email}  ParameterKey=ResourcesPrefix,ParameterValue=${ResourcesPrefix} ParameterKey=Environment,ParameterValue=${Environment} --tags "Environment=${Environment} CostAllocationProduct=${CostAllocationProduct} ManagedBy=CloudFormation"
+                  - aws apigateway create-deployment --rest-api-id $(aws cloudformation describe-stacks --stack-name ${ResourcesPrefix}-${PipelineType}-${Environment}  --query 'Stacks[0].Outputs' --output text | grep ^ApiId | awk {'print $2'}) --stage-name $(aws cloudformation describe-stacks --stack-name ${ResourcesPrefix}-${PipelineType}-${Environment}   --query 'Stacks[0].Outputs' --output text | grep ^StageName | awk {'print $2'})
+
+          - |
+            version: 0.2
+            phases:
+              install:
+                runtime-versions:
+                  python: 3.8
+                commands:
+                  - pip install awscli --upgrade --quiet
+                  - pip install cfn-lint --quiet
+                  - gem install cfn-nag
+              build:
+                commands:
+                  - cd ${TemplatePath}
+                  - cfn_nag_scan -i ${SAM_TEMPLATE}
+                  - cfn-lint ${SAM_TEMPLATE}
+                  - cfn-lint -i W -t ${SAM_TEMPLATE}
+                  - sam validate --template ${SAM_TEMPLATE}
+                  - sam build --template ${SAM_TEMPLATE}
+                  - sam deploy --stack-name ${ResourcesPrefix}-${PipelineType}-${Environment} --capabilities CAPABILITY_IAM  --s3-bucket ${TESTING_ARTIFACTS_BUCKET} --no-fail-on-empty-changeset --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE}  --no-confirm-changeset   --parameter-overrides ParameterKey=Email,ParameterValue=${Email}  ParameterKey=ResourcesPrefix,ParameterValue=${ResourcesPrefix} ParameterKey=Environment,ParameterValue=${Environment} --tags "Environment=${Environment} CostAllocationProduct=${CostAllocationProduct} ManagedBy=CloudFormation"
+                  - export input_bucket=`aws cloudformation describe-stacks ${ResourcesPrefix}-${PipelineType}-${Environment}  --query 'Stacks[0].Outputs' --output table | grep InputBucketName  | awk -F \| {'print $4'} | awk {'print $1'}`
+                  - aws s3 cp s3://${input_bucket}/params.json .temp_params.json ${profile_arg}  || true
+                  - diff -ruNp ../params.json .temp_params.json || echo aws s3 cp params.json s3://${input_bucket}/params.json
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
+
+  BuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: !Join
         - "-"
         - - !Ref ResourcesPrefix
+          - !Ref PipelineType
           - !Ref Environment
+          - "build"
           - !Select
             - 0
             - !Split
@@ -152,7 +297,7 @@ Resources:
           Status: ENABLED
           StreamName: SamBuild
       Artifacts:
-        Type: CODEPIPELINE
+        Type: NO_ARTIFACTS
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_LARGE
@@ -173,7 +318,7 @@ Resources:
             Value: "0"
           - Name: SAM_TEMPLATE
             Type: PLAINTEXT
-            Value: "application.yaml"   
+            Value: "template.yaml"
           - Name: Environment
             Type: PLAINTEXT
             Value: !Ref Environment  
@@ -185,25 +330,39 @@ Resources:
             Value: !Ref ManagedBy  
           - Name: ResourcesPrefix
             Type: PLAINTEXT
-            Value: !Ref ResourcesPrefix  
-          - Name: CampaignARNParam
+            Value: !Ref ResourcesPrefix
+          - Name: Email
             Type: PLAINTEXT
-            Value: !Ref CampaignARNParam  
-          - Name: EventTrackerIdParam
+            Value: !Ref Email
+          - Name: PipelineType
             Type: PLAINTEXT
-            Value: !Ref EventTrackerIdParam 
-          - Name: ExistingKinesisStreamARN
+            Value: !Ref PipelineType
+          - Name: TemplatePath
             Type: PLAINTEXT
-            Value: !Ref ExistingKinesisStreamARN 
-          - Name: ExistingSecondaryKinesisStreamARN
-            Type: PLAINTEXT
-            Value: !Ref ExistingSecondaryKinesisStreamARN 
-          - Name: ContentDatasetARN
-            Type: PLAINTEXT
-            Value: !Ref ContentDatasetARN 
+            Value: !FindInMap [EnvironmentMap, !Ref PipelineType, Path]
 
       Source:
-        Type: CODEPIPELINE
+        Type: NO_SOURCE
+        BuildSpec: |
+            version: 0.2
+            phases:
+              install:
+                runtime-versions:
+                  python: 3.8
+                commands:
+                  - pip install awscli --upgrade --quiet
+                  - pip install cfn-lint --quiet
+                  - gem install cfn-nag
+
+              build:
+                commands:
+                  - echo cd ${TemplatePath} && cd ${TemplatePath}
+                  - cfn_nag_scan -i ${SAM_TEMPLATE}
+                  - cfn-lint ${SAM_TEMPLATE}
+                  - cfn-lint -i W -t ${SAM_TEMPLATE}
+                  - sam validate --template ${SAM_TEMPLATE}
+                  - sam build --template ${SAM_TEMPLATE}
+
       Tags:
         - Key: "Environment"
           Value: !Ref Environment
@@ -212,14 +371,21 @@ Resources:
         - Key: "ManagedBy"
           Value: !Ref ManagedBy
 
-  CodePipeline:
-    Type: AWS::CodePipeline::Pipeline
-    DependsOn: PipelineArtifactsBucket
+  PipelineTopic:
+    Type: AWS::SNS::Topic
+    Condition: IsPipelineApprovalStageCondition
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W47
+            reason: "This SNS topic is only for cloudwatch alarms and do not process confidential data"
     Properties:
-      Name: !Join
+      TopicName: !Join
         - "-"
         - - !Ref ResourcesPrefix
+          - !Ref PipelineType
           - !Ref Environment
+          - "APIGW"
           - !Select
             - 0
             - !Split
@@ -229,6 +395,32 @@ Resources:
                 - !Split
                   - "/"
                   - !Ref "AWS::StackId"
+
+  AlarmSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: IsPipelineApprovalStageCondition
+    Properties:
+      Endpoint: !Ref Email
+      Protocol: email
+      TopicArn: !Ref 'PipelineTopic'
+
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Join
+          - "-"
+          - - !Ref ResourcesPrefix
+            - !Ref PipelineType
+            - !Ref Environment
+            - !Select
+              - 0
+              - !Split
+                - "-"
+                - !Select
+                  - 2
+                  - !Split
+                    - "/"
+                    - !Ref "AWS::StackId"
       Tags:
         - Key: "Environment"
           Value: !Ref Environment
@@ -236,7 +428,6 @@ Resources:
           Value: !Ref CostAllocationProduct
         - Key: "ManagedBy"
           Value: !Ref ManagedBy
-      RestartExecutionOnUpdate: true
       ArtifactStore:
         Type: S3
         Location: !Ref PipelineArtifactsBucket
@@ -245,24 +436,26 @@ Resources:
       Stages:
       - Name: Source
         Actions:
-        - Name: Source
-          InputArtifacts: []
-          ActionTypeId:
-            Category: Source
-            Owner: AWS
-            Version: 1
-            Provider: CodeCommit
-          OutputArtifacts:
-          - Name: SourceCode
-          Configuration:
-            RepositoryName: !Ref RepoName
-            BranchName: !Ref RepoBranch
-            PollForSourceChanges: true
-          RunOrder: 1
+          - Name: Source
+            InputArtifacts: []
+            ActionTypeId:
+              Category: Source
+              Owner: ThirdParty
+              Version: 1
+              Provider: GitHub
+            OutputArtifacts:
+              - Name: SourceCode
+            Configuration:
+              Owner: !Ref GitHubOwner
+              Repo: !Ref GitHubRepo
+              Branch: !Ref GitHubBranch
+              PollForSourceChanges: false
+              OAuthToken: '{{resolve:ssm:tgam-ds-deploy-github}}'
+            RunOrder: 1
       # Build and Deploy, etc., stages would follow. Here is an example
-      - Name: Deploy
+      - Name: Build
         Actions:
-        - Name: SamDeploy
+        - Name: SamBuild
           ActionTypeId:
             Category: Build
             Owner: AWS
@@ -271,9 +464,36 @@ Resources:
           InputArtifacts:
             - Name: SourceCode
           Configuration:
-            ProjectName: !Ref CodeBuildProject
+            ProjectName: !Ref BuildProject
           RunOrder: 1
-
+      - !If
+        - IsPipelineApprovalStageCondition
+        - Name: Approval
+          Actions:
+            - Name: Approval
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Version: "1"
+                Provider: Manual
+              RunOrder: 1
+              Configuration:
+                NotificationArn: !Ref PipelineTopic
+        - !Ref AWS::NoValue
+      - Name: Deploy
+        Actions:
+          - Name: SamDeploy
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Provider: CodeBuild
+              Version: '1'
+            InputArtifacts:
+              - Name: SourceCode
+            Configuration:
+              ProjectName: !Ref DeployProject
+              EnvironmentVariables: '[{"name":"BuildType","value":"Deploy","type":"PLAINTEXT"}]'
+            RunOrder: 1
   CodePipelineRole:
     Type: AWS::IAM::Role
     Properties:
@@ -317,8 +537,26 @@ Resources:
 #No tags for policy
   CodeBuildRolePolicy:
     Type: 'AWS::IAM::Policy'
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W12
+            reason: "We need to have * for iam:ListPolicies to enable cloudformation cli "
     Properties:
-      PolicyName: tgam-personalize-codebuild
+      PolicyName: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref PipelineType
+          - !Ref Environment
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -364,7 +602,7 @@ Resources:
               - 'cloudformation:CreateChangeSet'
               - 'cloudformation:CreateChangeSet'
             Resource:
-              - "*"
+              - !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${ResourcesPrefix}-*"
 
       Roles:
         - !Ref CodeBuildRole

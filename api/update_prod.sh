@@ -9,8 +9,8 @@ stack_name="tgam-personalize-api-${env}"
 deploy_region="us-east-1"
 
 set -e
-cfn_nag_scan -i template.yml || true
-cfn-lint template.yml
+cfn_nag_scan -i template.yaml || true
+cfn-lint template.yaml
 bandit -r api-lambdas/getRecommendations/
 sam validate ${profile_arg}
 sam build ${profile_arg}

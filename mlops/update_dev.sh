@@ -6,7 +6,7 @@ fi
 
 env="dev"
 deploy_region=us-east-1
-stack_name="tgam-personalize-mlops-test"
+stack_name="tgam-personalize-mlops-dev"
 set -e
 
 cd personalize-step-functions 
