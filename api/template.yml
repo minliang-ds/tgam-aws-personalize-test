@@ -18,7 +18,7 @@ Globals:
 
 Mappings: 
   EnvironmentMap: 
-    dev: 
+    dev:
       Domain: "recoapi-ng-dev.theglobeandmail.com"
       CertId: "b6598508-3ff5-46ab-8099-4b802e625711"
       ProvisionedConcurrent: 10
@@ -53,7 +53,7 @@ Mappings:
         - subnet-044000fe72fe7d92b
     stg:
       Domain: "recoapi-ng-stg.theglobeandmail.com"
-      CertId: "none"
+      CertId: "aaf0d521-52b9-4fcc-b805-810830111019"
       ProvisionedConcurrent: 10
       ThrottlingRateLimit: 100
       ThrottlingBurstLimit: 200
@@ -249,14 +249,14 @@ Resources:
           - !FindInMap [EnvironmentMap, !Ref Environment, CertId]
       SecurityPolicy: TLS_1_2
       EndpointConfiguration:
-        Types: 
+        Types:
           - "EDGE"
 
   APIMapping:
       Type: AWS::ApiGateway::BasePathMapping
       DependsOn:
         - APIDomain
-      Properties: 
+      Properties:
         DomainName: !FindInMap [EnvironmentMap, !Ref Environment, Domain]
         RestApiId: !Ref ApiGatewayEndpoint
         Stage: !Ref APIStage
@@ -673,6 +673,7 @@ Resources:
     DependsOn:
       - GetRecommendations
       - PutEvents
+      - LambdaGetRecommendationsMethod
     Properties:
       RestApiId: !Ref "ApiGatewayEndpoint"
 

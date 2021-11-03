@@ -11,7 +11,7 @@ set -e
 
 cd personalize-step-functions 
 cfn-lint template.yaml
-cfn_nag_scan -i template.yaml
+cfn_nag_scan -i template.yaml || true
 sam validate ${profile_arg}
 sam build ${profile_arg}
 sam deploy ${profile_arg} --stack-name ${stack_name}  \
