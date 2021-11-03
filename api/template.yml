@@ -36,8 +36,8 @@ Mappings:
         - subnet-02f1cad54fa47455c
         - subnet-08e56efdbcd9d5d6b
     prod:
-      Domain: "recoapi-ng-prod.theglobeandmail.com"
-      CertId: "e130c648-129f-4a3b-910c-e73f88d8d331"
+      Domain: "recoapi-ng.theglobeandmail.com"
+      CertId: "e0e02751-c147-4714-b98b-87f33e365e6a"
       ProvisionedConcurrent: 100
       ThrottlingRateLimit: 200
       ThrottlingBurstLimit: 400
