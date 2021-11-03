@@ -955,288 +955,298 @@ Resources:
                 - !Split
                   - "/"
                   - !Ref "AWS::StackId"
-     DashboardBody: !Sub |
-      {
-        "widgets": [
-          {
-                "type": "metric",
-                "x": 0,
-                "y": 0,
-                "width": 24,
-                "height": 6,
-                "properties": {
-                    "metrics": [
-                        [ "AWS/ApiGateway", "4XXError", "ApiName", "tgam-personalize-dev-39464c60", "Stage", "${StageName}" ],
-                        [ ".", "5XXError", ".", ".", ".", ".", { "color": "#d62728" } ],
-                        [ ".", "Latency", ".", ".", ".", ".", { "yAxis": "right", "stat": "Average" } ],
-                        [ ".", "Count", ".", ".", ".", "." ],
-                        [ ".", "IntegrationLatency", ".", ".", ".", ".", { "stat": "Average", "yAxis": "right" } ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": false,
-                    "region": "${AWS::Region}",
-                    "stat": "Sum",
-                    "period": 300,
-                    "title": "Api Gateway Metrics"
-                }
-            },
+    DashboardBody: !Sub
+      - |-
+        {
+          "widgets": [
             {
-                "height": 6,
-                "width": 24,
-                "y": 6,
-                "x": 0,
-                "type": "metric",
-                "properties": {
-                    "metrics": [
-                        [ "AWS/Lambda", "Throttles", "FunctionName", "${GetRecommendations}", { "color": "#ff7f0e" } ],
-                        [ ".", "Errors", ".", ".", { "color": "#d62728" } ],
-                        [ ".", "Invocations", ".", "." ],
-                        [ ".", "Duration", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": false,
-                    "region": "${AWS::Region}",
-                    "stat": "Sum",
-                    "period": 300,
-                    "title": "GetRecommendations Lambda"
-                }
-            },
-            {
-                "height": 6,
-                "width": 24,
-                "y": 12,
-                "x": 0,
-                "type": "metric",
-                "properties": {
-                    "metrics": [
-                      [ "PersonalizeCustomMetrics", "PersonalizeRequestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ],
-                      [ "PersonalizeCustomMetrics", "DynamoSophi2ReuqestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ],
-                      [ "PersonalizeCustomMetrics", "DynamoSophi3ReuqestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ] 
-                    ],
-                    "view": "timeSeries",
-                    "stacked": true,
-                    "region": "${AWS::Region}",
-                    "stat": "Average",
-                    "period": 300,
-                    "title": "GetRecommendations Dependency"
-                }
-            },
-            {
-                "height": 6,
-                "width": 24,
-                "y": 18,
-                "x": 0,
-                "type": "metric",
-                "properties": {
-                    "metrics": [
-                      [ "AWS/Personalize", "GetRecommendations5XXErrors", "CampaignArn", "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}", { "color": "#d62728" } ],
-                      [ ".", "GetRecommendations4XXErrors", ".", "." ],
-                      [ ".", "GetRecommendationsLatency", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ],
-                      [ ".", "GetRecommendations", ".", "." ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": false,
-                    "region": "${AWS::Region}",
-                    "stat": "Sum",
-                    "period": 300,
-                    "title": "Amazon Personalize Requests Campain: {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}"
-                }
-            },
-            {
-                "height": 6,
-                "width": 24,
-                "y": 24,
-                "x": 0,
-                "type": "metric",
-                "properties": {
-                    "metrics": [
-                      [ { "expression": "m1/300", "label": "TPS", "id": "e1" } ],
-                      [ "AWS/Personalize", "GetRecommendations", "CampaignArn", "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}", { "id": "m1", "visible": false} ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": false,
-                    "region": "${AWS::Region}",
-                    "stat": "Sum",
-                    "period": 300,
-                    "title": "Amazon Personalize Actial vs Provisioned  TPS: {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}",
-                    "annotations": {
-                        "horizontal": [
-                            {
-                                "label": "Provisioned TPS",
-                                "value": {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/minProvisionedTPS}}
-                            }
-                        ]
-                    }
-                }
-            },
-            {
-                "height": 6,
-                "width": 24,
-                "y": 30,
-                "x": 0,
-                "type": "metric",
-                "properties": {
-                    "metrics": [
-                      [ "PersonalizeCustomMetrics", "ReturnRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "right", "stat": "Minimum" } ],
-                      [ "PersonalizeCustomMetrics", "MissingRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": true,
-                    "region": "${AWS::Region}",
-                    "stat": "Average",
-                    "period": 300,
-                    "title": "GetRecommendations Health",
-                    "yAxis": {
-                        "left": {
-                            "label": "Avg Missing Recommendations",
-                            "showUnits": false
-                        },
-                        "right": {
-                            "label": "Min Returned Recommendations",
-                            "showUnits": false
-                        }
-                    }
-                }
-            },
+                  "type": "metric",
+                  "x": 0,
+                  "y": 0,
+                  "width": 24,
+                  "height": 6,
+                  "properties": {
+                      "metrics": [
+                          [ "AWS/ApiGateway", "4XXError", "ApiName", "${ResourcesPrefix}-${Environment}-${ShortStackId}", "Stage", "${StageName}" ],
+                          [ ".", "5XXError", ".", ".", ".", ".", { "color": "#d62728" } ],
+                          [ ".", "Latency", ".", ".", ".", ".", { "yAxis": "right", "stat": "Average" } ],
+                          [ ".", "Count", ".", ".", ".", "." ],
+                          [ ".", "IntegrationLatency", ".", ".", ".", ".", { "stat": "Average", "yAxis": "right" } ]
+                      ],
+                      "view": "timeSeries",
+                      "stacked": false,
+                      "region": "${AWS::Region}",
+                      "stat": "Sum",
+                      "period": 300,
+                      "title": "Api Gateway Metrics"
+                  }
+              },
+              {
+                  "height": 6,
+                  "width": 24,
+                  "y": 6,
+                  "x": 0,
+                  "type": "metric",
+                  "properties": {
+                      "metrics": [
+                          [ "AWS/Lambda", "Throttles", "FunctionName", "${GetRecommendations}", { "color": "#ff7f0e" } ],
+                          [ ".", "Errors", ".", ".", { "color": "#d62728" } ],
+                          [ ".", "Invocations", ".", "." ],
+                          [ ".", "Duration", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ]
+                      ],
+                      "view": "timeSeries",
+                      "stacked": false,
+                      "region": "${AWS::Region}",
+                      "stat": "Sum",
+                      "period": 300,
+                      "title": "GetRecommendations Lambda"
+                  }
+              },
+              {
+                  "height": 6,
+                  "width": 24,
+                  "y": 12,
+                  "x": 0,
+                  "type": "metric",
+                  "properties": {
+                      "metrics": [
+                        [ "PersonalizeCustomMetrics", "PersonalizeRequestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ],
+                        [ "PersonalizeCustomMetrics", "DynamoSophi2ReuqestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ],
+                        [ "PersonalizeCustomMetrics", "DynamoSophi3ReuqestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ]
+                      ],
+                      "view": "timeSeries",
+                      "stacked": true,
+                      "region": "${AWS::Region}",
+                      "stat": "Average",
+                      "period": 300,
+                      "title": "GetRecommendations Dependency"
+                  }
+              },
+              {
+                  "height": 6,
+                  "width": 24,
+                  "y": 18,
+                  "x": 0,
+                  "type": "metric",
+                  "properties": {
+                      "metrics": [
+                        [ "AWS/Personalize", "GetRecommendations5XXErrors", "CampaignArn", "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}", { "color": "#d62728" } ],
+                        [ ".", "GetRecommendations4XXErrors", ".", "." ],
+                        [ ".", "GetRecommendationsLatency", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ],
+                        [ ".", "GetRecommendations", ".", "." ]
+                      ],
+                      "view": "timeSeries",
+                      "stacked": false,
+                      "region": "${AWS::Region}",
+                      "stat": "Sum",
+                      "period": 300,
+                      "title": "Amazon Personalize Requests Campain: {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}"
+                  }
+              },
+              {
+                  "height": 6,
+                  "width": 24,
+                  "y": 24,
+                  "x": 0,
+                  "type": "metric",
+                  "properties": {
+                      "metrics": [
+                        [ { "expression": "m1/300", "label": "TPS", "id": "e1" } ],
+                        [ "AWS/Personalize", "GetRecommendations", "CampaignArn", "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}", { "id": "m1", "visible": false} ]
+                      ],
+                      "view": "timeSeries",
+                      "stacked": false,
+                      "region": "${AWS::Region}",
+                      "stat": "Sum",
+                      "period": 300,
+                      "title": "Amazon Personalize Actial vs Provisioned  TPS: {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}",
+                      "annotations": {
+                          "horizontal": [
+                              {
+                                  "label": "Provisioned TPS",
+                                  "value": {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/minProvisionedTPS}}
+                              }
+                          ]
+                      }
+                  }
+              },
+              {
+                  "height": 6,
+                  "width": 24,
+                  "y": 30,
+                  "x": 0,
+                  "type": "metric",
+                  "properties": {
+                      "metrics": [
+                        [ "PersonalizeCustomMetrics", "ReturnRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "right", "stat": "Minimum" } ],
+                        [ "PersonalizeCustomMetrics", "MissingRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ]
+                      ],
+                      "view": "timeSeries",
+                      "stacked": true,
+                      "region": "${AWS::Region}",
+                      "stat": "Average",
+                      "period": 300,
+                      "title": "GetRecommendations Health",
+                      "yAxis": {
+                          "left": {
+                              "label": "Avg Missing Recommendations",
+                              "showUnits": false
+                          },
+                          "right": {
+                              "label": "Min Returned Recommendations",
+                              "showUnits": false
+                          }
+                      }
+                  }
+              },
 
-            {
-                "height": 6,
-                "width": 12,
-                "y": 36,
-                "x": 0,
-                "type": "metric",
-                "properties": {
-                    "metrics": [
-                        [ "AWS/Lambda", "Throttles", "FunctionName", "${PutEvents}", { "color": "#ff7f0e" } ],
-                        [ ".", "Errors", ".", ".", { "color": "#d62728" } ],
-                        [ ".", "Invocations", ".", "." ],
-                        [ ".", "Duration", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": false,
-                    "region": "${AWS::Region}",
-                    "stat": "Sum",
-                    "period": 300,
-                    "title": "PutEvents Lambda"
-                }
-            },
-            {
-                "height": 6,
-                "width": 12,
-                "y": 42,
-                "x": 0,
-                "type": "metric",
-                "properties": {
-                    "metrics": [
-                        [ "AWS/Personalize", "putEvents4xxErrors", "EventTrackerArn", "{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/eventTrackerArn}}", { "color": "#ff7f0e" } ],
-                        [ ".", "putEvents5xxErrors", ".", ".", { "color": "#d62728" } ],
-                        [ ".", "putEventsRequests", ".", "." ],
-                        [ ".", "putEventLatency", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": false,
-                    "region": "${AWS::Region}",
-                    "stat": "Sum",
-                    "period": 300,
-                    "title": "PutEvents Personalize Tracker: {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/eventTrackerArn}}"
-                }
-            },
-            {
-                "height": 6,
-                "width": 12,
-                "y": 36,
-                "x": 12,
-                "type": "metric",
-                "properties": {
-                    "metrics": [
-                        [ "AWS/Lambda", "Throttles", "FunctionName", "${PutContent}", { "color": "#ff7f0e" } ],
-                        [ ".", "Errors", ".", ".", { "color": "#d62728" } ],
-                        [ ".", "Invocations", ".", "." ],
-                        [ ".", "Duration", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": false,
-                    "region": "${AWS::Region}",
-                    "stat": "Sum",
-                    "period": 300,
-                    "title": "PutContent Lambda"
-                }
-            },
-            {
-                "height": 6,
-                "width": 12,
-                "y": 48,
-                "x": 0,
-                "type": "metric",
-                "properties": {
-                    "metrics": [
-                        [ "AWS/Lambda", "IteratorAge", "FunctionName", "${PutEvents}", { "color": "#ff7f0e" } ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": true,
-                    "region": "${AWS::Region}",
-                    "stat": "Maximum",
-                    "period": 60,
-                    "title": "PutEvents Lambda IteratorAge",
-                    "annotations": {
-                        "horizontal": [
-                            {
-                                "label": "Alarm",
-                                "value": ${LambdaIteratorAgeAlarm}
-                            }
-                        ]
-                    }
-                }
-            },
-            {
-                "height": 6,
-                "width": 12,
-                "y": 48,
-                "x": 12,
-                "type": "metric",
-                "properties": {
-                    "metrics": [
-                        [ "AWS/Lambda", "IteratorAge", "FunctionName", "${PutContent}", { "color": "#ff7f0e" } ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": true,
-                    "region": "${AWS::Region}",
-                    "stat": "Maximum",
-                    "period": 60,
-                    "title": "PutContent Lambda IteratorAge",
-                    "annotations": {
-                        "horizontal": [
-                            {
-                                "label": "Alarm",
-                                "value": ${LambdaIteratorAgeAlarm}
-                            }
-                        ]
-                    }
-                }
-            },
-            {
-                "type": "alarm",
-                "y": 54,
-                "x": 0,
-                "width": 24,
-                "height": 3,
-                "properties": {
-                    "title": "${UpdateTimestamp} Lambda Alarm Status",
-                    "alarms": [
-                        "${GetRecommendationsErrorAlarm.Arn}",
-                        "${RecThrottlesAlarm.Arn}",
-                        "${PutContentErrorAlarm.Arn}",
-                        "${PutContentThrottlesAlarm.Arn}",
-                        "${PutEventsErrorAlarm.Arn}",
-                        "${PutEventsThrottlesAlarm.Arn}",
-                        "${ContentIteratorAge.Arn}",
-                        "${EventsIteratorAge.Arn}",
-                        "${CampainUtilizationAlarm.Arn}"
-                    ]
-                }
-            }
-        ]
-      }
+              {
+                  "height": 6,
+                  "width": 12,
+                  "y": 36,
+                  "x": 0,
+                  "type": "metric",
+                  "properties": {
+                      "metrics": [
+                          [ "AWS/Lambda", "Throttles", "FunctionName", "${PutEvents}", { "color": "#ff7f0e" } ],
+                          [ ".", "Errors", ".", ".", { "color": "#d62728" } ],
+                          [ ".", "Invocations", ".", "." ],
+                          [ ".", "Duration", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ]
+                      ],
+                      "view": "timeSeries",
+                      "stacked": false,
+                      "region": "${AWS::Region}",
+                      "stat": "Sum",
+                      "period": 300,
+                      "title": "PutEvents Lambda"
+                  }
+              },
+              {
+                  "height": 6,
+                  "width": 12,
+                  "y": 42,
+                  "x": 0,
+                  "type": "metric",
+                  "properties": {
+                      "metrics": [
+                          [ "AWS/Personalize", "putEvents4xxErrors", "EventTrackerArn", "{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/eventTrackerArn}}", { "color": "#ff7f0e" } ],
+                          [ ".", "putEvents5xxErrors", ".", ".", { "color": "#d62728" } ],
+                          [ ".", "putEventsRequests", ".", "." ],
+                          [ ".", "putEventLatency", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ]
+                      ],
+                      "view": "timeSeries",
+                      "stacked": false,
+                      "region": "${AWS::Region}",
+                      "stat": "Sum",
+                      "period": 300,
+                      "title": "PutEvents Personalize Tracker: {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/eventTrackerArn}}"
+                  }
+              },
+              {
+                  "height": 6,
+                  "width": 12,
+                  "y": 36,
+                  "x": 12,
+                  "type": "metric",
+                  "properties": {
+                      "metrics": [
+                          [ "AWS/Lambda", "Throttles", "FunctionName", "${PutContent}", { "color": "#ff7f0e" } ],
+                          [ ".", "Errors", ".", ".", { "color": "#d62728" } ],
+                          [ ".", "Invocations", ".", "." ],
+                          [ ".", "Duration", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ]
+                      ],
+                      "view": "timeSeries",
+                      "stacked": false,
+                      "region": "${AWS::Region}",
+                      "stat": "Sum",
+                      "period": 300,
+                      "title": "PutContent Lambda"
+                  }
+              },
+              {
+                  "height": 6,
+                  "width": 12,
+                  "y": 48,
+                  "x": 0,
+                  "type": "metric",
+                  "properties": {
+                      "metrics": [
+                          [ "AWS/Lambda", "IteratorAge", "FunctionName", "${PutEvents}", { "color": "#ff7f0e" } ]
+                      ],
+                      "view": "timeSeries",
+                      "stacked": true,
+                      "region": "${AWS::Region}",
+                      "stat": "Maximum",
+                      "period": 60,
+                      "title": "PutEvents Lambda IteratorAge",
+                      "annotations": {
+                          "horizontal": [
+                              {
+                                  "label": "Alarm",
+                                  "value": ${LambdaIteratorAgeAlarm}
+                              }
+                          ]
+                      }
+                  }
+              },
+              {
+                  "height": 6,
+                  "width": 12,
+                  "y": 48,
+                  "x": 12,
+                  "type": "metric",
+                  "properties": {
+                      "metrics": [
+                          [ "AWS/Lambda", "IteratorAge", "FunctionName", "${PutContent}", { "color": "#ff7f0e" } ]
+                      ],
+                      "view": "timeSeries",
+                      "stacked": true,
+                      "region": "${AWS::Region}",
+                      "stat": "Maximum",
+                      "period": 60,
+                      "title": "PutContent Lambda IteratorAge",
+                      "annotations": {
+                          "horizontal": [
+                              {
+                                  "label": "Alarm",
+                                  "value": ${LambdaIteratorAgeAlarm}
+                              }
+                          ]
+                      }
+                  }
+              },
+              {
+                  "type": "alarm",
+                  "y": 54,
+                  "x": 0,
+                  "width": 24,
+                  "height": 3,
+                  "properties": {
+                      "title": "${UpdateTimestamp} Lambda Alarm Status",
+                      "alarms": [
+                          "${GetRecommendationsErrorAlarm.Arn}",
+                          "${RecThrottlesAlarm.Arn}",
+                          "${PutContentErrorAlarm.Arn}",
+                          "${PutContentThrottlesAlarm.Arn}",
+                          "${PutEventsErrorAlarm.Arn}",
+                          "${PutEventsThrottlesAlarm.Arn}",
+                          "${ContentIteratorAge.Arn}",
+                          "${EventsIteratorAge.Arn}",
+                          "${CampainUtilizationAlarm.Arn}"
+                      ]
+                  }
+              }
+          ]
+        }
+      - ShortStackId: !Select
+              - 0
+              - !Split
+                - "-"
+                - !Select
+                  - 2
+                  - !Split
+                    - "/"
+                    - !Ref "AWS::StackId"
          
 # Outputs:
 Outputs:
