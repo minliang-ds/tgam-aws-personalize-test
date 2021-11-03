@@ -955,7 +955,7 @@ Resources:
                 - !Split
                   - "/"
                   - !Ref "AWS::StackId"
-    DashboardBody: !Sub
+     DashboardBody: !Sub
       - |-
         {
           "widgets": [
