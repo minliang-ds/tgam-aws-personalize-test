@@ -37,7 +37,7 @@ Mappings:
         - subnet-08e56efdbcd9d5d6b
     prod:
       Domain: "recoapi-ng.theglobeandmail.com"
-      CertId: "e0e02751-c147-4714-b98b-87f33e365e6a"
+      CertId: "221f72c5-24de-4ab1-a460-64721293426c"
       ProvisionedConcurrent: 100
       ThrottlingRateLimit: 200
       ThrottlingBurstLimit: 400
@@ -46,11 +46,16 @@ Mappings:
       HttpTimeoutMs: 3000
       GetRecoomendationsHttpTimeoutMs: 3000
       GetRecoomendationsLambdaTimeout: 4
-      VPCid: vpc-0e3bad5456a335c22
+      #VPCid: vpc-0e3bad5456a335c22
+      VPCid: vpc-0442ee80119bafc40
       SubnetIds:
-        - subnet-06399800ea3a0ab1c
-        - subnet-08f23425f7a169c2c
-        - subnet-044000fe72fe7d92b
+        - subnet-0279f09c0a39803e2
+        - subnet-0484e65cec16818b1
+        - subnet-06a4e49aafcbe734a
+        - subnet-0e92b639d610d84f8
+      #  - subnet-06399800ea3a0ab1c
+      #  - subnet-08f23425f7a169c2c
+      #  - subnet-044000fe72fe7d92b
     stg:
       Domain: "recoapi-ng-stg.theglobeandmail.com"
       CertId: "aaf0d521-52b9-4fcc-b805-810830111019"
