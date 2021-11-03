@@ -18,21 +18,23 @@ Global prerequisite items required for both mlops and api projects deployment.
 ### Create S3 bucket for SAM artifacts
 To deploy SAM models we need to create private [Amazon S3](https://aws.amazon.com/s3/) bucket
 
-1. [In CloudShell]: Create S3 bucket to keep configuration for SAM deployments
+1. [In CloudShell]: Update default role for API gateway on account level. This operation need to be executed only once per account.
 ```bash
-export env="dev"
-aws s3api create-bucket --bucket sam-${env}-sophi-bucket-us-east-1 --region us-east-1
-aws s3api put-bucket-encryption  --bucket sam-${env}-sophi-bucket-us-east-1  --server-side-encryption-configuration '{"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]}'
-```
+aws_account_id=`aws sts get-caller-identity --query 'Account' --output text`
+aws iam create-role \
+--role-name AmazonAPIGatewayPushToCloudWatchLogs \
+--assume-role-policy-document file://apigateway-policy.json
+aws iam attach-role-policy \
+--role-name AmazonAPIGatewayPushToCloudWatchLogs \
+--policy-arn "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
 
+aws apigateway update-account --patch-operations op='replace',path='/cloudwatchRoleArn',value='arn:aws:iam::${aws_account_id}:role/AmazonAPIGatewayPushToCloudWatchLogs'
+```
 ### Install requirement tools 
 
 Install required for deployment tools:
 
-- [SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
-- [Bandit](https://github.com/PyCQA/bandit)
-- [CNF NAG](https://github.com/stelligent/cfn_nag)
-- [cfn-lint](https://github.com/aws-cloudformation/cfn-lint)
+- [SAM CLI](https://aws.amazon.com/cli/)
 
 ### Clone project repo 
 1. Start an AWS CloudShell session from the AWS console
@@ -61,41 +63,34 @@ The below diagram showcases the campaign update step functions workflow:
 
 ![stepfunction definition](mlops/images/campaign_update_step_functions.png)
 
-### Deployment Prerequisite
-- ${notification_email} - Email address to send ml pipeline notification 
+### Pipeline Deployment steps 
+This command will deploy CodePipieline that will deploy changes based on git repository
+```bash
+sh pipeline.sh -e dev -t mlops -p tgam-personalize -b development -d
+```
 
-### Deployment steps 
+### Manual Deployment steps
+
 > **Information**: Steps 2-3 can be executed by running ./update.sh in mlops folder!
-1. [In CloudShell]: Navigate into the *mlops/personalize-step-functions* directory:
+1. [In CloudShell]: Navigate into the *mlops* directory:
 ```bash
-cd mlops/personalize-step-functions
+cd mlops
 ```
-2. [In CloudShell]: Validate and build your SAM project:
+2. [In CloudShell]: Validate and build your SAM project Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
 ```bash
-cfn_nag_scan -i template.yaml
-cfn-lint template.yaml
-sam validate
-sam build
-```
-3. [In CloudShell]: Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
-```bash
-sam deploy --stack-name tgam-personalize-mlops-test  \ 
-  --s3-bucket sam-dev-sophi-bucket-us-east-1  \ 
-  --capabilities CAPABILITY_IAM  \
-  --tags "Environment=dev CostAllocationProduct=amazon_personalize ManagedBy=CloudFormation" \
-  --parameter-overrides ParameterKey=Email,ParameterValue=${notification_email}
+./update_dev.sh
 ````
-5. Navigate to your email inbox and confirm your subscription to the SNS topic
-6. [In CloudShell]: Once deployed, the pipeline will create the **InputBucket** which you can find in the CloudFormation stack output. Use it to upload your CSV datasets using the following structure:
+3. Navigate to your email inbox and confirm your subscription to the SNS topic
+4. [In CloudShell]: Once deployed, the pipeline will create the **InputBucket** which you can find in the CloudFormation stack output. Use it to upload your CSV datasets using the following structure:
 ```bash
 Items/              # Items dataset(s) folder
 Interactions/       # Interaction dataset(s) folder
 ``` 
-7. [In CloudShell]: Navigate into the *mlops* directory:
+5. [In CloudShell]: Navigate into the *mlops* directory:
 ```bash
 cd ~/mlops
 ```
-8. [In CloudShell]: Upload the `params.json` file to the **root directory of the InputBucket**. This step will trigger the campaign creation step functions workflow.
+[In CloudShell]: Upload the `params.json` file to the **root directory of the InputBucket**. This step will trigger the campaign creation step functions workflow.
 - Note that future updates to the `params.json` file should follow the resource naming convention that uses the dataset group name as the prefix
 ```bash
 aws s3 cp ./params.json s3://<input-bucket-name>
@@ -104,21 +99,6 @@ aws s3 cp ./params.json s3://<input-bucket-name>
 
 
 ## Deploy Recommendations API
-
-/personalize/${ResourcesPrefix}/${Environment}/datasetGroupName
-
-### Prerequisite
-- ${enviroment} - type of enviroment dev/prod/stg 
-- ${resource_prefix} - individual prefix for resources, should match resource prefix for mlops
-- ${monitoring_email_address} - email address where CloudWatch alarms will send notification
-- ${vpc_id} - VPC id where lambdas will be deployed
-- ${private_subnet_ids} - list of private subnets in provided VPC 
-- ${acm_certificate_arn} - arn of valid and issued certificate
-#- ${dataset_name} - name of Personalize dataset
-#- ${event_tracker_id} - id of Amazon Personalize tracker
-#- ${even_tracker_arn} - ARN of Amazon Personalize tracker
-#- ${campaign_tps} - value of provisioned TPS for campaign
-#- ${campaign_name} - name of Amazon Personalize
 
 
 #### Create ACM Certificate
@@ -141,6 +121,7 @@ RESOURCERECORD  _0131f324147dc2ca4e625bb893dab9a8.recoapi-ng-dev.theglobeandmail
 ```bash
 aws acm describe-certificate --certificate-arn ${certificate_arn} --query 'Certificate.Status'
 ```
+
 #### First deployment
 First deployment should be done after step function pipeline is finished and ssm parameters are available. To check parameters status run:
 ```bash
@@ -168,46 +149,27 @@ aws ssm put-parameter --name /personalize/${resource_prefix}/${enviroment}/event
 aws ssm put-parameter --name /personalize/${resource_prefix}/${enviroment}/minProvisionedTPS --value "10" --type "String" 
 
 ```
-####
 
-1. [In CloudShell]: Request certificate for domain dev: **recoapi-ng-dev.theglobeandmail.com** prod: **recoapi-ng-prod.theglobeandmail.com**
+### Pipeline Deployment steps
+This command will deploy CodePipieline that will deploy changes based on git repository
 ```bash
-aws acm request-certificate --domain-name recoapi-ng-dev.theglobeandmail.com --validation-method DNS
+sh pipeline.sh -e dev -t api -p tgam-personalize -b development -d
 ```
-2. Request DNS entry CNAME record to validate certificate.
-3. [In CloudShell]: Navigate into the *mlops/personalize-step-functions* directory:
+
+### Manual Deployment steps
+
+1. [In CloudShell]: Navigate into the *api* directory:
 ```bash
 cd api
 ```
-4. [In CloudShell]: Validate and build your SAM project:
+2. [In CloudShell]: Validate, build, and deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
 ```bash
-sam validate && sam build
-```
-5. [In CloudShell]: Deploy your project. SAM offers a guided deployment option, note that you will need to provide your email address as a parameter to receive a notification.
-```bash
-sam deploy --stack-name tgam-personalize-api-test  \
-  --s3-bucket sam-dev-sophi-bucket-us-east-1  \
-  --capabilities CAPABILITY_IAM  \
-  --parameter-overrides \
-  --tags "Environment=dev CostAllocationProduct=amazon_personalize ManagedBy=CloudFormation" \
-  ParameterKey=ResourcesPrefix,ParameterValue=tgam-personalize \
-  ParameterKey=DefaultNotificationEmail,ParameterValue="${monitoring_email_address}" \
-  ParameterKey=Environment,ParameterValue=dev \
-  ParameterKey=LambdaVPC,ParameterValue=${vpc_id} \
-  ParameterKey=LambdaPrivateSubnetIDs,ParameterValue="${private_subnet_ids}" \
-  ParameterKey=CertificateARN,ParameterValue=${acm_certificate_arn} 
+./update_dev.sh
 ```
 
-6. [In CloudShell]: As cloudromation do not allow easy set log retention for log group from lambda we need to manually update time for cloudwatch logs retation
-```bash 
-aws logs put-retention-policy --log-group-name /aws/lambda/${name of put event lambda from output} --retention-in-days 7
-aws logs put-retention-policy --log-group-name /aws/lambda/${name of put content lambda from output --retention-in-days 7
-aws logs put-retention-policy --log-group-name /aws/lambda/${name of get recommendation lambda from output --retention-in-days 30
-```
+3. Request DNS change for domain ng-dev.theglobeandmail.ca to point to CNAME record provided by API Gateway
 
-7. Request DNS change for domain ng-dev.theglobeandmail.ca to point to CNAME record provided by API Gateway
-
-8. [In CloudShell]: Test api:
+4. [In CloudShell]: Test api:
 ```bash
 export api_endpoint=(url from output url)
 export api_key=(api from output url)

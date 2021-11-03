@@ -5,12 +5,12 @@ profile_arg="--profile ${profile}"
 fi
 
 env="dev"
-stack_name="tgam-personalize-api-test"
+stack_name="tgam-personalize-api-dev"
 deploy_region="us-east-1"
 
 set -e 
-cfn_nag_scan -i template.yml
-cfn-lint template.yml
+cfn_nag_scan -i template.yaml
+cfn-lint template.yaml
 bandit -r api-lambdas/getRecommendations/
 sam validate ${profile_arg}
 sam build ${profile_arg}
