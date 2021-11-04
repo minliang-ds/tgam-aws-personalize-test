@@ -425,11 +425,13 @@ Resources:
                   - !GetAtt ListSolutionVersions.Arn
                   - !GetAtt ListSolutions.Arn
                   - !GetAtt ListTrackers.Arn
+                  - !GetAtt ListFilters.Arn
                   - !GetAtt DeleteCampaign.Arn
                   - !GetAtt DeleteDataset.Arn
                   - !GetAtt DeleteDatasetGroup.Arn
                   - !GetAtt DeleteSolution.Arn
                   - !GetAtt DeleteTracker.Arn
+                  - !GetAtt DeleteFilter.Arn
                   - !GetAtt Notify.Arn
                   - !GetAtt NotifyDelete.Arn
   CreateDatasetGroup:
@@ -1087,6 +1089,54 @@ Resources:
               Action:
                 - personalize:DescribeCampaign
               Resource: "*"
+  ListFilters:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
+    Properties:
+      CodeUri: lambdas/list-filters
+      Handler: list-filters.lambda_handler
+      Runtime: python3.8
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - personalize:ListFilters
+              Resource: "*"
+  DeleteFilter:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
+    Properties:
+      CodeUri: lambdas/delete-filter
+      Handler: delete-filter.lambda_handler
+      Runtime: python3.8
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - personalize:DeleteFilter
+              Resource: "*"
   DeleteAllDatasetGroupResources:
     Type: "AWS::StepFunctions::StateMachine"
     Properties:
@@ -1109,7 +1159,7 @@ Resources:
                 },
                 "Map Event Trackers": {
                   "Type": "Map",
-                  "Next": "Get List All Solutions Dataset Group Arn",
+                  "Next": "List Filters",
                   "ItemsPath": "$.eventTrackers",
                   "ResultPath": null,
                   "MaxConcurrency": 3,
@@ -1130,6 +1180,52 @@ Resources:
                       "Delete Event Tracker": {
                         "Type": "Task",
                         "Resource": "${DeleteTrackerArn}",
+                        "End": true
+                      }
+                    }
+                  }
+                },
+                "List Filters": {
+                  "Next": "Map Filters",
+                  "Type": "Task",
+                  "Resource": "${ListFiltersArn}",
+                  "ResultPath": "$.filters",
+                  "Catch": [
+                    {
+                      "ErrorEquals": [
+                        "States.ALL"
+                      ],
+                      "Next": "Notify Error"
+                    }
+                  ]
+                },
+                "Map Filters": {
+                  "Type": "Map",
+                  "Next": "Get List All Solutions Dataset Group Arn",
+                  "ItemsPath": "$.filters",
+                  "ResultPath": null,
+                  "MaxConcurrency": 10,
+                  "Catch": [
+                    {
+                      "ErrorEquals": [
+                        "States.ALL"
+                      ],
+                      "Next": "Notify Error"
+                    }
+                  ],
+                  "Iterator": {
+                    "StartAt": "Get Filter Arn",
+                    "States": {
+                      "Get Filter Arn": {
+                        "Type": "Pass",
+                        "Parameters": {
+                          "filterArn.$": "$.filterArn"
+                        },
+                        "Next": "Delete Filter"
+                      },
+                      "Delete Filter": {
+                        "Type": "Task",
+                        "Resource": "${DeleteFilterArn}",
                         "End": true
                       }
                     }
@@ -1415,11 +1511,13 @@ Resources:
             DeleteDatasetArn: !GetAtt DeleteDataset.Arn
             DeleteSolutionArn: !GetAtt DeleteSolution.Arn
             DeleteTrackerArn: !GetAtt DeleteTracker.Arn
+            DeleteFilterArn: !GetAtt DeleteFilter.Arn
             ListCampaignsArn: !GetAtt ListCampaigns.Arn
             ListDatasetsArn: !GetAtt ListDatasets.Arn
             ListSolutionVersionsArn: !GetAtt ListSolutionVersions.Arn
             ListSolutionsArn: !GetAtt ListSolutions.Arn
             ListTrackersArn: !GetAtt ListTrackers.Arn
+            ListFiltersArn: !GetAtt ListFilters.Arn
             WaitSolutionVersionArn: !GetAtt WaitSolutionVersion.Arn
             WaitDeleteCampaignArn: !GetAtt WaitDeleteCampaign.Arn
             WaitDeleteDatasetArn: !GetAtt WaitDeleteDataset.Arn
