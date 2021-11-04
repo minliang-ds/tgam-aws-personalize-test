@@ -30,6 +30,7 @@ Mappings:
       GetRecoomendationsHttpTimeoutMs: 3000
       GetRecoomendationsLambdaTimeout: 4
       VPCid: vpc-0a53827efb39f973f
+      Sophi2DynamoDbTableRole: none
       SubnetIds:
         - subnet-0efb9d6d3ea5016f9
         - subnet-0c7691b437e67ca01
@@ -68,6 +69,7 @@ Mappings:
       EventLogRotation: 7
       GetRecoomendationsHttpTimeoutMs: 3000
       GetRecoomendationsLambdaTimeout: 4
+      Sophi2DynamoDbTableRole: none
       VPCid: vpc-
       SubnetIds:
         - subnet-
@@ -394,7 +396,7 @@ Resources:
           AWS_EMF_SERVICE_NAME: "GetRecommendations"
           AllowOriginDomains: !Ref CorsDomainOrigin
           UpdateTimestamp: !Ref UpdateTimestamp
-
+          CrossAccountSophi2Role: !FindInMap [EnvironmentMap, !Ref Environment, Sophi2DynamoDbTableRole]
 ## Event Lambda
   PutEvents:
     Type: AWS::Serverless::Function
