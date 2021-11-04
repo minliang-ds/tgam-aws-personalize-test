@@ -364,7 +364,6 @@ Resources:
                 - "dynamodb:BatchGetItem"
               Resource:
                 - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Sophi3DynamoDbTableName}'
-                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Sophi2DynamoDbTableName}'
             - !If
               - IsCrossAccount
               - Effect: Allow
@@ -372,13 +371,12 @@ Resources:
                   - "sts:AssumeRole"
                 Resource:
                   - !FindInMap [EnvironmentMap, !Ref Environment, Sophi2DynamoDbTableRole]
-              - !Ref AWS::NoValue
+              - Effect: Allow
+                Action:
+                  - "dynamodb:BatchGetItem"
+                Resource:
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Sophi2DynamoDbTableName}'
 
-            - Effect: Allow
-              Action:
-                - "sts:AssumeRole"
-              Resource:
-                - !FindInMap [EnvironmentMap, !Ref Environment, Sophi2DynamoDbTableRole]
       MemorySize: 192
       Timeout: !FindInMap [EnvironmentMap, !Ref Environment, GetRecoomendationsLambdaTimeout]
       Layers:

@@ -37,6 +37,8 @@ import time
 
 
 from boto3 import client
+from boto3.session import Session
+
 import botocore
 config = botocore.config.Config(
     connect_timeout=1, read_timeout=1,
@@ -44,6 +46,25 @@ config = botocore.config.Config(
 
 personalize_cli = client('personalize-runtime', config=config)
 dynamodb = client('dynamodb', config=config)
+
+
+if os.environ.get['CrossAccountSophi2Role'] && "arn" in os.environ.get['CrossAccountSophi2Role']:
+    sts_client = client('sts')
+    assumed_role_object=sts_client.assume_role(
+        RoleArn=os.environ.get['CrossAccountSophi2Role'],
+        RoleSessionName="AssumeRoleSession1"
+    )
+
+    response = client.assume_role(RoleArn=arn, RoleSessionName=session_name)
+
+    session = Session(aws_access_key_id=response['Credentials']['AccessKeyId'],
+                      aws_secret_access_key=response['Credentials']['SecretAccessKey'],
+                      aws_session_token=response['Credentials']['SessionToken'])
+
+    client_sophi2 = session.client('dynamodb', config=config)
+else:
+    client_sophi2 = client('dynamodb', config=config)
+
 
 from boto3.dynamodb.types import TypeDeserializer
 deserializer = TypeDeserializer()
@@ -69,6 +90,7 @@ account_id        = os.environ['CurrentAccountId']
 filter_prefix     = os.environ['FiltersPrefix']
 sophi3_table_name = os.environ['Sophi3DynamoDbTableName']
 sophi2_table_name = os.environ['Sophi2DynamoDbTableName']
+enviroment        = os.environ['Environment']
 
 attributes_to_get_sophi3 = [ 'Title', 'Deck', 'Byline', 'Category', 'Section', 'Keywords', 'State', 'CanonicalURL', 'CreditLine', 'Ownership', 'Sponsored', 'ContentId', 'ContentType', 'ContentRestriction', 'PublishedDate', 'WordCount', 'Caption', 'UpdatedDate', 'Label']
 attributes_to_get_sophi2 = ['ContentID', 'StoryRel', 'AuthorRel', 'PictureRel'];
@@ -81,7 +103,7 @@ return_headers = {
     'Access-Control-Allow-Methods': 'OPTIONS,POST'
 }
 
-def get_dynamo_data(dynamo_table, sort_key_name, attributes, item_list, return_type_map=False, return_type_list=False, api_gateway_request_id="NONE"):
+def get_dynamo_data(dynamo_client, dynamo_table, sort_key_name, attributes, item_list, return_type_map=False, return_type_list=False, api_gateway_request_id="NONE"):
     #item_list.insert(0,{'itemId': 'MTDKSOO7GJBNDE2OMQIF62ULEM'})
     if (len(item_list) > 0):
         try:
@@ -99,7 +121,7 @@ def get_dynamo_data(dynamo_table, sort_key_name, attributes, item_list, return_t
                 request_batch = [{sort_key_name: {'S': item["itemId"]}} for item in item_list[processed_items:processed_items+items_limit]]
 
                 while request_batch:
-                    db_response = dynamodb.batch_get_item(
+                    db_response = dynamo_client.batch_get_item(
                         RequestItems={
                             dynamo_table: {
                                 'Keys':request_batch,
@@ -235,7 +257,7 @@ def handler(event, context, metrics):
         try:
             if (len(response.get('itemList', [])) > 0):
                 before_request = time.time_ns()
-                deserialized_item = get_dynamo_data(sophi3_table_name, sort_key_name_sophi3, attributes_to_get_sophi3, response['itemList'], False, True, api_gateway_request_id)
+                deserialized_item = get_dynamo_data(client, sophi3_table_name, sort_key_name_sophi3, attributes_to_get_sophi3, response['itemList'], False, True, api_gateway_request_id)
                 after_request = time.time_ns()
                 metrics.put_metric("DynamoSophi2ReuqestTime", (int(after_request-before_request)/1000000), "Milliseconds")
                 metrics.put_metric("MissingDataDynamoSophi2", (arguments["numResults"] - len(deserialized_item)), "None")
