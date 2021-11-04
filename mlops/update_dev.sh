@@ -11,7 +11,6 @@ deploy_region="us-east-1"
 
 
 set -e
-set +x
 s3_bucket=`aws cloudformation describe-stacks --stack-name ${pipeline_name}  ${profile_arg} --region ${deploy_region} --query 'Stacks[0].Outputs' --output text  | grep PipelineArtifactsBucket | awk {'print $2'}`
 
 cd personalize-step-functions 
@@ -19,7 +18,7 @@ cfn-lint template.yaml
 cfn_nag_scan -i template.yaml
 sam validate ${profile_arg}
 sam build ${profile_arg}
-echo sam deploy ${profile_arg} --stack-name ${stack_name}  \
+sam deploy ${profile_arg} --stack-name ${stack_name}  \
   --force-upload \
   --s3-bucket ${s3_bucket} \
   --capabilities CAPABILITY_IAM  \
