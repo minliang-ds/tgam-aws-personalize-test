@@ -59,7 +59,7 @@ dynamodb = client('dynamodb', config=config)
 if os.environ.get('CrossAccountSophi2Role') and "arn" in os.environ.get('CrossAccountSophi2Role'):
     sts_client = client('sts')
     assumed_role_object=sts_client.assume_role(
-        RoleArn=os.environ.get['CrossAccountSophi2Role'],
+        RoleArn=os.environ.get('CrossAccountSophi2Role'),
         RoleSessionName="AssumeRoleSession1"
     )
 

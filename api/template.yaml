@@ -49,7 +49,7 @@ Mappings:
       GetRecoomendationsLambdaTimeout: 4
       VPCid: vpc-0e3bad5456a335c22
       Sophi2DynamoDbTableAccount: 826385046870
-      Sophi2DynamoDbTableRole: arn:aws:acm:us-east-1:826385046870:role/tgam_client_prod_personalize_get_recommendation_role
+      Sophi2DynamoDbTableRole: arn:aws:iam::690288799991:role/tgam_client_prod_personalize_get_recommendation_role
       #VPCid: vpc-0442ee80119bafc40 #prod-ds account
       SubnetIds:
       #  - subnet-0279f09c0a39803e2 #prod-ds account
