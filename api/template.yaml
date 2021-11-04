@@ -48,7 +48,7 @@ Mappings:
       GetRecoomendationsLambdaTimeout: 4
       VPCid: vpc-0e3bad5456a335c22
       Sophi2DynamoDbTableAccount: 826385046870
-      Sophi2DynamoDbTableRole:
+      Sophi2DynamoDbTableRole: arn:aws:acm:us-east-1:826385046870:role/tgam_client_prod_personalize_get_recommendation_role
       #VPCid: vpc-0442ee80119bafc40 #prod-ds account
       SubnetIds:
       #  - subnet-0279f09c0a39803e2 #prod-ds account
@@ -155,6 +155,10 @@ Parameters:
     Type: String
     Default: "theglobeandmail.com"
     Description: Value of Access-Control-Allow-Origin header
+
+Conditions:
+  IsCrossAccount: !Equals [!Ref Environment, 'prod']
+
 
     
 Resources:
@@ -359,6 +363,20 @@ Resources:
               Resource:
                 - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Sophi3DynamoDbTableName}'
                 - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Sophi2DynamoDbTableName}'
+            - !If
+              - IsCrossAccount
+              - Effect: Allow
+                Action:
+                  - "sts:AssumeRole"
+                Resource:
+                  - !FindInMap [EnvironmentMap, !Ref Environment, Sophi2DynamoDbTableRole]
+              - !Ref AWS::NoValue
+
+            - Effect: Allow
+              Action:
+                - "sts:AssumeRole"
+              Resource:
+                - !FindInMap [EnvironmentMap, !Ref Environment, Sophi2DynamoDbTableRole]
       MemorySize: 192
       Timeout: !FindInMap [EnvironmentMap, !Ref Environment, GetRecoomendationsLambdaTimeout]
       Layers:
