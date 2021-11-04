@@ -47,8 +47,10 @@ Mappings:
       GetRecoomendationsHttpTimeoutMs: 3000
       GetRecoomendationsLambdaTimeout: 4
       VPCid: vpc-0e3bad5456a335c22
+      Sophi2DynamoDbTableAccount: 826385046870
+      Sophi2DynamoDbTableRole:
       #VPCid: vpc-0442ee80119bafc40 #prod-ds account
-      #SubnetIds:
+      SubnetIds:
       #  - subnet-0279f09c0a39803e2 #prod-ds account
       #  - subnet-0484e65cec16818b1 #prod-ds account
       #  - subnet-06a4e49aafcbe734a #prod-ds account
