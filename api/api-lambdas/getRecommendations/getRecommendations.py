@@ -58,12 +58,8 @@ dynamodb = client('dynamodb', config=config)
 
 if os.environ.get('CrossAccountSophi2Role') and "arn" in os.environ.get('CrossAccountSophi2Role'):
     sts_client = client('sts')
-    assumed_role_object=sts_client.assume_role(
-        RoleArn=os.environ.get('CrossAccountSophi2Role'),
-        RoleSessionName="AssumeRoleSession1"
-    )
 
-    response = client.assume_role(RoleArn=arn, RoleSessionName=session_name)
+    response = sts_client.assume_role(RoleArn=os.environ.get('CrossAccountSophi2Role'), RoleSessionName=session_name)
 
     session = Session(aws_access_key_id=response['Credentials']['AccessKeyId'],
                       aws_secret_access_key=response['Credentials']['SecretAccessKey'],
