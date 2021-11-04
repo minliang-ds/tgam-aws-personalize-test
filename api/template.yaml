@@ -410,7 +410,7 @@ Resources:
       Handler: putevents.handler
       Runtime: nodejs12.x
       MemorySize: 192
-      Timeout: 30
+      Timeout: 60
       Policies:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
         - Version: "2012-10-17"
