@@ -5,11 +5,16 @@ profile_arg="--profile ${profile}"
 fi
 
 env="dev"
-stack_name="tgam-personalize-api-dev"
+stack_name="tgam-personalize-api-${env}"
+pipeline_name="tgam-personalize-${env}-api-pipeline"
 deploy_region="us-east-1"
 
-set -e 
-cfn_nag_scan -i template.yaml
+set -e
+s3_bucket=`aws cloudformation describe-stacks --stack-name ${pipeline_name}  ${profile_arg} --region ${deploy_region} --query 'Stacks[0].Outputs' --output text  | grep PipelineArtifactsBucket | awk {'print $2'}`
+
+
+set -x
+cfn_nag_scan -i template.yaml || true
 cfn-lint template.yaml
 bandit -r api-lambdas/getRecommendations/
 sam validate ${profile_arg}
@@ -17,12 +22,11 @@ sam build ${profile_arg}
 sam deploy ${profile_arg} --stack-name ${stack_name}  \
   --force-upload \
   --region ${deploy_region} \
-  --s3-bucket sam-${env}-sophi-bucket-us-east-1  \
+  --s3-bucket ${s3_bucket}  \
   --capabilities CAPABILITY_IAM  \
   --tags "Environment=${env} CostAllocationProduct=amazon_personalize ManagedBy=CloudFormation" \
   --parameter-overrides \
   ParameterKey=ResourcesPrefix,ParameterValue=tgam-personalize \
-  ParameterKey=DefaultNotificationEmail,ParameterValue="mlinliu@amazon.com" \
   ParameterKey=Environment,ParameterValue=${env} \
   ParameterKey=UpdateTimestamp,ParameterValue=$(date +"%s")
 

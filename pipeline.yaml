@@ -607,3 +607,8 @@ Resources:
 
       Roles:
         - !Ref CodeBuildRole
+
+# Outputs:
+Outputs:
+  PipelineArtifactsBucket:
+    Value: !Ref PipelineArtifactsBucket
