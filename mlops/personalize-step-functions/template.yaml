@@ -34,6 +34,9 @@ Parameters:
       - "stg"
       - "prod"
 
+Conditions:
+  IsDevAccount: !Equals [!Ref Environment, 'dev']
+
 Resources:
 
 # ------------------------
@@ -99,6 +102,28 @@ Resources:
                 - ''
                 - - 'arn:aws:s3:::'
                   - !Ref InputBucket
+          - !If
+            - IsDevAccount
+            - Sid: CopyToProd
+              Action:
+                - 's3:ListBucket'
+                - 's3:GetObject'
+              Effect: Allow
+              Resource:
+                - !Join
+                  - ''
+                  - - 'arn:aws:s3:::'
+                    - !Ref InputBucket
+                    - /*
+                - !Join
+                  - ''
+                  - - 'arn:aws:s3:::'
+                    - !Ref InputBucket
+              Principal:
+                AWS:
+                  - 'arn:aws:iam::690288799991:root'
+            - !Ref AWS::NoValue
+
   S3Lambda:
     Type: AWS::Serverless::Function
     Metadata:
