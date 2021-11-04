@@ -5,21 +5,24 @@ profile_arg="--profile ${profile}"
 fi
 
 env="prod"
-deploy_region=us-east-1
 stack_name="tgam-personalize-mlops-${env}"
-set -e
+pipeline_name="tgam-personalize-${env}-api-pipeline"
+deploy_region="us-east-1"
 
-cd personalize-step-functions 
+
+set -e
+s3_bucket=`aws cloudformation describe-stacks --stack-name ${pipeline_name}  ${profile_arg} --region ${deploy_region} --query 'Stacks[0].Outputs' --output text  | grep PipelineArtifactsBucket | awk {'print $2'}`
+
+cd personalize-step-functions
 cfn-lint template.yaml
-cfn_nag_scan -i template.yaml || true
+cfn_nag_scan -i template.yaml
 sam validate ${profile_arg}
 sam build ${profile_arg}
 sam deploy ${profile_arg} --stack-name ${stack_name}  \
   --force-upload \
-  --s3-bucket sam-${env}-sophi-bucket-us-east-1 \
+  --s3-bucket ${s3_bucket} \
   --capabilities CAPABILITY_IAM  \
   --tags "Environment=${env} CostAllocationProduct=amazon_personalize ManagedBy=CloudFormation" \
-  --parameter-overrides ParameterKey=Email,ParameterValue=mlinliu@amazon.com \
   ParameterKey=ResourcesPrefix,ParameterValue=tgam-personalize \
   ParameterKey=Environment,ParameterValue=${env}
 
