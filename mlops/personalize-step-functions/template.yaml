@@ -121,7 +121,8 @@ Resources:
                     - !Ref InputBucket
               Principal:
                 AWS:
-                  - 'arn:aws:iam::690288799991:root'
+                  - 'arn:aws:iam::690288799991:root' # prod-ds
+                  - 'arn:aws:iam::826385046870:root' # client-tgam-prod
             - !Ref AWS::NoValue
 
   S3Lambda:
