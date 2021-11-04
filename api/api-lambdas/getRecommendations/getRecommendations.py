@@ -35,7 +35,15 @@ inputs
 """
 import time
 
+from boto3.dynamodb.types import TypeDeserializer
+deserializer = TypeDeserializer()
 
+from botocore.exceptions import ClientError
+from aws_embedded_metrics import metric_scope
+
+import json
+import os
+import decimal
 from boto3 import client
 from boto3.session import Session
 
@@ -48,7 +56,7 @@ personalize_cli = client('personalize-runtime', config=config)
 dynamodb = client('dynamodb', config=config)
 
 
-if os.environ.get['CrossAccountSophi2Role'] && "arn" in os.environ.get['CrossAccountSophi2Role']:
+if os.environ.get('CrossAccountSophi2Role') and "arn" in os.environ.get('CrossAccountSophi2Role'):
     sts_client = client('sts')
     assumed_role_object=sts_client.assume_role(
         RoleArn=os.environ.get['CrossAccountSophi2Role'],
@@ -66,15 +74,7 @@ else:
     client_sophi2 = client('dynamodb', config=config)
 
 
-from boto3.dynamodb.types import TypeDeserializer
-deserializer = TypeDeserializer()
 
-from botocore.exceptions import ClientError
-from aws_embedded_metrics import metric_scope
-
-import json
-import os
-import decimal
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
@@ -257,13 +257,13 @@ def handler(event, context, metrics):
         try:
             if (len(response.get('itemList', [])) > 0):
                 before_request = time.time_ns()
-                deserialized_item = get_dynamo_data(client, sophi3_table_name, sort_key_name_sophi3, attributes_to_get_sophi3, response['itemList'], False, True, api_gateway_request_id)
+                deserialized_item = get_dynamo_data(dynamodb, sophi3_table_name, sort_key_name_sophi3, attributes_to_get_sophi3, response['itemList'], False, True, api_gateway_request_id)
                 after_request = time.time_ns()
                 metrics.put_metric("DynamoSophi2ReuqestTime", (int(after_request-before_request)/1000000), "Milliseconds")
                 metrics.put_metric("MissingDataDynamoSophi2", (arguments["numResults"] - len(deserialized_item)), "None")
 
                 before_request = time.time_ns()
-                images_map = get_dynamo_data(sophi2_table_name, sort_key_name_sophi2, attributes_to_get_sophi2, response['itemList'], True, False, api_gateway_request_id)
+                images_map = get_dynamo_data(client_sophi2, sophi2_table_name, sort_key_name_sophi2, attributes_to_get_sophi2, response['itemList'], True, False, api_gateway_request_id)
                 after_request = time.time_ns()
                 metrics.put_metric("DynamoSophi3ReuqestTime", (int(after_request-before_request)/1000000), "Milliseconds")
                 metrics.put_metric("MissingDataDynamoSophi3", (arguments["numResults"] - len(images_map)), "None")
