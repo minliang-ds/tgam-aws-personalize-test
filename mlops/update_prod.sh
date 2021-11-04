@@ -23,6 +23,7 @@ sam deploy ${profile_arg} --stack-name ${stack_name}  \
   --s3-bucket ${s3_bucket} \
   --capabilities CAPABILITY_IAM  \
   --tags "Environment=${env} CostAllocationProduct=amazon_personalize ManagedBy=CloudFormation" \
+  --parameter-overrides \
   ParameterKey=ResourcesPrefix,ParameterValue=tgam-personalize \
   ParameterKey=Environment,ParameterValue=${env}
 
