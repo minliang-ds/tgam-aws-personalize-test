@@ -1,6 +1,7 @@
 from os import environ
 import actions
 from loader import Loader
+import time
 
 LOADER = Loader()
 ARN = 'arn:aws:personalize:{region}:{account}:filter/{filter_name}'
@@ -51,5 +52,7 @@ def lambda_handler(event, context):
             filter['name']
         )
         filter_arns.append(filter_arn)
+        time.sleep(10)  # Spacing out API calls to avoid ThrottlingExceptions
+
 
     return filter_arns
