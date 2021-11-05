@@ -947,7 +947,7 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       Metrics:
-      - Expression: "(m1/300/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/minProvisionedTPS}}*100)"
+      - Expression: !Sub "(m1/300/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/minProvisionedTPS}}*100)"
         Id: e1
         Label: "TPS"
       - Id: m1
