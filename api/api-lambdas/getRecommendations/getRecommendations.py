@@ -99,6 +99,14 @@ return_headers = {
     'Access-Control-Allow-Methods': 'OPTIONS,POST'
 }
 
+category_mapping = {
+    "technology":           "business",
+    "globe-investor":       "investing",
+    "news":                 "canada",
+    "globe-drive":          "drive",
+    "report-on-business":   "business"
+}
+
 def get_dynamo_data(dynamo_client, dynamo_table, sort_key_name, attributes, item_list, return_type_map=False, return_type_list=False, api_gateway_request_id="NONE"):
     #item_list.insert(0,{'itemId': 'MTDKSOO7GJBNDE2OMQIF62ULEM'})
     if (len(item_list) > 0):
@@ -208,6 +216,9 @@ def handler(event, context, metrics):
                     category = category[1]
                 else:
                     category = payload.get("section")
+
+            if category_mapping.get(category):
+                category = category_mapping.get(category)
 
             arguments["filterValues"]["category"] = f'\"{category}\"';
         else:
