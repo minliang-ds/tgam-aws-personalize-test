@@ -39,7 +39,7 @@ Mappings:
     prod:
       Domain: "recoapi-ng.theglobeandmail.com"
       CertId: "415fbcb3-d1b3-4775-a7b3-8d0ac21de215"
-      ProvisionedConcurrent: 100
+      ProvisionedConcurrent: 10
       ThrottlingRateLimit: 200
       ThrottlingBurstLimit: 400
       LogRotation: 30

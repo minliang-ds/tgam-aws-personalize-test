@@ -58,12 +58,8 @@ dynamodb = client('dynamodb', config=config)
 
 if os.environ.get('CrossAccountSophi2Role') and "arn" in os.environ.get('CrossAccountSophi2Role'):
     sts_client = client('sts')
-    assumed_role_object=sts_client.assume_role(
-        RoleArn=os.environ.get('CrossAccountSophi2Role'),
-        RoleSessionName="AssumeRoleSession1"
-    )
 
-    response = client.assume_role(RoleArn=arn, RoleSessionName=session_name)
+    response = sts_client.assume_role(RoleArn=os.environ.get('CrossAccountSophi2Role'), RoleSessionName="SessionName")
 
     session = Session(aws_access_key_id=response['Credentials']['AccessKeyId'],
                       aws_secret_access_key=response['Credentials']['SecretAccessKey'],
@@ -204,10 +200,7 @@ def handler(event, context, metrics):
 
             #section can be /canada/ or /canada/alberta/
             #in both cases we need category to be "canada"
-            category = payload.get("section").split("/")
-            if len(category) > 0:
-                category = category[1]
-            else:
+            if payload.get("include_sections"):
                 category = payload.get("section")
 
             arguments["filterValues"]["category"] = f'\"{category}\"';
