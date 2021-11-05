@@ -34,20 +34,40 @@ inputs
 }
 """
 import time
-
-from boto3.dynamodb.types import TypeDeserializer
-deserializer = TypeDeserializer()
-
-from botocore.exceptions import ClientError
-from aws_embedded_metrics import metric_scope
-
 import json
 import os
 import decimal
+import botocore
+
 from boto3 import client
 from boto3.session import Session
+from botocore.credentials import RefreshableCredentials
+from botocore.session import get_session
+from botocore.exceptions import ClientError
+from aws_embedded_metrics import metric_scope
+from boto3.dynamodb.types import TypeDeserializer
 
-import botocore
+deserializer = TypeDeserializer()
+
+def _refresh():
+    sts_client = client('sts')
+    print(f"Refresh tokens by calling assume_role again")
+
+    params = {
+        "RoleArn": os.environ.get('CrossAccountSophi2Role'),
+        "RoleSessionName": "CrossAccountSophi2Role",
+        "DurationSeconds": 3600,
+    }
+
+    response = sts_client.assume_role(**params).get("Credentials")
+    credentials = {
+        "access_key": response.get("AccessKeyId"),
+        "secret_key": response.get("SecretAccessKey"),
+        "token": response.get("SessionToken"),
+        "expiry_time": response.get("Expiration").isoformat(),
+    }
+    return credentials
+
 config = botocore.config.Config(
     connect_timeout=1, read_timeout=1,
     retries={'max_attempts': 2})
@@ -55,21 +75,20 @@ config = botocore.config.Config(
 personalize_cli = client('personalize-runtime', config=config)
 dynamodb = client('dynamodb', config=config)
 
-
 if os.environ.get('CrossAccountSophi2Role') and "arn" in os.environ.get('CrossAccountSophi2Role'):
-    sts_client = client('sts')
+    session_credentials = RefreshableCredentials.create_from_metadata(
+        metadata=_refresh(),
+        refresh_using=_refresh,
+        method="sts-assume-role",
+    )
+    sts_session = get_session()
+    sts_session._credentials = session_credentials
+    autorefresh_session = Session(botocore_session=sts_session)
 
-    response = sts_client.assume_role(RoleArn=os.environ.get('CrossAccountSophi2Role'), RoleSessionName="SessionName")
+    client_sophi2 = autorefresh_session.client("dynamodb", config=config)
 
-    session = Session(aws_access_key_id=response['Credentials']['AccessKeyId'],
-                      aws_secret_access_key=response['Credentials']['SecretAccessKey'],
-                      aws_session_token=response['Credentials']['SessionToken'])
-
-    client_sophi2 = session.client('dynamodb', config=config)
 else:
     client_sophi2 = client('dynamodb', config=config)
-
-
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -97,6 +116,14 @@ return_headers = {
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Origin':  '*',
     'Access-Control-Allow-Methods': 'OPTIONS,POST'
+}
+
+category_mapping = {
+    "technology":           "business",
+    "globe-investor":       "investing",
+    "news":                 "canada",
+    "globe-drive":          "drive",
+    "report-on-business":   "business"
 }
 
 def get_dynamo_data(dynamo_client, dynamo_table, sort_key_name, attributes, item_list, return_type_map=False, return_type_list=False, api_gateway_request_id="NONE"):
@@ -208,6 +235,9 @@ def handler(event, context, metrics):
                     category = category[1]
                 else:
                     category = payload.get("section")
+
+            if category_mapping.get(category):
+                category = category_mapping.get(category)
 
             arguments["filterValues"]["category"] = f'\"{category}\"';
         else:
