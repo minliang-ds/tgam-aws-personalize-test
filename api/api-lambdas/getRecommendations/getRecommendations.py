@@ -201,7 +201,13 @@ def handler(event, context, metrics):
             #section can be /canada/ or /canada/alberta/
             #in both cases we need category to be "canada"
             if payload.get("include_sections"):
-                category = payload.get("section")
+                category = payload.get("include_sections")
+            elif payload.get("section"):
+                category = payload.get("section").split("/")
+                if len(category) > 0:
+                    category = category[1]
+                else:
+                    category = payload.get("section")
 
             arguments["filterValues"]["category"] = f'\"{category}\"';
         else:
