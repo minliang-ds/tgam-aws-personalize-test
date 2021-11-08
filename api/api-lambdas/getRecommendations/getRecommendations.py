@@ -2,7 +2,6 @@ import time
 import json
 import os
 import decimal
-import functions
 
 from boto3 import client
 from boto3.session import Session
