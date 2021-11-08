@@ -146,7 +146,7 @@
       },
       "similarItemsCampaign":{
          "name":"tgam-personalize-similarItemsCampaign",
-         "minProvisionedTPS":10
+         "minProvisionedTPS":1
       }
    },
    "userPersonalizationUpdates":{
