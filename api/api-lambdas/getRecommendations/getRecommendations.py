@@ -1,53 +1,18 @@
-"""
-inputs
-@visitor_id - required, string, userID for personalize
-@sub_requests[0].limit - optional, int, max: 100, default: 25, limit of return recommendation
-@sub_requests[0].context - optional, string, example: art_same_section_mostpopular, art_mostpopular, user_container_recommendations, mobile_art_morestories
-@sub_requests[0].platform - optional, string user platform 
-@sub_requests[0].visitor_type - optional, string user type 
-@sub_requests[0].section - optional, string convert to filter example: 
-
-{
-  "sub_requests": [
-    {
-      "widget_id": "recommended-art_same_section_mostpopular",
-      "include_read": false,
-      "include_content_types": "wire,news,blog,column,review,gallery",
-      "limit": 6,
-      "context": "art_same_section_mostpopular",
-      "width": "w620",
-      "include_sections": "business",
-      "min_content_age": 61,
-      "platform": "desktop",
-      "max_content_age": 345601,
-      "rank": 1,
-      "last_content_ids": "IBIPXDSTAVFNTMRN5FXZXJFKRI",
-      "newsletter_ids": "",
-      "section": "/business/",
-      "seo_keywords": "",
-      "visitor_type": "registered"
-    }
-  ],
-  "platform": "desktop",
-  "visitor_id": "82889d15-188b-41ae-bf20-33982546e7b5",
-  "hash_id": ""
-}
-"""
 import time
 import json
 import os
 import decimal
-import botocore
+import functions
 
 from boto3 import client
 from boto3.session import Session
+from boto3.dynamodb.types import TypeDeserializer
+
+from botocore import config as boto_config
 from botocore.credentials import RefreshableCredentials
 from botocore.session import get_session
 from botocore.exceptions import ClientError
 from aws_embedded_metrics import metric_scope
-from boto3.dynamodb.types import TypeDeserializer
-
-deserializer = TypeDeserializer()
 
 def _refresh():
     sts_client = client('sts')
@@ -68,66 +33,7 @@ def _refresh():
     }
     return credentials
 
-config = botocore.config.Config(
-    connect_timeout=1, read_timeout=1,
-    retries={'max_attempts': 2})
-
-personalize_cli = client('personalize-runtime', config=config)
-dynamodb = client('dynamodb', config=config)
-
-if os.environ.get('CrossAccountSophi2Role') and "arn" in os.environ.get('CrossAccountSophi2Role'):
-    session_credentials = RefreshableCredentials.create_from_metadata(
-        metadata=_refresh(),
-        refresh_using=_refresh,
-        method="sts-assume-role",
-    )
-    sts_session = get_session()
-    sts_session._credentials = session_credentials
-    autorefresh_session = Session(botocore_session=sts_session)
-
-    client_sophi2 = autorefresh_session.client("dynamodb", config=config)
-
-else:
-    client_sophi2 = client('dynamodb', config=config)
-
-
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, decimal.Decimal):
-            if o % 1 > 0:
-                return float(o)
-            else:
-                return int(o)
-        return super(DecimalEncoder, self).default(o)
-
-region            = os.environ['AWS_REGION']
-account_id        = os.environ['CurrentAccountId']
-filter_prefix     = os.environ['FiltersPrefix']
-sophi3_table_name = os.environ['Sophi3DynamoDbTableName']
-sophi2_table_name = os.environ['Sophi2DynamoDbTableName']
-enviroment        = os.environ['Environment']
-
-attributes_to_get_sophi3 = [ 'Title', 'Deck', 'Byline', 'Category', 'Section', 'Keywords', 'State', 'CanonicalURL', 'CreditLine', 'Ownership', 'Sponsored', 'ContentId', 'ContentType', 'ContentRestriction', 'PublishedDate', 'WordCount', 'Caption', 'UpdatedDate', 'Label']
-attributes_to_get_sophi2 = ['ContentID', 'StoryRel', 'AuthorRel', 'PictureRel'];
-sort_key_name_sophi3     = "ContentId"
-sort_key_name_sophi2     = "ContentID"
-
-return_headers = {
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Origin':  '*',
-    'Access-Control-Allow-Methods': 'OPTIONS,POST'
-}
-
-category_mapping = {
-    "technology":           "business",
-    "globe-investor":       "investing",
-    "news":                 "canada",
-    "globe-drive":          "drive",
-    "report-on-business":   "business"
-}
-
 def get_dynamo_data(dynamo_client, dynamo_table, sort_key_name, attributes, item_list, return_type_map=False, return_type_list=False, api_gateway_request_id="NONE"):
-    #item_list.insert(0,{'itemId': 'MTDKSOO7GJBNDE2OMQIF62ULEM'})
     if (len(item_list) > 0):
         try:
             deserialized_item = []
@@ -164,16 +70,110 @@ def get_dynamo_data(dynamo_client, dynamo_table, sort_key_name, attributes, item
         except ClientError as e:
             print(f"RequestID: {api_gateway_request_id} Key Error: {e}")
 
-        #else:
-        #    print(f"RequestID: {api_gateway_request_id} RawDynamoReply = {db_response}")
-
-
         if return_type_map:
             return_map = {element['contentid']: element for element in deserialized_item}
             return return_map;
 
         if return_type_list:
             return deserialized_item;
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            if o % 1 > 0:
+                return float(o)
+            else:
+                return int(o)
+        return super(DecimalEncoder, self).default(o)
+
+region            = os.environ.get('AWS_REGION')
+account_id        = os.environ.get('CurrentAccountId')
+filter_prefix     = os.environ.get('FiltersPrefix')
+sophi2_role_arn   = os.environ.get('CrossAccountSophi2Role')
+enviroment        = os.environ.get('Environment')
+
+deserializer      = TypeDeserializer()
+config = boto_config.Config(
+    connect_timeout=1, read_timeout=1,
+    retries={'max_attempts': 2})
+
+personalize_cli = client('personalize-runtime', config=config)
+client_sophi3 = client('dynamodb', config=config)
+
+if sophi2_role_arn and "arn" in sophi2_role_arn:
+    session_credentials = RefreshableCredentials.create_from_metadata(
+        metadata=_refresh(),
+        refresh_using=_refresh,
+        method="sts-assume-role",
+    )
+    sts_session = get_session()
+    sts_session._credentials = session_credentials
+    autorefresh_session = Session(botocore_session=sts_session)
+    client_sophi2 = autorefresh_session.client("dynamodb", config=config)
+else:
+    client_sophi2 = client('dynamodb', config=config)
+
+attributes_to_get_sophi3 = [
+    'Title',
+    'Deck',
+    'Byline',
+    'Category',
+    'Section',
+    'Keywords',
+    'State',
+    'CanonicalURL',
+    'CreditLine',
+    'Ownership',
+    'Sponsored',
+    'ContentId',
+    'ContentType',
+    'ContentRestriction',
+    'PublishedDate',
+    'WordCount',
+    'Caption',
+    'UpdatedDate',
+    'Label'
+]
+
+attributes_to_get_sophi2 = [
+    'ContentID',
+    'StoryRel',
+    'AuthorRel',
+    'PictureRel'
+]
+
+sort_key_name_sophi3 = "ContentId"
+sort_key_name_sophi2 = "ContentID"
+
+#Mapping conversion fields from dynamo table to reply
+names_key = {
+    'WordCount'.lower()            : 'word_count' ,
+    'ContentType'.lower()          : 'content_type' ,
+    'PublishedDate'.lower()        : 'published_at',
+    'UpdatedDate'.lower()          : 'updated_at',
+    'Section'.lower()              : 'section_meta_title',
+    'CanonicalURL'.lower()         : 'url',
+    'CreditLine'.lower()           : 'credit',
+    'ContentId'.lower()            : 'content_id',
+    'ContentType'.lower()          : 'content_type',
+    'ContentRestriction'.lower()   : 'protection_product',
+    'ContentType'.lower()          : 'content_type',
+    'Label'.lower()                : 'label'
+}
+
+return_headers = {
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Origin':  '*',
+    'Access-Control-Allow-Methods': 'OPTIONS,POST'
+}
+
+category_mapping = {
+    "technology":           "business",
+    "globe-investor":       "investing",
+    "news":                 "canada",
+    "globe-drive":          "drive",
+    "report-on-business":   "business"
+}
 
 @metric_scope
 def handler(event, context, metrics):
@@ -267,39 +267,19 @@ def handler(event, context, metrics):
         #reply['recommendations_debug'] = response['itemList']
         reply['recommendationId'] = response['recommendationId']
 
-        #Mapping convertion fields from dynamo table to reply
-        names_key = {
-            'WordCount'.lower()            : 'word_count' ,
-            'ContentType'.lower()          : 'content_type' ,
-            'PublishedDate'.lower()        : 'published_at',
-            'UpdatedDate'.lower()          : 'updated_at',
-            'Section'.lower()              : 'section_meta_title',
-            'CanonicalURL'.lower()         : 'url',
-            'CreditLine'.lower()           : 'credit',
-            'ContentId'.lower()            : 'content_id',
-            'ContentType'.lower()          : 'content_type',
-            'ContentRestriction'.lower()   : 'protection_product',
-            'ContentType'.lower()          : 'content_type',
-            'Label'.lower()                : 'label'
-        }
-
         try:
             if (len(response.get('itemList', [])) > 0):
                 before_request = time.time_ns()
-                deserialized_item = get_dynamo_data(dynamodb, sophi3_table_name, sort_key_name_sophi3, attributes_to_get_sophi3, response['itemList'], False, True, api_gateway_request_id)
+                deserialized_item = get_dynamo_data(client_sophi3, os.environ.get('Sophi3DynamoDbTableName'), sort_key_name_sophi3, attributes_to_get_sophi3, response['itemList'], False, True, api_gateway_request_id)
                 after_request = time.time_ns()
                 metrics.put_metric("DynamoSophi2ReuqestTime", (int(after_request-before_request)/1000000), "Milliseconds")
                 metrics.put_metric("MissingDataDynamoSophi2", (arguments["numResults"] - len(deserialized_item)), "None")
 
                 before_request = time.time_ns()
-                images_map = get_dynamo_data(client_sophi2, sophi2_table_name, sort_key_name_sophi2, attributes_to_get_sophi2, response['itemList'], True, False, api_gateway_request_id)
+                images_map = get_dynamo_data(client_sophi2, os.environ.get('Sophi2DynamoDbTableName'), sort_key_name_sophi2, attributes_to_get_sophi2, response['itemList'], True, False, api_gateway_request_id)
                 after_request = time.time_ns()
                 metrics.put_metric("DynamoSophi3ReuqestTime", (int(after_request-before_request)/1000000), "Milliseconds")
                 metrics.put_metric("MissingDataDynamoSophi3", (arguments["numResults"] - len(images_map)), "None")
-
-
-                #print(f"RequestID: {api_gateway_request_id} Images map: {images_map}")
-                #print(f"RequestID: {api_gateway_request_id} Recommendation list: {deserialized_item}")
 
         except ClientError as e:
             print(f"RequestID: {api_gateway_request_id} Key Error: {e}")
@@ -309,7 +289,6 @@ def handler(event, context, metrics):
                 reply["recommendations"] = []
 
                 for row in deserialized_item:
-
                     #Updaete formating of keys to match reply requirements
                     for k, v in names_key.items():
                         for old_name in list(row):
