@@ -28,6 +28,7 @@ sam deploy ${profile_arg} --stack-name ${stack_name}  \
   ParameterKey=Environment,ParameterValue=${env}
 
 
+
 input_bucket=`aws cloudformation describe-stacks ${profile_arg} --stack-name ${stack_name}  --region ${deploy_region} --query 'Stacks[0].Outputs' --output table | grep InputBucketName  | awk -F \| {'print $4'} | awk {'print $1'}`
 aws s3 cp s3://${input_bucket}/params.json .temp_params.json ${profile_arg}  || true
 echo "Diff params.json compare to s3://${input_bucket}/params.json "
