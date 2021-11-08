@@ -264,7 +264,7 @@ Resources:
                   - sam validate --template ${SAM_TEMPLATE}
                   - sam build --template ${SAM_TEMPLATE}
                   - sam deploy --stack-name ${ResourcesPrefix}-${PipelineType}-${Environment} --capabilities CAPABILITY_IAM  --s3-bucket ${TESTING_ARTIFACTS_BUCKET} --no-fail-on-empty-changeset --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE}  --no-confirm-changeset   --parameter-overrides ParameterKey=Email,ParameterValue=${Email}  ParameterKey=ResourcesPrefix,ParameterValue=${ResourcesPrefix} ParameterKey=Environment,ParameterValue=${Environment} --tags "Environment=${Environment} CostAllocationProduct=${CostAllocationProduct} ManagedBy=CloudFormation"
-                  - export input_bucket=`aws cloudformation describe-stacks ${ResourcesPrefix}-${PipelineType}-${Environment}  --query 'Stacks[0].Outputs' --output table | grep InputBucketName  | awk -F \| {'print $4'} | awk {'print $1'}
+                  - export input_bucket=`aws cloudformation describe-stacks ${ResourcesPrefix}-${PipelineType}-${Environment}  --query 'Stacks[0].Outputs' --output table | grep InputBucketName  | awk -F \| {'print $4'} | awk {'print $1'}`
                   - aws s3 cp s3://${input_bucket}/params.json .temp_params.json ${profile_arg}  || true
                   - diff -ruNp ../params_${Environment}.json .temp_params.json || aws s3 cp params_${Environment}.json s3://${input_bucket}/params.json
       Tags:
