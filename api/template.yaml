@@ -947,7 +947,7 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       Metrics:
-      - Expression: "(m1/300)"
+      - Expression: !Sub "(m1/300/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/minProvisionedTPS}}*100)"
         Id: e1
         Label: "TPS"
       - Id: m1
@@ -961,7 +961,7 @@ Resources:
           Period: 300
           Stat: Sum
         ReturnData: false
-      Threshold: "0.8"
+      Threshold: "80"
       
   PenronalizeDashboard:
    Type: AWS::CloudWatch::Dashboard
@@ -1103,8 +1103,8 @@ Resources:
                   "type": "metric",
                   "properties": {
                       "metrics": [
-                        [ "PersonalizeCustomMetrics", "ReturnRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "right", "stat": "Minimum" } ],
-                        [ "PersonalizeCustomMetrics", "MissingRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ]
+                        [ "PersonalizeCustomMetrics", "ReturnRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "right", "stat": "p95" } ],
+                        [ "PersonalizeCustomMetrics", "MissingRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "p95" } ]
                       ],
                       "view": "timeSeries",
                       "stacked": true,
