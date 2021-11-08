@@ -22,7 +22,6 @@ Help()
    echo "sh pipeline.sh -e prod -t mlops -p tgam-personalize -b prod "
 
 }
-set -x
 
 while getopts ":h:e:b:t:p:d:r:m" option; do
    case $option in
