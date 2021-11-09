@@ -95,7 +95,7 @@ cd ~/mlops
 ```bash
 aws s3 cp ./params.json s3://<input-bucket-name>
 ```
-9. Navigate to AWS Step Functions to monitor the workflow (Optional). Once the workflow completes successfully (which might take 12-15 hours), an email notification will be sent out.
+9. Navigate to AWS Step Functions to monitor the workflow (Optional). Once the workflow completes successfully (which might take a few hours), an email notification will be sent out.
 
 
 ## Deploy Recommendations API
