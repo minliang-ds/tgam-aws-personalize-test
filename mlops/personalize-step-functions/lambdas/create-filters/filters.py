@@ -53,11 +53,18 @@ def lambda_handler(event, context):
     for filter in event['filters']:
         filter_arn = create_filter(
             event['datasetGroupArn'],
+            filter['filterExpression'],
+            filter['name']
+        )
+        filter_arns.append(filter_arn)
+
+        filter_arn = create_filter(
+            event['datasetGroupArn'],
             filter['filterExpression'] + ageFilterExpression,
             filter['name'] + "-" + suffix
         )
         filter_arns.append(filter_arn)
-        time.sleep(10)  # Spacing out API calls to avoid ThrottlingExceptions
 
+        time.sleep(5)  # Spacing out API calls to avoid ThrottlingExceptions
 
     return filter_arns

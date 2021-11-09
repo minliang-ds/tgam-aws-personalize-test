@@ -96,6 +96,7 @@ def lambda_handler(event, context):
 
     createdFilters = []
     deletedFilters = []
+    toBeDeleted = []
     for filter in filters:
         if filter['name'][-10:] == anchorFilterSuffix:
             response = LOADER.personalize_cli.describe_filter(
@@ -109,9 +110,14 @@ def lambda_handler(event, context):
             )
             createdFilters.append(created_filter_arn)
 
-            deleted_filter_arn = delete_filter(filter['name'][:-10] + deleteFilterSuffix)
-            deletedFilters.append(deleted_filter_arn)
+            toBeDeleted.append(filter['name'][:-10])
 
-            time.sleep(10)  # Spacing out API calls to avoid ThrottlingExceptions
+            time.sleep(5)  # Spacing out API calls to avoid ThrottlingExceptions
+
+    for filter in filters:
+        if filter['name'][:-10] in toBeDeleted and filter['name'][-10:] <= deleteFilterSuffix:
+            deleted_filter_arn = delete_filter(filter['name'])
+            deletedFilters.append(deleted_filter_arn)
+            time.sleep(5)  # Spacing out API calls to avoid ThrottlingExceptions
 
     return (createdFilters, deletedFilters)
