@@ -1,6 +1,6 @@
 {
    "datasetGroup":{
-      "name":"tgam-personalize"
+      "name":"tgam-personalize-blue"
    },
    "datasets":{
       "Interactions":{
@@ -115,7 +115,7 @@
    },
    "solutions":{
       "userPersonalization":{
-         "name":"tgam-personalize-userPersonalizationSolution",
+         "name":"tgam-personalize-blue-userPersonalizationSolution",
          "recipeArn":"arn:aws:personalize:::recipe/aws-user-personalization",
          "solutionConfig":{
              "algorithmHyperParameters":{
@@ -126,16 +126,16 @@
          }
       },
       "similarItems":{
-         "name":"tgam-personalize-similarItemsSolution",
+         "name":"tgam-personalize-blue-similarItemsSolution",
          "recipeArn":"arn:aws:personalize:::recipe/aws-similar-items"
       }
    },
    "eventTracker":{
-      "name":"tgam-personalize-event-tracker"
+      "name":"tgam-personalize-blue-event-tracker"
    },
    "campaigns":{
       "userPersonalizationCampaign":{
-         "name":"tgam-personalize-userPersonalizationCampaign",
+         "name":"tgam-personalize-blue-userPersonalizationCampaign",
          "minProvisionedTPS":1,
          "campaignConfig":{
              "itemExplorationConfig":{
@@ -145,7 +145,7 @@
          }
       },
       "similarItemsCampaign":{
-         "name":"tgam-personalize-similarItemsCampaign",
+         "name":"tgam-personalize-blue-similarItemsCampaign",
          "minProvisionedTPS":1
       }
    },
@@ -155,15 +155,15 @@
    "filters":
    [
        {
-            "name":"tgam-personalize-category",
+            "name":"tgam-personalize-blue-category",
             "filterExpression":"INCLUDE ItemID WHERE Items.Category IN ($category) | EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\")"
        },
        {
-            "name":"tgam-personalize-read",
+            "name":"tgam-personalize-blue-read",
             "filterExpression":"INCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\")"
        },
        {
-            "name":"tgam-personalize-unread",
+            "name":"tgam-personalize-blue-unread",
             "filterExpression":"EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\")"
        }
    ]
