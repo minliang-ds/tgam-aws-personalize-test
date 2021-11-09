@@ -566,11 +566,16 @@ Resources:
               - !Sub ${PipelineArtifactsBucket.Arn}/*
               - !Sub ${PipelineArtifactsBucket.Arn}
           - Action:
-            - "codebuild:StartBuild"
-            - "codebuild:BatchGetBuilds"
+              - "codebuild:StartBuild"
+              - "codebuild:BatchGetBuilds"
             Resource:
               - !GetAtt DeployProject.Arn
               - !GetAtt BuildProject.Arn
+            Effect: Allow
+          - Action:
+              - "sns:Publish"
+            Resource:
+              - !Ref PipelineTopic
             Effect: Allow
   CloudformationRole:
     Type: AWS::IAM::Role
