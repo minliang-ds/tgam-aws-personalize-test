@@ -12,6 +12,7 @@ from botocore.credentials import RefreshableCredentials
 from botocore.session import get_session
 from botocore.exceptions import ClientError
 from aws_embedded_metrics import metric_scope
+from datetime import date, timedelta
 
 def _refresh():
     sts_client = client('sts')
