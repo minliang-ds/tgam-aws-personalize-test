@@ -44,6 +44,13 @@ exports.handler = (event, context, callback) => {
             metrics.flush();
             return context.successful;
         }
+
+        if (payload.Sponsored && payload.Sponsored === true){
+            console.debug('Skipping Sponsored content', payload);
+            metrics.putMetric("EventStatus", 0);
+            metrics.flush();
+            return context.successful;
+        }
 /**
         if ((payload.sp_user_id === undefined || payload.sp_user_id.trim().length === 0) && (payload.sp_domain_userid === undefined || payload.sp_domain_userid.trim().length === 0)){
             console.debug("Skipping event: missing sp_user_id and sp_domain_userid")
