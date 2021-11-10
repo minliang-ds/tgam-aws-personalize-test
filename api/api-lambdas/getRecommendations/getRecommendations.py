@@ -222,7 +222,7 @@ def handler(event, context, metrics):
             arguments["numResults"] = 500
 
         if payload.get("context") == "art_same_section_mostpopular":
-            arguments["filterArn"] =  f'arn:aws:personalize:{region}:{account_id}:filter/{filter_prefix}-category'
+            filter_base =  f'arn:aws:personalize:{region}:{account_id}:filter/{filter_prefix}-category'
 
             #section can be /canada/ or /canada/alberta/
             #in both cases we need category to be "canada"
@@ -240,7 +240,7 @@ def handler(event, context, metrics):
 
             arguments["filterValues"]["category"] = f'\"{category}\"';
         else:
-            arguments["filterArn"] = f'arn:aws:personalize:{region}:{account_id}:filter/{filter_prefix}-unread'
+            filter_base = f'arn:aws:personalize:{region}:{account_id}:filter/{filter_prefix}-unread'
 
         if payload.get("platform"):
             arguments["context"]['device_detector_visitorplatform'] = payload.get("platform").lower().capitalize();
@@ -253,7 +253,18 @@ def handler(event, context, metrics):
 
         print(f"RequestID: {api_gateway_request_id} RequestRecommendations = {arguments}")
         before_request = time.time_ns()
-        response = personalize_cli.get_recommendations(**arguments)
+
+        try:
+            filter_date_prefix = date.today() - timedelta(days=1)
+            arguments["filterArn"] = f'{filter_base}-{filter_date_prefix.strftime("%Y-%m-%d")}'
+            response = personalize_cli.get_recommendations(**arguments)
+        except personalize_cli.exceptions.InvalidInputException:
+            #default to filter without date if filters with date do not exist
+            arguments["filterArn"] = filter_base
+            metrics.set_property("personalizeFilter", arguments["filterArn"])
+            response = personalize_cli.get_recommendations(**arguments)
+
+        metrics.set_property("personalizeFilter", arguments["filterArn"])
         after_request = time.time_ns()
 
         metrics.put_metric("PersonalizeRequestTime", (int(after_request-before_request)/1000000), "Milliseconds")
