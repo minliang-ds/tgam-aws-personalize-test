@@ -264,9 +264,100 @@ Resources:
                   - sam validate --template ${SAM_TEMPLATE}
                   - sam build --template ${SAM_TEMPLATE}
                   - sam deploy --stack-name ${ResourcesPrefix}-${PipelineType}-${Environment} --capabilities CAPABILITY_IAM  --s3-bucket ${TESTING_ARTIFACTS_BUCKET} --no-fail-on-empty-changeset --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE}  --no-confirm-changeset   --parameter-overrides ParameterKey=Email,ParameterValue=${Email}  ParameterKey=ResourcesPrefix,ParameterValue=${ResourcesPrefix} ParameterKey=Environment,ParameterValue=${Environment} --tags "Environment=${Environment} CostAllocationProduct=${CostAllocationProduct} ManagedBy=CloudFormation"
-                  - export input_bucket=`aws cloudformation describe-stacks --stack-name ${ResourcesPrefix}-${PipelineType}-${Environment}  --query 'Stacks[0].Outputs' --output table | grep InputBucketName  | awk -F \| {'print $4'} | awk {'print $1'}`
-                  - aws s3 cp s3://${input_bucket}/params.json .temp_params.json ${profile_arg}  || true
-                  - diff -ruNp ../params_${Environment}.json .temp_params.json || aws s3 cp params_${Environment}.json s3://${input_bucket}/params.json
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+        - Key: "CostAllocationProduct"
+          Value: !Ref CostAllocationProduct
+        - Key: "ManagedBy"
+          Value: !Ref ManagedBy
+
+  UpdateParams:
+    Type: AWS::CodeBuild::Project
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: E1029
+            reason: "warnings because of inline bash script"
+          - id: W32
+            reason: "There is no PII data during build, skipping encryption at rest "
+    Properties:
+      Name: !Join
+        - "-"
+        - - !Ref ResourcesPrefix
+          - !Ref PipelineType
+          - !Ref Environment
+          - "params"
+          - !Select
+            - 0
+            - !Split
+              - "-"
+              - !Select
+                - 2
+                - !Split
+                  - "/"
+                  - !Ref "AWS::StackId"
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      LogsConfig:
+        CloudWatchLogs:
+          GroupName: !Ref CodeBuildLogs
+          Status: ENABLED
+          StreamName: SamBuild
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_LARGE
+        Image: aws/codebuild/standard:4.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: TESTING_CLOUDFORMATION_EXECUTION_ROLE
+            Type: PLAINTEXT
+            Value: !GetAtt CloudformationRole.Arn
+          - Name: TESTING_ARTIFACTS_BUCKET
+            Type: PLAINTEXT
+            Value: !Ref PipelineArtifactsBucket
+          - Name: SAM_CLI_TELEMETRY
+            Type: PLAINTEXT
+            Value: "0"
+          - Name: SAM_TEMPLATE
+            Type: PLAINTEXT
+            Value: "template.yaml"
+          - Name: Environment
+            Type: PLAINTEXT
+            Value: !Ref Environment
+          - Name: CostAllocationProduct
+            Type: PLAINTEXT
+            Value: !Ref CostAllocationProduct
+          - Name: ManagedBy
+            Type: PLAINTEXT
+            Value: !Ref ManagedBy
+          - Name: ResourcesPrefix
+            Type: PLAINTEXT
+            Value: !Ref ResourcesPrefix
+          - Name: Email
+            Type: PLAINTEXT
+            Value: !Ref Email
+          - Name: PipelineType
+            Type: PLAINTEXT
+            Value: !Ref PipelineType
+          - Name: TemplatePath
+            Type: PLAINTEXT
+            Value: !FindInMap [TypePath, !Ref PipelineType, Path]
+      Source:
+        Type: NO_SOURCE
+        BuildSpec: |
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                python: 3.8
+            build:
+              commands:
+                - echo cd ${TemplatePath} && cd ${TemplatePath}
+                - export input_bucket=`aws cloudformation describe-stacks --stack-name ${ResourcesPrefix}-${PipelineType}-${Environment}  --query 'Stacks[0].Outputs' --output table | grep InputBucketName  | awk -F \| {'print $4'} | awk {'print $1'}`
+                - aws s3 cp s3://${input_bucket}/params.json .temp_params.json ${profile_arg}  || true
+                - diff -ruNp ../params_${Environment}.json .temp_params.json || aws s3 cp ../params_${Environment}.json s3://${input_bucket}/params.json
       Tags:
         - Key: "Environment"
           Value: !Ref Environment
@@ -502,6 +593,23 @@ Resources:
               ProjectName: !Ref DeployProject
               EnvironmentVariables: '[{"name":"BuildType","value":"Deploy","type":"PLAINTEXT"}]'
             RunOrder: 1
+      - !If
+        - IsPipelineTypeApi
+        - !Ref AWS::NoValue
+        - Name: UpdateParams
+          Actions:
+            - Name: SamDeploy
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceCode
+              Configuration:
+                ProjectName: !Ref UpdateParams
+                EnvironmentVariables: '[{"name":"BuildType","value":"Deploy","type":"PLAINTEXT"}]'
+              RunOrder: 1
 
   CodePipelineRole:
     Type: AWS::IAM::Role
@@ -571,6 +679,7 @@ Resources:
             Resource:
               - !GetAtt DeployProject.Arn
               - !GetAtt BuildProject.Arn
+              - !GetAtt UpdateParams.Arn
             Effect: Allow
           - !If
             - IsPipelineApprovalStageCondition
@@ -689,6 +798,14 @@ Resources:
               - 'apigateway:POST'
             Resource:
               - !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/*/deployments"
+          - Effect: Allow
+            Action:
+              - 's3:PutObject'
+              - 's3:GetObject'
+              - 's3:GetObjectVersion'
+              - 's3:GetBucketAcl'
+              - 's3:GetBucketLocation'
+            Resource: !Sub "arn:aws:s3:::${ResourcesPrefix}-${Environment}-input*/params*"
 
       Roles:
         - !Ref CodeBuildRole
