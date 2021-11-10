@@ -2,6 +2,7 @@ import actions
 import datetime
 import json
 import time
+import re
 
 from os import environ
 from loader import Loader
@@ -77,14 +78,12 @@ def list_filters(datasetGroupArn):
 
 def lambda_handler(event, context):
     yesterday = datetime.date.today() - datetime.timedelta(1)
-    two_days_ago = datetime.date.today() - datetime.timedelta(2)
     three_days_ago = datetime.date.today() - datetime.timedelta(3)
     
     deleteFilterSuffix = three_days_ago.strftime("%Y-%m-%d")
-    anchorFilterSuffix = two_days_ago.strftime("%Y-%m-%d")
     createFilterSuffix = yesterday.strftime("%Y-%m-%d")
     
-    newTimeStamp = str(yesterday.strftime("%s"))
+    ageFilterExpression = " | INCLUDE ItemID WHERE Items.CREATION_TIMESTAMP >= " + str(yesterday.strftime("%s"))
     
     datasetGroupArn = 'arn:aws:personalize:{region}:{account}:dataset-group/{prefix}'.format(
         region=environ['AWS_REGION'],
@@ -98,19 +97,19 @@ def lambda_handler(event, context):
     deletedFilters = []
     toBeDeleted = []
     for filter in filters:
-        if filter['name'][-10:] == anchorFilterSuffix:
+        if not re.match('^[0-9-]*$', filter['name'][-10:]):
             response = LOADER.personalize_cli.describe_filter(
                 filterArn=filter['filterArn']
             )['filter']
 
             created_filter_arn = create_filter(
                 datasetGroupArn,
-                response['filterExpression'][:-10] + newTimeStamp,
-                filter['name'][:-10] + createFilterSuffix
+                response['filterExpression'] + ageFilterExpression,
+                filter['name'] + '-' + createFilterSuffix
             )
             createdFilters.append(created_filter_arn)
 
-            toBeDeleted.append(filter['name'][:-10])
+            toBeDeleted.append(filter['name'] + '-')
 
             time.sleep(5)  # Spacing out API calls to avoid ThrottlingExceptions
 
