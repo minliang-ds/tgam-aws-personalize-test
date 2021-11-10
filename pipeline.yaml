@@ -572,11 +572,14 @@ Resources:
               - !GetAtt DeployProject.Arn
               - !GetAtt BuildProject.Arn
             Effect: Allow
-          - Action:
-              - "sns:Publish"
-            Resource:
-              - !Ref PipelineTopic
-            Effect: Allow
+          - !If
+            - IsPipelineApprovalStageCondition
+            - Action:
+                - "sns:Publish"
+              Resource:
+                - !Ref PipelineTopic
+              Effect: Allow
+            - !Ref AWS::NoValue
   CloudformationRole:
     Type: AWS::IAM::Role
     Metadata:
