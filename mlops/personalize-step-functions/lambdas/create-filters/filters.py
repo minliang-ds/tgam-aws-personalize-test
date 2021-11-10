@@ -58,6 +58,8 @@ def lambda_handler(event, context):
         )
         filter_arns.append(filter_arn)
 
+        time.sleep(5)  # Spacing out API calls to avoid ThrottlingExceptions
+
         filter_arn = create_filter(
             event['datasetGroupArn'],
             filter['filterExpression'] + ageFilterExpression,
