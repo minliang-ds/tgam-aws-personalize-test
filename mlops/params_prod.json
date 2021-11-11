@@ -104,7 +104,7 @@
                 {
                     "name": "Sponsored",
                     "type": [
-                        "boolean",
+                        "int",
                         "null"
                     ]
                 },
@@ -163,11 +163,11 @@
    [
        {
             "name":"tgam-personalize-category",
-            "filterExpression":"INCLUDE ItemID WHERE Items.Category IN ($category) | EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\") | EXCLUDE ItemID WHERE Items.Sponsored = true"
+            "filterExpression":"INCLUDE ItemID WHERE Items.Category IN ($category) | EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\") | EXCLUDE ItemID WHERE Items.Sponsored = 1"
        },
        {
             "name":"tgam-personalize-unread",
-            "filterExpression":"EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\") | EXCLUDE ItemID WHERE Items.Sponsored = true"
+            "filterExpression":"EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\") | EXCLUDE ItemID WHERE Items.Sponsored = 1"
        }
    ]
 }
