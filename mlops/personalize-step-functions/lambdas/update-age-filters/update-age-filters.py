@@ -42,6 +42,7 @@ def create_filter(dataset_group_arn, filter_expression, filter_name):
         status = LOADER.personalize_cli.describe_filter(
             filterArn=filterARN
         )['filter']['status']
+        time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
 
     if status != 'ACTIVE':
         raise actions.ResourceFailed
@@ -102,6 +103,8 @@ def lambda_handler(event, context):
                 filterArn=filter['filterArn']
             )['filter']
 
+            time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
+
             created_filter_arn = create_filter(
                 datasetGroupArn,
                 response['filterExpression'] + ageFilterExpression,
@@ -111,12 +114,12 @@ def lambda_handler(event, context):
 
             toBeDeleted.append(filter['name'] + '-')
 
-            time.sleep(5)  # Spacing out API calls to avoid ThrottlingExceptions
+            time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
 
     for filter in filters:
         if filter['name'][:-10] in toBeDeleted and filter['name'][-10:] <= deleteFilterSuffix:
             deleted_filter_arn = delete_filter(filter['name'])
             deletedFilters.append(deleted_filter_arn)
-            time.sleep(5)  # Spacing out API calls to avoid ThrottlingExceptions
+            time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
 
     return (createdFilters, deletedFilters)

@@ -37,6 +37,7 @@ def create_filter(dataset_group_arn, filter_expression, filter_name):
         status = LOADER.personalize_cli.describe_filter(
             filterArn=filterARN
         )['filter']['status']
+        time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
 
     if status != 'ACTIVE':
         raise actions.ResourceFailed
@@ -58,7 +59,7 @@ def lambda_handler(event, context):
         )
         filter_arns.append(filter_arn)
 
-        time.sleep(5)  # Spacing out API calls to avoid ThrottlingExceptions
+        time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
 
         filter_arn = create_filter(
             event['datasetGroupArn'],
@@ -67,6 +68,6 @@ def lambda_handler(event, context):
         )
         filter_arns.append(filter_arn)
 
-        time.sleep(5)  # Spacing out API calls to avoid ThrottlingExceptions
+        time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
 
     return filter_arns

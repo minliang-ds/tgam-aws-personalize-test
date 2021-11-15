@@ -1005,6 +1005,7 @@ Resources:
       CodeUri: lambdas/create-filters/
       Handler: filters.lambda_handler
       Runtime: python3.8
+      Timeout: 900
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -1152,6 +1153,7 @@ Resources:
       CodeUri: lambdas/update-age-filters/
       Handler: update-age-filters.lambda_handler
       Runtime: python3.8
+      Timeout: 900
       Layers:
         - !Ref SharedLayer
       Environment:
