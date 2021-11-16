@@ -1036,8 +1036,8 @@ Resources:
                   "properties": {
                       "metrics": [
                         [ "PersonalizeCustomMetrics", "PersonalizeRequestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ],
-                        [ "PersonalizeCustomMetrics", "DynamoSophi2ReuqestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ],
-                        [ "PersonalizeCustomMetrics", "DynamoSophi3ReuqestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ]
+                        [ "PersonalizeCustomMetrics", "DynamoSophi2RequestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ],
+                        [ "PersonalizeCustomMetrics", "DynamoSophi3RequestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ]
                       ],
                       "view": "timeSeries",
                       "stacked": true,
