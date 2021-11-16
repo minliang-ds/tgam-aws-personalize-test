@@ -1005,6 +1005,7 @@ Resources:
       CodeUri: lambdas/create-filters/
       Handler: filters.lambda_handler
       Runtime: python3.8
+      Timeout: 900
       Layers:
         - !Ref SharedLayer
       Policies:
@@ -1137,6 +1138,62 @@ Resources:
               Action:
                 - personalize:DeleteFilter
               Resource: "*"
+  UpdateAgeFilters:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
+    Properties:
+      CodeUri: lambdas/update-age-filters/
+      Handler: update-age-filters.lambda_handler
+      Runtime: python3.8
+      Timeout: 900
+      Layers:
+        - !Ref SharedLayer
+      Environment:
+        Variables:
+          ResourcesPrefix: !Ref ResourcesPrefix
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - personalize:DescribeFilter
+                - personalize:CreateFilter
+                - personalize:DeleteFilter
+                - personalize:ListFilters
+              Resource: "*"
+      Events:
+        CWSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: 'cron(0 5 ? * MON-SUN *)'
+            Name: !Join
+              - ""
+              - - "sched-"
+                - !Ref ResourcesPrefix
+                - "-"
+                - !Ref Environment
+                - "-"
+                - 'ageFilterUpdate'
+                - "-"
+                - !Select
+                  - 0
+                  - !Split
+                    - "-"
+                    - !Select
+                      - 2
+                      - !Split
+                        - "/"
+                        - !Ref "AWS::StackId"
+            Description: Update schedule for item age filters
+            Enabled: true
   DeleteAllDatasetGroupResources:
     Type: "AWS::StepFunctions::StateMachine"
     Properties:

@@ -44,12 +44,19 @@ exports.handler = (event, context, callback) => {
             metrics.flush();
             return context.successful;
         }
-/**
-        if ((payload.sp_user_id === undefined || payload.sp_user_id.trim().length === 0) && (payload.sp_domain_userid === undefined || payload.sp_domain_userid.trim().length === 0)){
-            console.debug("Skipping event: missing sp_user_id and sp_domain_userid")
-            return context.successful;
+
+        if (payload.Sponsored === true) {
+            payload.Exclude = 1;
+        } else if (payload.Section && payload.Section === "life/horoscopes") {
+            payload.Exclude = 1;
+        } else if (payload.Keywords && payload.Keywords.includes("zerocanada")) {
+          payload.Exclude = 1;
+        } else if (payload.Keywords && payload.Keywords.includes("omit")) {
+            payload.Exclude = 1;
+        }  else {
+            payload.Exclude = 0;
         }
-    **/
+
         var eventDate = new Date(payload.UpdatedDate);
         var delay_ms = now.getTime() - eventDate.getTime() - timezone_offset;
         
@@ -67,6 +74,7 @@ exports.handler = (event, context, callback) => {
                       'WordCount': payload.WordCount,
                       'Published': payload.Published,
                       'ContentType': payload.ContentType,
+                      'Exclude': payload.Exclude,
                       'CREATION_TIMESTAMP': Math.floor(eventDate.getTime() / 1000),
                   }
                 },

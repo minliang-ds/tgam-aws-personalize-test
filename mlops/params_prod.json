@@ -107,6 +107,13 @@
                         "int",
                         "null"
                     ]
+                },
+                {
+                    "name": "Exclude",
+                    "type": [
+                        "int",
+                        "null"
+                    ]
                 }
             ],
             "version":"1.0"
@@ -136,7 +143,7 @@
    "campaigns":{
       "userPersonalizationCampaign":{
          "name":"tgam-personalize-userPersonalizationCampaign",
-         "minProvisionedTPS":10,
+         "minProvisionedTPS":1,
          "campaignConfig":{
              "itemExplorationConfig":{
                  "explorationWeight": "0.3",
@@ -156,15 +163,11 @@
    [
        {
             "name":"tgam-personalize-category",
-            "filterExpression":"INCLUDE ItemID WHERE Items.Category IN ($category) | EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\")"
-       },
-       {
-            "name":"tgam-personalize-read",
-            "filterExpression":"INCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\")"
+            "filterExpression":"INCLUDE ItemID WHERE Items.Category IN ($category) | EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\") | EXCLUDE ItemID WHERE Items.Exclude = 1"
        },
        {
             "name":"tgam-personalize-unread",
-            "filterExpression":"EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\")"
+            "filterExpression":"EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\") | EXCLUDE ItemID WHERE Items.Exclude = 1"
        }
    ]
 }

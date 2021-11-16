@@ -1,6 +1,6 @@
 {
    "datasetGroup":{
-      "name":"tgam-personalize"
+      "name":"tgam-personalize-green"
    },
    "datasets":{
       "Interactions":{
@@ -107,6 +107,13 @@
                         "int",
                         "null"
                     ]
+                },
+                {
+                    "name": "Exclude",
+                    "type": [
+                        "int",
+                        "null"
+                    ]
                 }
             ],
             "version":"1.0"
@@ -115,7 +122,7 @@
    },
    "solutions":{
       "userPersonalization":{
-         "name":"tgam-personalize-userPersonalizationSolution",
+         "name":"tgam-personalize-green-userPersonalizationSolution",
          "recipeArn":"arn:aws:personalize:::recipe/aws-user-personalization",
          "solutionConfig":{
              "algorithmHyperParameters":{
@@ -126,16 +133,16 @@
          }
       },
       "similarItems":{
-         "name":"tgam-personalize-similarItemsSolution",
+         "name":"tgam-personalize-green-similarItemsSolution",
          "recipeArn":"arn:aws:personalize:::recipe/aws-similar-items"
       }
    },
    "eventTracker":{
-      "name":"tgam-personalize-event-tracker"
+      "name":"tgam-personalize-green-event-tracker"
    },
    "campaigns":{
       "userPersonalizationCampaign":{
-         "name":"tgam-personalize-userPersonalizationCampaign",
+         "name":"tgam-personalize-green-userPersonalizationCampaign",
          "minProvisionedTPS":1,
          "campaignConfig":{
              "itemExplorationConfig":{
@@ -145,7 +152,7 @@
          }
       },
       "similarItemsCampaign":{
-         "name":"tgam-personalize-similarItemsCampaign",
+         "name":"tgam-personalize-green-similarItemsCampaign",
          "minProvisionedTPS":1
       }
    },
@@ -155,16 +162,12 @@
    "filters":
    [
        {
-            "name":"tgam-personalize-category",
-            "filterExpression":"INCLUDE ItemID WHERE Items.Category IN ($category) | EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\")"
+            "name":"tgam-personalize-green-category",
+            "filterExpression":"INCLUDE ItemID WHERE Items.Category IN ($category) | EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\") | EXCLUDE ItemID WHERE Items.Exclude = 1"
        },
        {
-            "name":"tgam-personalize-read",
-            "filterExpression":"INCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\")"
-       },
-       {
-            "name":"tgam-personalize-unread",
-            "filterExpression":"EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\")"
+            "name":"tgam-personalize-green-unread",
+            "filterExpression":"EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\") | EXCLUDE ItemID WHERE Items.Exclude = 1"
        }
    ]
 }

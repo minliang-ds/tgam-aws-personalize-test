@@ -2,6 +2,7 @@ from os import environ
 import actions
 from loader import Loader
 import time
+import datetime
 
 LOADER = Loader()
 ARN = 'arn:aws:personalize:{region}:{account}:filter/{filter_name}'
@@ -36,6 +37,7 @@ def create_filter(dataset_group_arn, filter_expression, filter_name):
         status = LOADER.personalize_cli.describe_filter(
             filterArn=filterARN
         )['filter']['status']
+        time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
 
     if status != 'ACTIVE':
         raise actions.ResourceFailed
@@ -45,6 +47,10 @@ def create_filter(dataset_group_arn, filter_expression, filter_name):
 def lambda_handler(event, context):
     filter_arns = []
 
+    yesterday = datetime.date.today() - datetime.timedelta(1)
+    ageFilterExpression = " | INCLUDE ItemID WHERE Items.CREATION_TIMESTAMP >= " + str(yesterday.strftime("%s"))
+    suffix = yesterday.strftime("%Y-%m-%d")
+
     for filter in event['filters']:
         filter_arn = create_filter(
             event['datasetGroupArn'],
@@ -52,7 +58,16 @@ def lambda_handler(event, context):
             filter['name']
         )
         filter_arns.append(filter_arn)
-        time.sleep(10)  # Spacing out API calls to avoid ThrottlingExceptions
 
+        time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
+
+        filter_arn = create_filter(
+            event['datasetGroupArn'],
+            filter['filterExpression'] + ageFilterExpression,
+            filter['name'] + '-' + suffix
+        )
+        filter_arns.append(filter_arn)
+
+        time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
 
     return filter_arns
