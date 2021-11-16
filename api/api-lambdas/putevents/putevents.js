@@ -115,6 +115,11 @@ exports.handler = (event, context, callback) => {
                 },
             ]
         }
+        
+        if (payload.page_rid != undefined){
+            putEventsParams.eventList[0].recommendationId = payload.page_rid
+        }
+      
         console.log("THIS IS THE OBJECT = " + JSON.stringify(putEventsParams,null,3))
         console.log("THIS IS THE SOURCE OBJECT = " + JSON.stringify(payload,null,3))
 
