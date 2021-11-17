@@ -370,7 +370,6 @@ Resources:
                 - diff -ruNp ../params_${Environment}.json .temp_params.json || aws s3 cp ../params_${Environment}.json s3://${input_bucket}/params.json
                 - if [ "${Environment}" = "prod" ]; then aws s3 sync --delete s3://${DevInputBucket}/glue-job/Interactions s3://${input_bucket}/Interactions; fi
                 - if [ "${Environment}" = "prod" ]; then aws s3 sync --delete s3://${DevInputBucket}/glue-job/Items s3://${input_bucket}/Items; fi
-
       Tags:
         - Key: "Environment"
           Value: !Ref Environment
