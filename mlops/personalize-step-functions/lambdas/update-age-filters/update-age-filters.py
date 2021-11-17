@@ -84,7 +84,7 @@ def lambda_handler(event, context):
     deleteFilterSuffix = three_days_ago.strftime("%Y-%m-%d")
     createFilterSuffix = yesterday.strftime("%Y-%m-%d")
     
-    ageFilterExpression = " | INCLUDE ItemID WHERE Items.CREATION_TIMESTAMP >= " + str(yesterday.strftime("%s"))
+    ageFilterExpression = " | EXCLUDE ItemID WHERE Items.CREATION_TIMESTAMP < " + str(yesterday.strftime("%s"))
     
     datasetGroupArn = 'arn:aws:personalize:{region}:{account}:dataset-group/{prefix}'.format(
         region=environ['AWS_REGION'],
