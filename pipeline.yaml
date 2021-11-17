@@ -321,7 +321,6 @@ Resources:
             Type: PLAINTEXT
             Value: !GetAtt CloudformationRole.Arn
           - Name: TESTING_ARTIFACTS_BUCKET
-          ACTS_BUCKET
             Type: PLAINTEXT
             Value: !Ref PipelineArtifactsBucket
           - Name: SAM_CLI_TELEMETRY
