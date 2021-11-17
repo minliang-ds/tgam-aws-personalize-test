@@ -283,13 +283,13 @@ def handler(event, context, metrics):
                 before_request = time.time_ns()
                 deserialized_item = get_dynamo_data(client_sophi3, os.environ.get('Sophi3DynamoDbTableName'), sort_key_name_sophi3, attributes_to_get_sophi3, response['itemList'], False, True, api_gateway_request_id)
                 after_request = time.time_ns()
-                metrics.put_metric("DynamoSophi2ReuqestTime", (int(after_request-before_request)/1000000), "Milliseconds")
+                metrics.put_metric("DynamoSophi2RequestTime", (int(after_request-before_request)/1000000), "Milliseconds")
                 metrics.put_metric("MissingDataDynamoSophi2", (arguments["numResults"] - len(deserialized_item)), "None")
 
                 before_request = time.time_ns()
                 images_map = get_dynamo_data(client_sophi2, os.environ.get('Sophi2DynamoDbTableName'), sort_key_name_sophi2, attributes_to_get_sophi2, response['itemList'], True, False, api_gateway_request_id)
                 after_request = time.time_ns()
-                metrics.put_metric("DynamoSophi3ReuqestTime", (int(after_request-before_request)/1000000), "Milliseconds")
+                metrics.put_metric("DynamoSophi3RequestTime", (int(after_request-before_request)/1000000), "Milliseconds")
                 metrics.put_metric("MissingDataDynamoSophi3", (arguments["numResults"] - len(images_map)), "None")
 
         except ClientError as e:
