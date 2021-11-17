@@ -321,6 +321,7 @@ Resources:
             Type: PLAINTEXT
             Value: !GetAtt CloudformationRole.Arn
           - Name: TESTING_ARTIFACTS_BUCKET
+          ACTS_BUCKET
             Type: PLAINTEXT
             Value: !Ref PipelineArtifactsBucket
           - Name: SAM_CLI_TELEMETRY
@@ -368,8 +369,8 @@ Resources:
                 - export input_bucket=`aws cloudformation describe-stacks --stack-name ${ResourcesPrefix}-${PipelineType}-${Environment}  --query 'Stacks[0].Outputs' --output table | grep InputBucketName  | awk -F \| {'print $4'} | awk {'print $1'}`
                 - aws s3 cp s3://${input_bucket}/params.json .temp_params.json ${profile_arg}  || true
                 - diff -ruNp ../params_${Environment}.json .temp_params.json || aws s3 cp ../params_${Environment}.json s3://${input_bucket}/params.json
-                - if [ "${Environment}" == "prod" ]; then aws s3 sync --delete s3://${DevInputBucket}/glue-job/Interactions s3://${input_bucket}/Interactions; fi
-                - if [ "${Environment}" == "prod" ]; then aws s3 sync --delete s3://${DevInputBucket}/glue-job/Interactions s3://${input_bucket}/Items; fi
+                - if [ "${Environment}" = "prod" ]; then aws s3 sync --delete s3://${DevInputBucket}/glue-job/Interactions s3://${input_bucket}/Interactions; fi
+                - if [ "${Environment}" = "prod" ]; then aws s3 sync --delete s3://${DevInputBucket}/glue-job/Items s3://${input_bucket}/Items; fi
 
       Tags:
         - Key: "Environment"
