@@ -86,40 +86,41 @@ def lambda_handler(event, context):
     
     ageFilterExpression = " | EXCLUDE ItemID WHERE Items.CREATION_TIMESTAMP < " + str(yesterday.strftime("%s"))
     
-    datasetGroupArn = 'arn:aws:personalize:{region}:{account}:dataset-group/{prefix}'.format(
-        region=environ['AWS_REGION'],
-        account=LOADER.account_id,
-        prefix=environ['ResourcesPrefix']
-    )
+    response = LOADER.personalize_cli.list_dataset_groups()
 
-    filters = list_filters(datasetGroupArn)
+    datasetGroupArns = []
+    for datasetgroup in response['datasetGroups']:
+        if datasetgroup['name'].startswith(environ['ResourcesPrefix']):
+            datasetGroupArns.append(datasetgroup['datasetGroupArn'])
 
     createdFilters = []
     deletedFilters = []
-    toBeDeleted = []
-    for filter in filters:
-        if not re.match('^[0-9-]*$', filter['name'][-10:]):
-            response = LOADER.personalize_cli.describe_filter(
-                filterArn=filter['filterArn']
-            )['filter']
+    for datasetGroupArn in datasetGroupArns:
+        filters = list_filters(datasetGroupArn)
+        toBeDeleted = []
+        for filter in filters:
+            if not re.match('^[0-9-]*$', filter['name'][-10:]):
+                response = LOADER.personalize_cli.describe_filter(
+                    filterArn=filter['filterArn']
+                )['filter']
 
-            time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
+                time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
 
-            created_filter_arn = create_filter(
-                datasetGroupArn,
-                response['filterExpression'] + ageFilterExpression,
-                filter['name'] + '-' + createFilterSuffix
-            )
-            createdFilters.append(created_filter_arn)
+                created_filter_arn = create_filter(
+                    datasetGroupArn,
+                    response['filterExpression'] + ageFilterExpression,
+                    filter['name'] + '-' + createFilterSuffix
+                )
+                createdFilters.append(created_filter_arn)
 
-            toBeDeleted.append(filter['name'] + '-')
+                toBeDeleted.append(filter['name'] + '-')
 
-            time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
+                time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
 
-    for filter in filters:
-        if filter['name'][:-10] in toBeDeleted and filter['name'][-10:] <= deleteFilterSuffix:
-            deleted_filter_arn = delete_filter(filter['name'])
-            deletedFilters.append(deleted_filter_arn)
-            time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
+        for filter in filters:
+            if filter['name'][:-10] in toBeDeleted and filter['name'][-10:] <= deleteFilterSuffix:
+                deleted_filter_arn = delete_filter(filter['name'])
+                deletedFilters.append(deleted_filter_arn)
+                time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
 
     return (createdFilters, deletedFilters)
