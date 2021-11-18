@@ -1168,6 +1168,7 @@ Resources:
                 - personalize:CreateFilter
                 - personalize:DeleteFilter
                 - personalize:ListFilters
+                - personalize:ListDatasetGroups
               Resource: "*"
       Events:
         CWSchedule:
