@@ -119,8 +119,11 @@ def lambda_handler(event, context):
 
         for filter in filters:
             if filter['name'][:-10] in toBeDeleted and filter['name'][-10:] <= deleteFilterSuffix:
-                deleted_filter_arn = delete_filter(filter['name'])
-                deletedFilters.append(deleted_filter_arn)
-                time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
+                try:
+                    deleted_filter_arn = delete_filter(filter['name'])
+                    deletedFilters.append(deleted_filter_arn)
+                    time.sleep(1)  # Spacing out API calls to avoid ThrottlingExceptions
+                except:
+                    deletedFilters.append(None)
 
     return (createdFilters, deletedFilters)
