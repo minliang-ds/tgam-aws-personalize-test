@@ -34,44 +34,61 @@ def update_item(table_name, dataSetGroupName, status, datasetArn="None", eventTr
 
     try:
         get_response = table.query(KeyConditionExpression=Key('name').eq(dataSetGroupName))
-        current_status = get_response['Items'][0].get("status")
+        if len(get_response['Items']) > 0:
+            current_status = get_response['Items'][0].get("status")
+        else:
+            current_status = "none"
     except ClientError as e:
         print(f"Dynamo get current status error: {e}")
-        current_status = ""
+        current_status = "none"
 
     try:
-        response = table.update_item(
-            Key={
-                'name': dataSetGroupName,
-                'status': status
-            },
-            UpdateExpression="set #S=:status_v, #eventTrackerId=:eventTrackerId, #datasetArn=:datasetArn, #campaignArn=:campaignArn, #trafficRatio=:trafficRatio, #context=:context",
-            ExpressionAttributeNames={
-                '#S': 'status',
-                '#eventTrackerId': 'eventTrackerId',
-                '#datasetArn': 'datasetArn',
-                '#campaignArn': 'campaignArn',
-                '#trafficRatio': 'trafficRatio',
-                '#context': 'context',
-            },
-            ExpressionAttributeValues={
-                ":status_v": status,
-                ':eventTrackerId': eventTrackerId,
-                ':datasetArn': datasetArn,
-                ':campaignArn': campaignArn,
-                ':context': contextMap,
-                ':trafficRatio': trafficRatio
-            },
-            ReturnValues="UPDATED_NEW"
-        )
-
         if current_status != status:
-            delete_item(table_name, dataSetGroupName, current_status)
+            if current_status != "none":
+                delete_item(table_name, dataSetGroupName, current_status)
+
+            put_response = table.put_item(
+                Item={
+                    'name': dataSetGroupName,
+                    'status': status,
+                    'eventTrackerId': eventTrackerId,
+                    'datasetArn': datasetArn,
+                    'campaignArn': campaignArn,
+                    'context': contextMap,
+                    'trafficRatio': trafficRatio
+                },
+                ReturnValues="ALL_OLD"
+            )
+            print(f"Put Item response: {put_response}")
+        else:
+            UpdateExpressionString = "SET #eventTrackerId=:eventTrackerId, #datasetArn=:datasetArn, #campaignArn=:campaignArn, #trafficRatio=:trafficRatio, #context=:context"
+            table.update_item(
+                Key={
+                    'name': dataSetGroupName,
+                    'status': status
+                },
+                UpdateExpression=UpdateExpressionString,
+                ExpressionAttributeNames={
+                    '#eventTrackerId': 'eventTrackerId',
+                    '#datasetArn': 'datasetArn',
+                    '#campaignArn': 'campaignArn',
+                    '#trafficRatio': 'trafficRatio',
+                    '#context': 'context',
+                },
+                ExpressionAttributeValues={
+                    ':eventTrackerId': eventTrackerId,
+                    ':datasetArn': datasetArn,
+                    ':campaignArn': campaignArn,
+                    ':context': contextMap,
+                    ':trafficRatio': trafficRatio
+                },
+                ReturnValues="UPDATED_NEW"
+            )
 
     except ClientError as e:
         print(f"Dynamo update error: {e}")
 
-    return response
+    return
 
 
 
@@ -96,15 +113,17 @@ def lambda_handler(event, context):
         trafficRatio = event['trafficRatio']
         contextMap = {
             'default' : {
-                'filter_name': dataSetName + '-unread'
+                'filter_name': dataSetGroupName + '-unread'
             }
         }
 
         try:
+
             response = LOADER.personalize_cli.describe_event_tracker(
                 eventTrackerArn=event['eventTrackerArn']
             )
-            eventTrackerId = response['eventTrackers']['trackingId']
+            LOADER.logger.debug(f'Listing event response {response}')
+            eventTrackerId = response['eventTracker']['trackingId']
         except Exception as e:
             eventTrackerId = ""
             LOADER.logger.error(f'Error listing event trackers {e}')
