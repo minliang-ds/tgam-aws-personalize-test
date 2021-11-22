@@ -15,6 +15,7 @@ Globals:
         ResourcesPrefix: !Ref ResourcesPrefix
         CurrentAccountId: !Ref "AWS::AccountId"
         FilterAppId: !Ref FilterAppId
+        SettingsTableName: !Ref settingsDynamoDBTable
 
 Mappings: 
   EnvironmentMap: 
@@ -79,11 +80,6 @@ Mappings:
 
 
 Parameters:
-  UpdateTimestamp:
-    Type: String
-    Default: "1635797505"
-    Description: "Timestamp to force redeploy ssm parameters"
-
   ResourcesPrefix:
     Type: String
     Default: "tgam-personalize"
@@ -161,8 +157,6 @@ Parameters:
 Conditions:
   IsCrossAccount: !Equals [!Ref Environment, 'prod']
 
-
-    
 Resources:
 # WAF
   ApiGatewayWebACL:
@@ -327,14 +321,11 @@ Resources:
       MemorySize: 192
       Environment:
         Variables:
-          CAMPAIGN_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}'
-          FiltersPrefix: !Sub '{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/datasetGroupName}}'
           Sophi3DynamoDbTableName: !Ref Sophi3DynamoDbTableName
           Sophi2DynamoDbTableName: !Ref Sophi2DynamoDbTableName
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
           AWS_EMF_SERVICE_NAME: "GetRecommendations"
           AllowOriginDomains: !Ref CorsDomainOrigin
-          UpdateTimestamp: !Ref UpdateTimestamp
 
   GetRecommendations:
     Type:  AWS::Serverless::Function
@@ -364,6 +355,11 @@ Resources:
                 - "dynamodb:BatchGetItem"
               Resource:
                 - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Sophi3DynamoDbTableName}'
+            - Effect: Allow
+              Action:
+                - "dynamodb:Scan"
+              Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ResourcesPrefix}-${Environment}-api-settings'
             - !If
               - IsCrossAccount
               - Effect: Allow
@@ -386,14 +382,11 @@ Resources:
         ProvisionedConcurrentExecutions: !FindInMap [EnvironmentMap, !Ref Environment, ProvisionedConcurrent]
       Environment:
         Variables:
-          CAMPAIGN_ARN: !Sub "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}"
-          FiltersPrefix: !Sub '{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/datasetGroupName}}'
           Sophi3DynamoDbTableName: !Ref Sophi3DynamoDbTableName
           Sophi2DynamoDbTableName: !Ref Sophi2DynamoDbTableName
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
           AWS_EMF_SERVICE_NAME: "GetRecommendations"
           AllowOriginDomains: !Ref CorsDomainOrigin
-          UpdateTimestamp: !Ref UpdateTimestamp
           CrossAccountSophi2Role: !FindInMap [EnvironmentMap, !Ref Environment, Sophi2DynamoDbTableRole]
 ## Event Lambda
   PutEvents:
@@ -406,11 +399,13 @@ Resources:
           - id: W92
             reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
-      CodeUri: api-lambdas/putevents
-      Handler: putevents.handler
-      Runtime: nodejs12.x
+      CodeUri: api-lambdas/putEvents
+      Handler: putEvents.handler
+      Runtime: python3.8
       MemorySize: 192
       Timeout: 60
+      Layers:
+        - !Ref PythonMetricsLayer
       Policies:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
         - Version: "2012-10-17"
@@ -430,6 +425,12 @@ Resources:
               Resource:
                 - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}'
                 - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisEventStream}*'
+            - Effect: Allow
+              Action:
+                - "dynamodb:Scan"
+              Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ResourcesPrefix}-${Environment}-api-settings'
+
       Events:
         Stream:
           Type: Kinesis
@@ -440,9 +441,7 @@ Resources:
             ParallelizationFactor: !Ref KinesisParallelizationFactor
       Environment:
         Variables:
-          TRACKING_ID: !Sub '{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/eventTrackerId}}'
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
-          UpdateTimestamp: !Ref UpdateTimestamp
 
 #Content Lambda
   PutContent:
@@ -455,9 +454,9 @@ Resources:
           - id: W92
             reason: "We dont need ReservedConcurrentExecutions for this function"
     Properties:
-      CodeUri: api-lambdas/putcontent
-      Handler: putcontent.handler
-      Runtime: nodejs12.x
+      CodeUri: api-lambdas/putContent
+      Handler: putContent.handler
+      Runtime: python3.8
       Policies:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
         - Version: "2012-10-17"
@@ -477,6 +476,13 @@ Resources:
               Resource:
                 - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}'
                 - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${KinesisContentStream}*'
+            - Effect: Allow
+              Action:
+                - "dynamodb:Scan"
+              Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ResourcesPrefix}-${Environment}-api-settings'
+      Layers:
+        - !Ref PythonMetricsLayer
       Timeout: 30
       Events:
         Stream:
@@ -489,10 +495,7 @@ Resources:
 
       Environment:
         Variables:
-          TRACKING_ID: !Sub '{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/eventTrackerId}}'
           AWS_EMF_NAMESPACE: !Ref MetricsNamespace
-          CONTENT_DATASET_ARN: !Sub 'arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:dataset/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/datasetGroupName}}/ITEMS'
-          UpdateTimestamp: !Ref UpdateTimestamp
 
   KinesisEventStreamConsumer:
     Type: "AWS::Kinesis::StreamConsumer"
@@ -821,12 +824,12 @@ Resources:
       Dimensions:
         - Name: FunctionName
           Value: !Ref GetRecommendations
-      EvaluationPeriods: 1
+      EvaluationPeriods: 2
       MetricName: Errors
       Namespace: AWS/Lambda
       Period: 300
       Statistic: Sum
-      Threshold: '1'
+      Threshold: '2'
   PutContentErrorAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -836,7 +839,7 @@ Resources:
       Dimensions:
         - Name: FunctionName
           Value: !Ref PutContent
-      EvaluationPeriods: 1
+      EvaluationPeriods: 2
       MetricName: Errors
       Namespace: AWS/Lambda
       Period: 300
@@ -851,7 +854,7 @@ Resources:
       Dimensions:
         - Name: FunctionName
           Value: !Ref PutEvents
-      EvaluationPeriods: 1
+      EvaluationPeriods: 2
       MetricName: Errors
       Namespace: AWS/Lambda
       Period: 300
@@ -937,32 +940,185 @@ Resources:
       Period: 300
       Statistic: Maximum
       Threshold: !Ref LambdaIteratorAgeAlarm
-      
-  CampainUtilizationAlarm:
+
+  ReturnBackupRecommendations:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmActions:
         - !Ref AlarmTopic
-      AlarmDescription: Campain TPS high
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: LogGroup
+          Value: !Ref GetRecommendations
+        - Name: ServiceType
+          Value: "AWS::Lambda::Function"
+        - Name: ServiceName
+          Value: "ServiceName"
       EvaluationPeriods: 1
-      Metrics:
-      - Expression: !Sub "(m1/300/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/minProvisionedTPS}}*100)"
-        Id: e1
-        Label: "TPS"
-      - Id: m1
-        MetricStat:
-          Metric:
-            Dimensions:
-              - Name: CampaignArn
-                Value: !Sub "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}"
-            MetricName: GetRecommendations
-            Namespace: AWS/Personalize
-          Period: 300
-          Stat: Sum
-        ReturnData: false
-      Threshold: "80"
-      
+      MetricName: ReturnBackupRecommendations
+      Namespace: PersonalizeCustomMetrics
+      Period: 300
+      Statistic: Maximum
+      Threshold: '1'
+      TreatMissingData: notBreaching
+
+  MissingRecommendationsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: LogGroup
+          Value: !Ref GetRecommendations
+        - Name: ServiceType
+          Value: "AWS::Lambda::Function"
+        - Name: ServiceName
+          Value: "ServiceName"
+      EvaluationPeriods: 1
+      MetricName: MissingRecommendations
+      Namespace: PersonalizeCustomMetrics
+      Period: 300
+      Statistic: Average
+      Threshold: '1'
+      TreatMissingData: notBreaching
+
+  MissingDataDynamoSophi2Alarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: LogGroup
+          Value: !Ref GetRecommendations
+        - Name: ServiceType
+          Value: "AWS::Lambda::Function"
+        - Name: ServiceName
+          Value: "ServiceName"
+      EvaluationPeriods: 1
+      MetricName: MissingDataDynamoSophi2
+      Namespace: PersonalizeCustomMetrics
+      Period: 300
+      Statistic: Average
+      Threshold: '1'
+      TreatMissingData: notBreaching
+
+  MissingDataDynamoSophi3Alarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: LogGroup
+          Value: !Ref GetRecommendations
+        - Name: ServiceType
+          Value: "AWS::Lambda::Function"
+        - Name: ServiceName
+          Value: "ServiceName"
+      EvaluationPeriods: 1
+      MetricName: MissingDataDynamoSophi3
+      Namespace: PersonalizeCustomMetrics
+      Period: 300
+      Statistic: Average
+      Threshold: '1'
+      TreatMissingData: notBreaching
+
+  settingsDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W74
+            reason: Using default encryption at rest
+          - id: W28
+            reason: We dont want to replace this table - setup name
+
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: "name"
+          AttributeType: "S"
+        -
+          AttributeName: "status"
+          AttributeType: "S"
+
+      KeySchema:
+        -
+          AttributeName: "name"
+          KeyType: "HASH"
+        -
+          AttributeName: "status"
+          KeyType: "RANGE"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+      TableName: !Sub "${ResourcesPrefix}-${Environment}-api-settings"
+      BillingMode: PROVISIONED
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  ReadCapacityScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity: 500
+      MinCapacity: 5
+      ResourceId: !Join
+        - /
+        - - table
+          - !Ref settingsDynamoDBTable
+      RoleARN: !GetAtt ScalingRole.Arn
+      ScalableDimension: dynamodb:table:ReadCapacityUnits
+      ServiceNamespace: dynamodb
+  ScalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - application-autoscaling.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        -
+          PolicyName: "root"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "dynamodb:DescribeTable"
+                  - "dynamodb:UpdateTable"
+                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ResourcesPrefix}-${Environment}-settings"
+              -
+                Effect: "Allow"
+                Action:
+                  - "cloudwatch:PutMetricAlarm"
+                  - "cloudwatch:DescribeAlarms"
+                  - "cloudwatch:GetMetricStatistics"
+                  - "cloudwatch:SetAlarmState"
+                  - "cloudwatch:DeleteAlarms"
+                Resource: "*"
+  ReadScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: ReadAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref ReadCapacityScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 50.0
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification:
+          PredefinedMetricType: DynamoDBReadCapacityUtilization
+
   PenronalizeDashboard:
    Type: AWS::CloudWatch::Dashboard
    Properties:
@@ -1003,7 +1159,8 @@ Resources:
                       "region": "${AWS::Region}",
                       "stat": "Sum",
                       "period": 300,
-                      "title": "Api Gateway Metrics"
+                      "title": "Api Gateway Metrics",
+                      "liveData": true
                   }
               },
               {
@@ -1024,7 +1181,8 @@ Resources:
                       "region": "${AWS::Region}",
                       "stat": "Sum",
                       "period": 300,
-                      "title": "GetRecommendations Lambda"
+                      "title": "GetRecommendations Lambda",
+                      "liveData": true
                   }
               },
               {
@@ -1044,7 +1202,8 @@ Resources:
                       "region": "${AWS::Region}",
                       "stat": "Average",
                       "period": 300,
-                      "title": "GetRecommendations Dependency"
+                      "title": "GetRecommendations Dependency",
+                      "liveData": true
                   }
               },
               {
@@ -1055,17 +1214,18 @@ Resources:
                   "type": "metric",
                   "properties": {
                       "metrics": [
-                        [ "AWS/Personalize", "GetRecommendations5XXErrors", "CampaignArn", "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}", { "color": "#d62728" } ],
-                        [ ".", "GetRecommendations4XXErrors", ".", "." ],
-                        [ ".", "GetRecommendationsLatency", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ],
-                        [ ".", "GetRecommendations", ".", "." ]
+                        [ { "expression": "SEARCH('{AWS/Personalize,CampaignArn} MetricName=\"GetRecommendations5XXErrors\" ${ResourcesPrefix}-', 'Sum', 300)", "label": "5XX" } ],
+                        [ { "expression": "SEARCH('{AWS/Personalize,CampaignArn} MetricName=\"GetRecommendations4XXErrors\" ${ResourcesPrefix}-', 'Sum', 300)", "label": "4XX" } ],
+                        [ { "expression": "SEARCH('{AWS/Personalize,CampaignArn} MetricName=\"GetRecommendationsLatency\" ${ResourcesPrefix}-', 'Average', 300)", "label": "Latency", "yAxis": "right" } ],
+                        [ { "expression": "SEARCH('{AWS/Personalize,CampaignArn} MetricName=\"GetRecommendations\" ${ResourcesPrefix}-', 'Sum', 300)", "label": "2XX" } ]
                       ],
                       "view": "timeSeries",
                       "stacked": false,
                       "region": "${AWS::Region}",
                       "stat": "Sum",
                       "period": 300,
-                      "title": "Amazon Personalize Requests Campain: {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}"
+                      "title": "Amazon Personalize Requests Campaign",
+                      "liveData": true
                   }
               },
               {
@@ -1076,23 +1236,16 @@ Resources:
                   "type": "metric",
                   "properties": {
                       "metrics": [
-                        [ { "expression": "m1/300", "label": "TPS", "id": "e1" } ],
-                        [ "AWS/Personalize", "GetRecommendations", "CampaignArn", "arn:aws:personalize:${AWS::Region}:${AWS::AccountId}:campaign/{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}", { "id": "m1", "visible": false} ]
+                        [ { "expression": "e1/300", "label": "TPS", "id": "e2", "region": "${AWS::Region}" } ],
+                        [ { "expression": "SEARCH('{AWS/Personalize,CampaignArn} MetricName=\"GetRecommendations\" ${ResourcesPrefix}-', 'Sum', 300)", "id": "e1", "period": 300, "visible": false } ]
                       ],
                       "view": "timeSeries",
                       "stacked": false,
                       "region": "${AWS::Region}",
                       "stat": "Sum",
                       "period": 300,
-                      "title": "Amazon Personalize Actial vs Provisioned  TPS: {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/campaignName}}",
-                      "annotations": {
-                          "horizontal": [
-                              {
-                                  "label": "Provisioned TPS",
-                                  "value": {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/minProvisionedTPS}}
-                              }
-                          ]
-                      }
+                      "title": "Amazon Personalize Actual TPS",
+                      "liveData": true
                   }
               },
               {
@@ -1104,14 +1257,17 @@ Resources:
                   "properties": {
                       "metrics": [
                         [ "PersonalizeCustomMetrics", "ReturnRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "right", "stat": "p95" } ],
-                        [ "PersonalizeCustomMetrics", "MissingRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "p95" } ]
+                        [ "PersonalizeCustomMetrics", "MissingRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "left", "stat": "p95" } ],
+                        [ "PersonalizeCustomMetrics", "MissingDataDynamoSophi3", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "left", "stat": "p95" } ],
+                        [ "PersonalizeCustomMetrics", "MissingDataDynamoSophi2", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "left", "stat": "p95" } ]
                       ],
                       "view": "timeSeries",
-                      "stacked": true,
+                      "stacked": false,
                       "region": "${AWS::Region}",
                       "stat": "Average",
                       "period": 300,
                       "title": "GetRecommendations Health",
+                      "liveData": true,
                       "yAxis": {
                           "left": {
                               "label": "Avg Missing Recommendations",
@@ -1143,7 +1299,8 @@ Resources:
                       "region": "${AWS::Region}",
                       "stat": "Sum",
                       "period": 300,
-                      "title": "PutEvents Lambda"
+                      "title": "PutEvents Lambda",
+                      "liveData": true
                   }
               },
               {
@@ -1154,17 +1311,18 @@ Resources:
                   "type": "metric",
                   "properties": {
                       "metrics": [
-                          [ "AWS/Personalize", "putEvents4xxErrors", "EventTrackerArn", "{{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/eventTrackerArn}}", { "color": "#ff7f0e" } ],
-                          [ ".", "putEvents5xxErrors", ".", ".", { "color": "#d62728" } ],
-                          [ ".", "putEventsRequests", ".", "." ],
-                          [ ".", "putEventLatency", ".", ".", { "yAxis": "right", "stat": "Average", "color": "#aec7e8" } ]
+                          [ { "expression": "SEARCH('{AWS/Personalize,EventTrackerArn} MetricName=\"putEvents5xxErrors\" event-tracker', 'Sum', 300)", "label": "5XX" } ],
+                          [ { "expression": "SEARCH('{AWS/Personalize,EventTrackerArn} MetricName=\"putEvents4xxErrors\" event-tracker', 'Sum', 300)", "label": "4XX" } ],
+                          [ { "expression": "SEARCH('{AWS/Personalize,EventTrackerArn} MetricName=\"putEventLatency\" event-tracker', 'Average', 300)", "label": "Latency", "yAxis": "right" } ],
+                          [ { "expression": "SEARCH('{AWS/Personalize,EventTrackerArn} MetricName=\"putEventsRequests\" event-tracker', 'Sum', 300)", "label": "2XX" } ]
                       ],
                       "view": "timeSeries",
                       "stacked": false,
                       "region": "${AWS::Region}",
                       "stat": "Sum",
                       "period": 300,
-                      "title": "PutEvents Personalize Tracker: {{resolve:ssm:/personalize/${ResourcesPrefix}/${Environment}/eventTrackerArn}}"
+                      "title": "PutEvents Personalize Tracker",
+                      "liveData": true
                   }
               },
               {
@@ -1185,7 +1343,8 @@ Resources:
                       "region": "${AWS::Region}",
                       "stat": "Sum",
                       "period": 300,
-                      "title": "PutContent Lambda"
+                      "title": "PutContent Lambda",
+                      "liveData": true
                   }
               },
               {
@@ -1204,6 +1363,7 @@ Resources:
                       "stat": "Maximum",
                       "period": 60,
                       "title": "PutEvents Lambda IteratorAge",
+                      "liveData": true,
                       "annotations": {
                           "horizontal": [
                               {
@@ -1220,6 +1380,7 @@ Resources:
                   "y": 48,
                   "x": 12,
                   "type": "metric",
+                  "liveData": true,
                   "properties": {
                       "metrics": [
                           [ "AWS/Lambda", "IteratorAge", "FunctionName", "${PutContent}", { "color": "#ff7f0e" } ]
@@ -1247,17 +1408,20 @@ Resources:
                   "width": 24,
                   "height": 3,
                   "properties": {
-                      "title": "${UpdateTimestamp} Lambda Alarm Status",
+                      "title": "Lambda Alarm Status",
                       "alarms": [
                           "${GetRecommendationsErrorAlarm.Arn}",
+                          "${ReturnBackupRecommendations.Arn}",
+                          "${MissingRecommendationsAlarm.Arn}",
+                          "${MissingDataDynamoSophi3Alarm.Arn}",
+                          "${MissingDataDynamoSophi2Alarm.Arn}",
                           "${RecThrottlesAlarm.Arn}",
                           "${PutContentErrorAlarm.Arn}",
                           "${PutContentThrottlesAlarm.Arn}",
                           "${PutEventsErrorAlarm.Arn}",
                           "${PutEventsThrottlesAlarm.Arn}",
                           "${ContentIteratorAge.Arn}",
-                          "${EventsIteratorAge.Arn}",
-                          "${CampainUtilizationAlarm.Arn}"
+                          "${EventsIteratorAge.Arn}"
                       ]
                   }
               }
@@ -1285,6 +1449,8 @@ Outputs:
     Value: !Ref ApiGatewayEndpoint
   StageName:
     Value: !Ref StageName
+  SettingsTable:
+    Value: !Ref settingsDynamoDBTable
   POSTRecommendationsApiGatewayInvokeURL:
     Value: !Sub
       - https://${Domain}/${StageName}/recommendations

@@ -16,10 +16,6 @@ Parameters:
     Type: String
     Description: Email to be notified
     Default: youremail@yourprovider.com
-  ParameterFile:
-    Type: String
-    Description: Parameters file name, which will reside in your S3 parent directory
-    Default: params.json
 
   ResourcesPrefix:
     Type: String
@@ -142,7 +138,7 @@ Resources:
       Environment:
         Variables:
           STEP_FUNCTIONS_ARN: !Ref DeployStateMachine
-          PARAMS_FILE: !Ref ParameterFile
+          CONFIG_PREFIX: !Sub "config/${ResourcesPrefix}/${Environment}/params"
       Events:
         S3Bucket:
           Type: S3
@@ -153,7 +149,7 @@ Resources:
               S3Key:
                 Rules:
                   - Name: prefix
-                    Value: !Ref ParameterFile
+                    Value: !Sub "config/${ResourcesPrefix}/${Environment}/params"
   S3LambdaUpdateStateMachine:
     Type: AWS::Serverless::Function
     Metadata:
@@ -171,7 +167,7 @@ Resources:
       Environment:
         Variables:
           STEP_FUNCTIONS_ARN: !Ref UpdateStateMachine
-          PARAMS_FILE: !Ref ParameterFile
+          CONFIG_PREFIX: !Sub "config/${ResourcesPrefix}/${Environment}/"
           INPUT_BUCKET: !Ref InputBucket
       Events:
         CWSchedule:
@@ -218,6 +214,27 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
+                  - s3:ListBucket
+                Resource: !Join
+                  - ""
+                  - - "arn:aws:s3:::"
+                    - !Ref ResourcesPrefix
+                    - "-"
+                    - !Ref Environment
+                    - "-"
+                    - 'input'
+                    - "-"
+                    - !Select
+                      - 0
+                      - !Split
+                        - "-"
+                        - !Select
+                          - 2
+                          - !Split
+                            - "/"
+                            - !Ref "AWS::StackId"
+              - Effect: Allow
+                Action:
                   - s3:GetObject
                 Resource: !Join
                   - ""
@@ -237,8 +254,7 @@ Resources:
                           - !Split
                             - "/"
                             - !Ref "AWS::StackId"
-                    - "/"
-                    - !Ref ParameterFile
+                    - "/config/*"
 
               - Effect: Allow
                 Action:
@@ -264,6 +280,27 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
+                  - s3:ListBucket
+                Resource: !Join
+                  - ""
+                  - - "arn:aws:s3:::"
+                    - !Ref ResourcesPrefix
+                    - "-"
+                    - !Ref Environment
+                    - "-"
+                    - 'input'
+                    - "-"
+                    - !Select
+                      - 0
+                      - !Split
+                        - "-"
+                        - !Select
+                          - 2
+                          - !Split
+                            - "/"
+                            - !Ref "AWS::StackId"
+              - Effect: Allow
+                Action:
                   - s3:GetObject
                 Resource: !Join
                   - ""
@@ -283,8 +320,7 @@ Resources:
                           - !Split
                             - "/"
                             - !Ref "AWS::StackId"
-                    - "/"
-                    - !Ref ParameterFile
+                    - "/config/*"
               - Effect: Allow
                 Action:
                   - states:StartExecution
@@ -433,6 +469,7 @@ Resources:
                   - !GetAtt DeleteTracker.Arn
                   - !GetAtt DeleteFilter.Arn
                   - !GetAtt Notify.Arn
+                  - !GetAtt UpdateSettings.Arn
                   - !GetAtt NotifyDelete.Arn
   CreateDatasetGroup:
     Type: AWS::Serverless::Function
@@ -990,6 +1027,45 @@ Resources:
                 - personalize:DescribeEventTracker
                 - personalize:ListEventTrackers
               Resource: "*"
+
+  UpdateSettings:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
+    Properties:
+      CodeUri: lambdas/update-settings
+      Handler: settings.lambda_handler
+      Runtime: python3.8
+      Timeout: 900
+      Layers:
+        - !Ref SharedLayer
+      Environment:
+        Variables:
+          SettingsTableName: !Sub "${ResourcesPrefix}-${Environment}-api-settings"
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+                - dynamodb:Scan
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:GetItem
+                - dynamodb:DeleteItem
+              Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ResourcesPrefix}-${Environment}-api-settings"
+            - Effect: Allow
+              Action:
+                - personalize:DescribeEventTracker
+              Resource: "*"
+
   CreateFilters:
     Type: AWS::Serverless::Function
     Metadata:
@@ -1203,8 +1279,22 @@ Resources:
         !Sub
           - |-
             {
-              "StartAt": "List Event Trackers",
+              "StartAt": "Delete from Settings Campaign",
               "States": {
+                "Delete from Settings Campaign": {
+                  "Next": "List Event Trackers",
+                  "Type": "Task",
+                  "Resource": "${UpdateSettingsArn}",
+                  "ResultPath": "$.eventTrackers",
+                  "Parameters": {
+                    "datasetGroupArn.$": "$.datasetGroupArn",
+                    "UpdateType": "Delete"
+                  },
+                  "Catch": [{
+                    "ErrorEquals": [ "States.ALL" ],
+                    "Next": "Notify Error"
+                  }]
+                },
                 "List Event Trackers": {
                   "Next": "Map Event Trackers",
                   "Type": "Task",
@@ -1583,6 +1673,7 @@ Resources:
             WaitDeleteSolutionArn: !GetAtt WaitDeleteSolution.Arn
             WaitDeleteTrackerArn: !GetAtt WaitDeleteTracker.Arn
             NotifyDeleteLambdaArn: !GetAtt NotifyDelete.Arn
+            UpdateSettingsArn: !GetAtt UpdateSettings.Arn
   DeployStateMachine:
     Type: "AWS::StepFunctions::StateMachine"
     Properties:
@@ -2033,6 +2124,30 @@ Resources:
                     "ResultPath": "$.serviceError",
                     "Next": "Fail"
                   }],
+                  "Next": "Update Settings"
+                },
+                "Update Settings":{
+                  "Type": "Task",
+                  "Resource": "${UpdateSettingsArn}",
+                  "Parameters": {
+                    "filters.$": "$.params.filters",
+                    "datasetGroupName.$": "$.params.datasetGroup.name",
+                    "campaignName.$": "$.params.campaigns.userPersonalizationCampaign.name",
+                    "eventTrackerArn.$": "$.eventTrackerArn",
+                    "trafficRatio.$": "$.params.campaigns.userPersonalizationCampaign.trafficRatio"
+                  },
+                  "ResultPath": "$.settingsArn",
+                  "Retry": [{
+                    "ErrorEquals": ["ResourcePending"],
+                    "IntervalSeconds": 2,
+                    "BackoffRate": 1.5,
+                    "MaxAttempts": 100
+                  }],
+                  "Catch": [{
+                    "ErrorEquals": ["ResourceFailed"],
+                    "ResultPath": "$.serviceError",
+                    "Next": "Fail"
+                  }],
                   "Next": "Notify Users"
                 },
                 "Notify Users": {
@@ -2056,6 +2171,7 @@ Resources:
             AttachEventTrackerArn: !GetAtt  AttachEventTracker.Arn
             CreateFiltersArn: !GetAtt  CreateFilters.Arn
             NotifyArn: !GetAtt Notify.Arn
+            UpdateSettingsArn: !GetAtt UpdateSettings.Arn
           
   UpdateStateMachine:
     Type: "AWS::StepFunctions::StateMachine"

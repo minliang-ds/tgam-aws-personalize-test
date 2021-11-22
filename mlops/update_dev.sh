@@ -28,11 +28,12 @@ sam deploy ${profile_arg} --stack-name ${stack_name}  \
   ParameterKey=Environment,ParameterValue=${env}
 
 
+export ResourcesPrefix="tgam-personalize"
+export Environment=${env}
 
 input_bucket=`aws cloudformation describe-stacks ${profile_arg} --stack-name ${stack_name}  --region ${deploy_region} --query 'Stacks[0].Outputs' --output table | grep InputBucketName  | awk -F \| {'print $4'} | awk {'print $1'}`
-aws s3 cp s3://${input_bucket}/params.json .temp_params.json ${profile_arg}  || true
-echo "Diff params.json compare to s3://${input_bucket}/params.json "
-diff -ruNp ../params_${env}.json .temp_params.json || true
+for file in `rm -rf .temp_params.json; ls ../../config/${ResourcesPrefix}/${Environment}/`; do aws s3 cp s3://${input_bucket}/config/${ResourcesPrefix}/${Environment}/${file} .temp_params.json ${profile_arg} && diff -ruNp ../../config/${ResourcesPrefix}/${Environment}/${file} .temp_params.json || aws s3 cp ../../config/${ResourcesPrefix}/${Environment}/${file} s3://${input_bucket}/config/${ResourcesPrefix}/${Environment}/${file} ; done
 
-echo "If needed run:"
-echo aws s3 cp params_${env}.json s3://${input_bucket}/params.json ${profile_arg}
+
+#echo "If needed run:"
+#echo aws s3 cp params_${env}.json s3://${input_bucket}/params.json ${profile_arg}

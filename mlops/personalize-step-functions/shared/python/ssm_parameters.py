@@ -6,6 +6,8 @@ from loader import Loader
 SHARED_LOADER = Loader()
 
 def put_parameter(parameter_name, value):
+    return
+    '''
     ssm_client = client('ssm')
     prefix_name=environ.get('ResourcesPrefix', 'tgam-personalize')
     env_name=environ.get('Environment', "dev")
@@ -23,21 +25,23 @@ def put_parameter(parameter_name, value):
         SHARED_LOADER.logger.error(
             f"put_parameter error: {e}"
         )
-
+'''
 
 
 def delete_parameter(parameter_name):
-    ssm_client = client('ssm')
-    prefix_name=environ.get('ResourcesPrefix', 'tgam-personalize')
-    env_name=environ.get('Environment', "dev")
-    try:
-        ssm_client.delete_parameter(
-            Name=f"/personalize/{prefix_name}/{env_name}/{parameter_name}",
+    return
+    '''
+        ssm_client = client('ssm')
+        prefix_name=environ.get('ResourcesPrefix', 'tgam-personalize')
+        env_name=environ.get('Environment', "dev")
+        try:
+            ssm_client.delete_parameter(
+                Name=f"/personalize/{prefix_name}/{env_name}/{parameter_name}",
+                )
+    
+        except ClientError as e:
+            SHARED_LOADER.logger.error(
+                f"delete_parameter error: {e}"
             )
-
-    except ClientError as e:
-        SHARED_LOADER.logger.error(
-            f"delete_parameter error: {e}"
-        )
-
+    '''
 

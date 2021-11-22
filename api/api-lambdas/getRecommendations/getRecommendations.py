@@ -2,6 +2,7 @@ import time
 import json
 import os
 import decimal
+import random
 
 from boto3 import client
 from boto3.session import Session
@@ -32,6 +33,51 @@ def _refresh():
         "expiry_time": response.get("Expiration").isoformat(),
     }
     return credentials
+
+def _api_ratio(api):
+    spread = []
+    backend_id = 0
+    for backend in api:
+        #print(f"Ratio: {backend.get('trafficRatio')}")
+        for i in range(1, int(int(backend.get('trafficRatio')) % 101)):
+            spread.append(backend_id)
+        backend_id+=1
+
+    random.shuffle(spread)
+    #print(f"Spread: {spread}")
+    return spread[0]
+
+def _get_dynamo_settings(dynamo_client, dynamo_table):
+    try:
+        personalize_list = []
+        scan_kwargs = {
+            'TableName': dynamo_table,
+            'FilterExpression': "#status = :active ",
+            'ExpressionAttributeNames': {
+                "#status": "status",
+            },
+            'ExpressionAttributeValues': {
+                ":active": {
+                    'S': "active"
+                }
+            }
+        }
+
+        done = False
+        start_key = None
+        while not done:
+            if start_key:
+                scan_kwargs['ExclusiveStartKey'] = start_key
+            response = dynamo_client.scan(**scan_kwargs)
+            personalize_list.extend(response.get('Items', []))
+            start_key = response.get('LastEvaluatedKey', None)
+            done = start_key is None
+
+        deserialized_iteration= [{k: deserializer.deserialize(v) for k, v in element.items()} for element in personalize_list]
+        return deserialized_iteration
+
+    except ClientError as e:
+        print(f"Key Error: {e}")
 
 def get_dynamo_data(dynamo_client, dynamo_table, sort_key_name, attributes, item_list, return_type_map=False, return_type_list=False, api_gateway_request_id="NONE"):
     if (len(item_list) > 0):
@@ -88,9 +134,10 @@ class DecimalEncoder(json.JSONEncoder):
 
 region            = os.environ.get('AWS_REGION')
 account_id        = os.environ.get('CurrentAccountId')
-filter_prefix     = os.environ.get('FiltersPrefix')
 sophi2_role_arn   = os.environ.get('CrossAccountSophi2Role')
 enviroment        = os.environ.get('Environment')
+resources_prefix  = os.environ.get('ResourcesPrefix')
+
 
 deserializer      = TypeDeserializer()
 config = boto_config.Config(
@@ -99,6 +146,7 @@ config = boto_config.Config(
 
 personalize_cli = client('personalize-runtime', config=config)
 client_sophi3 = client('dynamodb', config=config)
+settings_dynamo_table =  f"{resources_prefix}-{enviroment}-api-settings"
 
 if sophi2_role_arn and "arn" in sophi2_role_arn:
     session_credentials = RefreshableCredentials.create_from_metadata(
@@ -182,6 +230,20 @@ def handler(event, context, metrics):
     metrics.set_property("ApiRequestId", api_gateway_request_id)
     metrics.set_property("LambdaRequestId", context.aws_request_id)
 
+    settings = _get_dynamo_settings(client_sophi3, settings_dynamo_table)
+
+    if settings and len(settings) == 1:
+        setting_id = 0;
+    elif settings and len(settings) > 1:
+        setting_id = _api_ratio(settings)
+    else:
+        print(f"RequestID: {api_gateway_request_id} Loading Settings Error:")
+        return {'statusCode': '400', 'headers': return_headers, 'body': json.dumps("Settings Error")}
+
+    campaign_arn = settings[setting_id].get('campaignArn')
+    context_settings = settings[setting_id].get('context')
+    metrics.set_property("personalizeBackend", settings[setting_id].get('name'))
+
     body = json.loads(event['body'])
     payload = body.get("sub_requests")[0]
 
@@ -208,7 +270,7 @@ def handler(event, context, metrics):
 
     try:
         arguments={
-            'campaignArn'  : os.environ['CAMPAIGN_ARN'],
+            'campaignArn'  : campaign_arn,
             'userId'       : body.get("visitor_id"),
             'numResults'   : payload.get("limit"),
             'filterValues' : {},
@@ -222,11 +284,17 @@ def handler(event, context, metrics):
         if arguments["numResults"] > 500:
             arguments["numResults"] = 500
 
-        if payload.get("context") == "art_same_section_mostpopular":
-            filter_base =  f'arn:aws:personalize:{region}:{account_id}:filter/{filter_prefix}-category'
+        if payload.get("context") in context_settings:
+            filter_settings = context_settings.get(payload.get('context'))
+        else:
+            filter_settings = context_settings.get('default')
 
-            #section can be /canada/ or /canada/alberta/
-            #in both cases we need category to be "canada"
+        filter_base =  f'arn:aws:personalize:{region}:{account_id}:filter/{filter_settings.get("filter_name")}'
+
+        #Variable to decided if we use date filters
+        limit_time_range = filter_settings.get("limit_time_range", True)
+
+        if "category" in filter_settings.get("filter_values", []):
             if payload.get("include_sections"):
                 category = payload.get("include_sections")
             elif payload.get("section"):
@@ -239,9 +307,10 @@ def handler(event, context, metrics):
             if category_mapping.get(category):
                 category = category_mapping.get(category)
 
+            if category in filter_settings.get("include_time_range_for_sections", []):
+                limit_time_range = True
+
             arguments["filterValues"]["category"] = f'\"{category}\"';
-        else:
-            filter_base = f'arn:aws:personalize:{region}:{account_id}:filter/{filter_prefix}-unread'
 
         if payload.get("platform"):
             arguments["context"]['device_detector_visitorplatform'] = payload.get("platform").lower().capitalize();
@@ -255,15 +324,27 @@ def handler(event, context, metrics):
         print(f"RequestID: {api_gateway_request_id} RequestRecommendations = {arguments}")
         before_request = time.time_ns()
 
-        try:
+        if limit_time_range:
             filter_date_prefix = date.today() - timedelta(days=1)
-            arguments["filterArn"] = f'{filter_base}-{filter_date_prefix.strftime("%Y-%m-%d")}'
+            filter_suffix = f'-{filter_date_prefix.strftime("%Y-%m-%d")}'
+        else:
+            filter_suffix = ""
+
+        try:
+            arguments["filterArn"] = f'{filter_base}{filter_suffix}'
             response = personalize_cli.get_recommendations(**arguments)
         except personalize_cli.exceptions.InvalidInputException:
             #default to filter without date if filters with date do not exist
             arguments["filterArn"] = filter_base
-            metrics.set_property("personalizeFilter", arguments["filterArn"])
             response = personalize_cli.get_recommendations(**arguments)
+        else:
+            #If filter with date return no values lets try ask filter wihout date
+            if len(response['itemList']) == 0:
+                metrics.set_property("personalizeOriginalFilter", arguments["filterArn"])
+                arguments["filterArn"] = filter_base
+                response = personalize_cli.get_recommendations(**arguments)
+                metrics.put_metric("ReturnBackupRecommendations", (len(response['itemList'])), "None")
+
 
         metrics.set_property("personalizeFilter", arguments["filterArn"])
         after_request = time.time_ns()
