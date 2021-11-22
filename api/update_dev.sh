@@ -39,6 +39,7 @@ aws apigateway create-deployment ${profile_arg} \
     --rest-api-id ${api_id} \
     --stage-name ${stage_name}
 
+
 echo "Test api: ${api_url}"
 curl ${api_url} -H 'Content-Type: application/json' --data-raw '{"visitor_id":"e63cdc7c-742f-4442-8a24-a1cd1f36c8b0","platform":"desktop","sub_requests":[{"widget_id":"recommended-mobile_art_morestories","last_content_ids":"TTSIR6HFKZC5FNS3MSMZN7ZS3I","limit":6,"context":"mobile_art_morestories","platform":"desktop","section":"/canada/alberta/","visitor_type":"anonymous"}]}' -v
 

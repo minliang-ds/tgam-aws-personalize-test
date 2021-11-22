@@ -1,6 +1,5 @@
 # Introduction
 
-
 This repository contains 2 [AWS Serverless Application Model](https://aws.amazon.com/serverless/sam/) projects, every in each own folder:
 - api - GetRecommendations, PutContent, PutEvents api  
 - mlops - MLOps pipeline for [Amazon Personalize](https://aws.amazon.com/personalize/) Recommender System
@@ -12,7 +11,12 @@ This repository contains 2 [AWS Serverless Application Model](https://aws.amazon
 
 # Deployment steps
 
-## Global prerequisite
+1. Global prerequisite
+2. MlOps pipeline
+3. API pipeline
+
+
+## 1. Global prerequisite
 Global prerequisite items required for both mlops and api projects deployment.
 
 ### Create S3 bucket for SAM artifacts
@@ -44,7 +48,7 @@ git clone https://github.com/globeandmail/tgam-aws-personalize
 ```
 
 
-## MLOps pipeline 
+## 2. MLOps pipeline 
 MLOps pipeline for Amazon Personalize Recommender System
 
 This pipeline builds a User-Personalization Amazon Personalize campaign for Sophi from scatch, assuming input datasets have been pre-generated. The pipeline uses AWS Serverless Application Model (SAM) to deploy an AWS Step Functions workflow containing AWS Lambda functions that call Amazon S3, Amazon Personalize, and Amazon SNS APIs.
@@ -63,13 +67,13 @@ The below diagram showcases the campaign update step functions workflow:
 
 ![stepfunction definition](mlops/images/campaign_update_step_functions.png)
 
-### Pipeline Deployment steps 
+### MLOps Pipeline Deployment steps 
 This command will deploy CodePipieline that will deploy changes based on git repository
 ```bash
 sh pipeline.sh -e dev -t mlops -p tgam-personalize -b development -d
 ```
 
-### Manual Deployment steps
+### MLOps Manual Deployment steps
 
 > **Information**: Steps 2-3 can be executed by running ./update.sh in mlops folder!
 1. [In CloudShell]: Navigate into the *mlops* directory:
@@ -90,18 +94,19 @@ Interactions/       # Interaction dataset(s) folder
 ```bash
 cd ~/mlops
 ```
-[In CloudShell]: Upload the `params.json` file to the **root directory of the InputBucket**. This step will trigger the campaign creation step functions workflow.
+[In CloudShell]: Upload the `params*.json` files to the **/config/tgam-personalize/${env}/ directory of the InputBucket**. This step will trigger the campaign creation step functions workflow.
 - Note that future updates to the `params.json` file should follow the resource naming convention that uses the dataset group name as the prefix
 ```bash
-aws s3 cp ./params.json s3://<input-bucket-name>
+export env="dev"
+aws s3 cp ./config/tgam-personalize/${env} s3://<input-bucket-name>/config/tgam-personalize/${env}/
 ```
 9. Navigate to AWS Step Functions to monitor the workflow (Optional). Once the workflow completes successfully (which might take a few hours), an email notification will be sent out.
 
 
-## Deploy Recommendations API
+## 3. Deploy Recommendations API
 
 
-#### Create ACM Certificate
+### Create ACM Certificate
 1. To deploy API Gateway using custom domain we need to create [AWS Certificate Manager](https://aws.amazon.com/certificate-manager/) public certificate. Because validation require DNS changes outside access of cloudformation this step needs to be done manualy.
 ```bash
 aws acm request-certificate --domain-name ${domain} --validation-method DNS
@@ -122,41 +127,13 @@ RESOURCERECORD  _0131f324147dc2ca4e625bb893dab9a8.recoapi-ng-dev.theglobeandmail
 aws acm describe-certificate --certificate-arn ${certificate_arn} --query 'Certificate.Status'
 ```
 
-#### First deployment
-First deployment should be done after step function pipeline is finished and ssm parameters are available. To check parameters status run:
-```bash
-export enviroment="dev"
-export resource_prefix="tgam-personalize"
-
-aws ssm get-parameter --name /personalize/${resource_prefix}/${enviroment}/campaignArn
-aws ssm get-parameter --name /personalize/${resource_prefix}/${enviroment}/campaignName
-aws ssm get-parameter --name /personalize/${resource_prefix}/${enviroment}/datasetGroupName
-aws ssm get-parameter --name /personalize/${resource_prefix}/${enviroment}/eventTrackerArn
-aws ssm get-parameter --name /personalize/${resource_prefix}/${enviroment}/eventTrackerId
-aws ssm get-parameter --name /personalize/${resource_prefix}/${enviroment}/minProvisionedTPS
-```
-
-If you want to create api before step functions finished with pipeline you need to create dummy parameters that will be updated during step function execution:
-```bash
-export enviroment="dev"
-export resource_prefix="tgam-personalize"
-aws_account_id=`aws sts get-caller-identity --query 'Account' --output text`
-aws ssm put-parameter --name /personalize/${resource_prefix}/${enviroment}/campaignArn --value "arn:aws:personalize:us-east-1:${aws_account_id}:campaign/tgam-personalize" --type "String" 
-aws ssm put-parameter --name /personalize/${resource_prefix}/${enviroment}/campaignName --value "tgam-personalize" --type "String" 
-aws ssm put-parameter --name /personalize/${resource_prefix}/${enviroment}/datasetGroupName --value "tgam-personalize" --type "String" 
-aws ssm put-parameter --name /personalize/${resource_prefix}/${enviroment}/eventTrackerArn --value "arn:aws:personalize:us-east-1:${aws_account_id}:event-tracker/12345678" --type "String" 
-aws ssm put-parameter --name /personalize/${resource_prefix}/${enviroment}/eventTrackerId --value "8522dc75-1234-1234-1234-0317c07ab6f8" --type "String" 
-aws ssm put-parameter --name /personalize/${resource_prefix}/${enviroment}/minProvisionedTPS --value "10" --type "String" 
-
-```
-
-### Pipeline Deployment steps
-This command will deploy CodePipieline that will deploy changes based on git repository
+### API Pipeline Deployment steps
+This command will deploy CodePipieline that will deploy changes based on git repository from branch development
 ```bash
 sh pipeline.sh -e dev -t api -p tgam-personalize -b development -d
 ```
 
-### Manual Deployment steps
+### API Manual Deployment steps
 
 1. [In CloudShell]: Navigate into the *api* directory:
 ```bash
@@ -181,17 +158,80 @@ export api_key=(api from output url)
   --data-raw '{"sub_requests":[{"widget_id":"recommended-art_same_section_mostpopular","include_read":false,"include_content_types":"wire,news,blog,column,review,gallery","limit":10,"context":"art_same_section_mostpopular","width":"w620","include_sections":"canada","min_content_age":61,"platform":"desktop","max_content_age":345601,"rank":1,"last_content_ids":"4LTZGA2T7FA5FC3XJXTHCUGXLI","newsletter_ids":"","section":"/canada/","seo_keywords":"","visitor_type":"anonymous"}],"platform":"desktop","visitor_id":"42ed07db-c4d5-41e6-8e51-5173da2bfec0","hash_id":""}'  | jq
 ```
 
-
-
-
-
 # API/Lambda documentation
 
-This solution will provide 3 [AWS Lambda](https://aws.amazon.com/lambda/) fucntions that will be processing Sophi data:
+This solution will provide 3 [AWS Lambda](https://aws.amazon.com/lambda/) functions that will be processing Sophi data:
 - PutEvent - AWS Lambda to transfer information about events from **sophi3-transformed-event-stream** [Amazon Kinesis Data Streams](https://aws.amazon.com/kinesis/data-streams/)
 - PutContent -  AWS Lambda to transfer information about content changes from **sophi3-unified-content-stream** [Amazon Kinesis Data Streams](https://aws.amazon.com/kinesis/data-streams/)
 - GetRecommendations - AWS Lambda published in backend of [Amazon API Gateway](https://aws.amazon.com/api-gateway/) to provide recommendation api for end users
 
+All 3 Lambda Functions using Dynamo Table **${prefix}-${env}-api-settings** for example **tgam-personalize-dev-api-settings** that specify where APIs should send requests.
+
+Items in table should have values:
+1. name - uniq name of entry, should be equal to DatasetGroupName 
+2. status - status of entry, "active" is used as filter on all table queries
+3. eventTrackerId - id f event tracker where putEvent lambda will send future events
+4. datasetArn - ARN of dataset with ITEMS where putContent Lambda will send updates related with content
+5. trafficRatio - INT 0-100 that is used to decide what % of traffic getRecommendation Lambda will send to this 
+6. campaignArn - ARN for campaign used by getRecommendation Lambda
+7. context - dictionary of mapping between API context and personalize filters
+   1. key - default/context name
+   2. value.filter_name - name of prefix
+   3. value.filter_values - list of values needed by filter
+   4. value.include_time_range_for_sections - list of sections/categories where we will limit time limit for filters
+   5. value.limit_time_range - true/false - if this filter by default use time limits or no 
+
+Example of item in table:
+```json
+{
+  "name": {
+    "S": "tgam-personalize-dev-blue"
+  },
+  "status": {
+    "S": "active"
+  },
+  "context": {
+    "M": {
+      "default": {
+        "M": {
+          "filter_name": {
+            "S": "tgam-personalize-green-unread"
+          }
+        }
+      },
+      "art_same_section_mostpopular": {
+        "M": {
+          "filter_days_limit": {
+            "S": "1"
+          },
+          "filter_values": {
+            "L": [
+              {
+                "S": "category"
+              }
+            ]
+          },
+          "filter_name": {
+            "S": "tgam-personalize-green-category"
+          }
+        }
+      }
+    }
+  },
+  "eventTrackerId": {
+    "S": "2b695492-5212-42fc-9dbd-91aa56711957"
+  },
+  "trafficRatio": {
+    "N": "100"
+  },
+  "datasetArn": {
+    "S": "arn:aws:personalize:us-east-1:727304503525:dataset/tgam-personalize-blue/ITEMS"
+  }, 
+   "campaignArn": {
+      "S": "arn:aws:personalize:us-east-1:727304503525:campaign/tgam-personalize-green-userPersonalizationCampaign"
+   }
+}
+```
 
 ## Put Event api documentation
 
