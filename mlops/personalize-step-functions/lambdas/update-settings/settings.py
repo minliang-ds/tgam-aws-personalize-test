@@ -96,7 +96,7 @@ def lambda_handler(event, context):
         trafficRatio = event['trafficRatio']
         contextMap = {
             'default' : {
-                'filter_name': dataSetName + '-unread'
+                'filter_name': dataSetGroupName + '-unread'
             }
         }
 
