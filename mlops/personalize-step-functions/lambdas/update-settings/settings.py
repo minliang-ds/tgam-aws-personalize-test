@@ -130,10 +130,13 @@ def lambda_handler(event, context):
 
 
         for filter in event['filters']:
-            context = filter.get('context', 'none')
-            contextMap[context] = {}
-            contextMap[context]['filter_name'] = filter['name']
-            contextMap[context]['filter_values'] = filter.get('filter_values', [])
+            if filter.get('context'):
+                context = filter.get('context')
+                contextMap[context] = {}
+                contextMap[context]['filter_name'] = filter['name']
+
+                for key in filter.keys():
+                    contextMap[context][key] = filter[key]
 
         update_item(os.environ['SettingsTableName'], dataSetGroupName, "active", datasetArn, eventTrackerId, campaignArn, trafficRatio, contextMap)
 
