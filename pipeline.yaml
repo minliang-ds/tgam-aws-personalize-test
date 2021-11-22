@@ -781,6 +781,10 @@ Resources:
               - 's3:GetBucketAcl'
               - 's3:GetBucketLocation'
             Resource: !Sub "arn:aws:s3:::${ResourcesPrefix}-dev-input*/params*"
+          - Effect: Allow
+            Action:
+              - 's3:ListBucket'
+            Resource: !Sub "arn:aws:s3:::${ResourcesPrefix}-dev-input*"
 
           - Effect: Allow
             Action:
