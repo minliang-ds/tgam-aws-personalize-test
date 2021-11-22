@@ -2,7 +2,6 @@ from os import environ
 import actions
 from loader import Loader
 import ssm_parameters
-import re
 
 
 ARN = 'arn:aws:personalize:{region}:{account}:dataset-group/{name}'
@@ -38,7 +37,7 @@ def lambda_handler(event, context):
                 region=environ['AWS_REGION']
             )
         except Exception as e:
-            LOADER.logger.error(f'Unexpected dataset group name {e}')
+            LOADER.logger.error(f'Unexpected dataset group name format {e}')
             raise e
 
     try:
