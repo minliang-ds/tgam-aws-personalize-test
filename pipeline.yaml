@@ -784,8 +784,9 @@ Resources:
           - Effect: Allow
             Action:
               - 's3:ListBucket'
-            Resource: !Sub "arn:aws:s3:::${ResourcesPrefix}-dev-input*"
-
+            Resource:
+              - !Sub "arn:aws:s3:::${ResourcesPrefix}-dev-input*"
+              - !Sub "arn:aws:s3:::${ResourcesPrefix}-${Environment}-input*"
           - Effect: Allow
             Action:
               - 'iam:ListPolicies'
