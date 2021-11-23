@@ -62,6 +62,9 @@ def handler(event, context, metrics):
     if len(settings) == 0:
         return {'statusCode': '500', 'body': json.dumps("No active trackers found in dynamo settings table")}
 
+    status_code = "200"
+    status_body = json.dumps("Success")
+
     success_events = 0
     fail_events = 0
     skip_events = 0
@@ -110,9 +113,6 @@ def handler(event, context, metrics):
                 }
             ]
         }
-
-        status_code = "200"
-        status_body = json.dumps("Success")
 
         for tracker in settings:
             print(f"Put item to dataset {tracker.get('datasetArn').get('S')}")
