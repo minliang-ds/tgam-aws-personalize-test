@@ -211,7 +211,7 @@ Resources:
       CodeUri: lambdas/s3lambda-update/
       Handler: parse-update.lambda_handler
       Runtime: python3.8
-      Role: !GetAtt RefreshStateTriggerRole.Arn
+      Role: !GetAtt UpdateStateTriggerRole.Arn
       Environment:
         Variables:
           STEP_FUNCTIONS_ARN: !Ref RefreshStateMachine
@@ -478,8 +478,6 @@ Resources:
                   - !GetAtt DeleteFilter.Arn
                   - !GetAtt Notify.Arn
                   - !GetAtt NotifyDelete.Arn
-                  - !GetAtt RefreshDatasetGroup.Arn
-                  - !GetAtt WaitRefresh.Arn
                   - !GetAtt ListDatasetGroups.Arn
   CreateDatasetGroup:
     Type: AWS::Serverless::Function
@@ -1109,7 +1107,7 @@ Resources:
             - Effect: Allow
               Action:
                 - states:StartExecution
-              Resource: !Ref RefreshStateMachine
+              Resource: "*"
   WaitRefresh:
     Type: AWS::Serverless::Function
     Metadata:
@@ -1131,7 +1129,7 @@ Resources:
             - Effect: Allow
               Action:
                 - states:DescribeExecution
-              Resource: !Ref RefreshStateMachine
+              Resource: "*"
   ListDatasetGroups:
     Type: AWS::Serverless::Function
     Metadata:
