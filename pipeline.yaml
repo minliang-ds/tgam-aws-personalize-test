@@ -51,7 +51,7 @@ Parameters:
 
   DevInputBucket:
     Type: String
-    Default: "tgam-personalize-dev-1950aa20"
+    Default: "tgam-personalize-dev-input-1a8a97b0"
 
 
 Mappings:
