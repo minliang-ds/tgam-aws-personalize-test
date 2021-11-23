@@ -2486,7 +2486,7 @@ Resources:
                   "ResultPath": null,
                   "MaxConcurrency": 3,
                   "Iterator": {
-                    "StartAt": "Delete Old Dataset Groups",
+                    "StartAt": "Get Dataset Group Arn",
                     "States": {
                       "Get Dataset Group Arn": {
                         "Type": "Pass",
