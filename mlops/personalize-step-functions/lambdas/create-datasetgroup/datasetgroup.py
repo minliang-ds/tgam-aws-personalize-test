@@ -9,11 +9,37 @@ LOADER = Loader()
 
 
 def lambda_handler(event, context):
-    datasetGroupArn = ARN.format(
-        account=LOADER.account_id,
-        name=event['datasetGroup']['name'],
-        region=environ['AWS_REGION']
-    )
+
+    root = event['datasetGroup']['name']
+    l = len(root)
+
+    response = LOADER.personalize_cli.list_dataset_groups()
+
+    datasetGroupNames = []
+    for datasetgroup in response['datasetGroups']:
+        if datasetgroup['name'].startswith(root):
+            datasetGroupNames.append(datasetgroup['name'])
+    
+    if len(datasetGroupNames) == 0:
+        datasetGroupArn = ARN.format(
+            account=LOADER.account_id,
+            name=event['datasetGroup']['name'] + '1',
+            region=environ['AWS_REGION']
+        )
+    else:
+        try:
+            versions = []
+            for datasetGroupName in datasetGroupNames:
+                versions.append(int(datasetGroupName[l:]))
+            datasetGroupArn = ARN.format(
+                account=LOADER.account_id,
+                name=event['datasetGroup']['name'] + str(max(versions) + 1),
+                region=environ['AWS_REGION']
+            )
+        except Exception as e:
+            LOADER.logger.error(f'Unexpected dataset group name format {e}')
+            raise e
+
     try:
         status = LOADER.personalize_cli.describe_dataset_group(
             datasetGroupArn=datasetGroupArn

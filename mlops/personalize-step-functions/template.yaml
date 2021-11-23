@@ -194,6 +194,50 @@ Resources:
                         - !Ref "AWS::StackId"
             Description: Update schedule for Amazon Personalize
             Enabled: true
+  S3LambdaRefreshStateMachine:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
+    Properties:
+      CodeUri: lambdas/s3lambda-update/
+      Handler: parse-update.lambda_handler
+      Runtime: python3.8
+      Role: !GetAtt UpdateStateTriggerRole.Arn
+      Environment:
+        Variables:
+          STEP_FUNCTIONS_ARN: !Ref RefreshStateMachine
+          PARAMS_FILE: !Ref ParameterFile
+          INPUT_BUCKET: !Ref InputBucket
+      Events:
+        CWSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: 'cron(0 6 ? * 7#1 *)'
+            Name: !Join
+              - ""
+              - - "sched-"
+                - !Ref ResourcesPrefix
+                - "-"
+                - !Ref Environment
+                - "-"
+                - 'input'
+                - "-"
+                - !Select
+                  - 0
+                  - !Split
+                    - "-"
+                    - !Select
+                      - 2
+                      - !Split
+                        - "/"
+                        - !Ref "AWS::StackId"
+            Description: Update schedule for Amazon Personalize
+            Enabled: true
   S3TriggerRole:
     Type: AWS::IAM::Role
     Properties:
@@ -471,6 +515,7 @@ Resources:
                   - !GetAtt Notify.Arn
                   - !GetAtt UpdateSettings.Arn
                   - !GetAtt NotifyDelete.Arn
+                  - !GetAtt ListDatasetGroups.Arn
   CreateDatasetGroup:
     Type: AWS::Serverless::Function
     Metadata:
@@ -1116,6 +1161,74 @@ Resources:
             - Effect: Allow
               Action:
                 - personalize:CreateSolutionVersion
+              Resource: "*"
+  RefreshDatasetGroup:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
+    Properties:
+      CodeUri: lambdas/refresh-datasetgroup/
+      Handler: refresh-datasetgroup.lambda_handler
+      Runtime: python3.8
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - states:StartExecution
+              Resource: "*"
+  WaitRefresh:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
+    Properties:
+      CodeUri: lambdas/wait-refresh/
+      Handler: wait-refresh.lambda_handler
+      Runtime: python3.8
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - states:DescribeExecution
+              Resource: "*"
+  ListDatasetGroups:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
+    Properties:
+      CodeUri: lambdas/list-dataset-groups
+      Handler: list-dataset-groups.lambda_handler
+      Runtime: python3.8
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - personalize:ListDatasetGroups
               Resource: "*"
   UpdateCampaign:
     Type: AWS::Serverless::Function
@@ -2288,6 +2401,119 @@ Resources:
             WaitSolutionVersionArn: !GetAtt WaitSolutionVersion.Arn
             UpdateCampaignArn: !GetAtt UpdateCampaign.Arn
             WaitCampaignUpdateArn: !GetAtt WaitCampaignUpdate.Arn
+
+  RefreshStateMachine:
+    Type: "AWS::StepFunctions::StateMachine"
+    Properties:
+      RoleArn: !GetAtt [StatesExecutionRole, Arn]
+      DefinitionString:
+        !Sub
+          - |-
+            {
+              "Comment": "Create new dataset group version and delete old ones after",
+              "StartAt": "RefreshDatasetGroup",
+              "States": {
+                "RefreshDatasetGroup": {
+                  "Type": "Task",
+                  "InputPath": "$.params",
+                  "Resource": "${RefreshDatasetGroupArn}",
+                  "ResultPath": "$.executionArn",
+                  "Catch": [
+                    {
+                      "ErrorEquals": [
+                        "KeyError"
+                      ],
+                      "ResultPath": "$.serviceError",
+                      "Next": "Fail"
+                    }
+                  ],
+                  "Next": "WaitRefresh"
+                },
+                "WaitRefresh": {
+                  "Type": "Task",
+                  "Parameters": {
+                    "executionArn.$": "$.executionArn"
+                  },
+                  "Resource": "${WaitRefreshArn}",
+                  "ResultPath": "$.refreshStatus",
+                  "Retry": [
+                    {
+                      "ErrorEquals": [
+                        "ResourcePending"
+                      ],
+                      "IntervalSeconds": 60,
+                      "BackoffRate": 1.5,
+                      "MaxAttempts": 600
+                    }
+                  ],
+                  "Catch": [
+                    {
+                      "ErrorEquals": [
+                        "ResourceFailed"
+                      ],
+                      "ResultPath": "$.serviceError",
+                      "Next": "Fail"
+                    }
+                  ],
+                  "Next": "ListDatasetGroups"
+                },
+                "ListDatasetGroups": {
+                  "Type": "Task",
+                  "Parameters": {
+                    "datasetGroupName.$": "$.params.datasetGroup.name"
+                  },
+                  "Resource": "${ListDatasetGroupsArn}",
+                  "Catch": [
+                    {
+                      "ErrorEquals": [
+                        "KeyError"
+                      ],
+                      "ResultPath": "$.serviceError",
+                      "Next": "Fail"
+                    }
+                  ],
+                  "ResultPath": "$.toBeDeleted",
+                  "Next": "Map"
+                },
+                "Map": {
+                  "Type": "Map",
+                  "End": true,
+                  "ItemsPath": "$.toBeDeleted",
+                  "ResultPath": null,
+                  "MaxConcurrency": 3,
+                  "Iterator": {
+                    "StartAt": "Delete Old Dataset Groups",
+                    "States": {
+                      "Get Dataset Group Arn": {
+                        "Type": "Pass",
+                        "Parameters": {
+                          "datasetGroupArn.$": "$.datasetGroupArn"
+                        },
+                        "Next": "Delete Dataset Group"
+                      },
+                      "Delete Dataset Group": {
+                        "Type": "Task",
+                        "Resource": "arn:aws:states:::states:startExecution",
+                        "Parameters": {
+                          "StateMachineArn": !Ref DeleteAllDatasetGroupResources,
+                          "Input": {
+                            "StatePayload": "$.datasetGroupArn",
+                            "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id"
+                          }
+                        },
+                        "End": true
+                      }
+                    }
+                  }
+                },
+                "Fail": {
+                  "Type": "Fail"
+                }
+              }
+            }
+          - RefreshDatasetGroupArn: !GetAtt RefreshDatasetGroup.Arn
+            WaitRefreshArn: !GetAtt WaitRefresh.Arn
+            ListDatasetGroupsArn: !GetAtt ListDatasetGroups.Arn
 
   PersonalizeRole:
     Type: "AWS::IAM::Role"
