@@ -95,21 +95,24 @@ def handler(event, context, metrics):
             timestamp = int(round(time.time()))
 
         putItemsParams = {
-           'items': [
-               {
-                   'itemId': payload.get('ContentId'),
-                   'properties': json.dumps({
-                       'ContentText': payload.get('ContentText'),
-                       'Category': payload.get('Category'),
-                       'WordCount': payload.get('WordCount'),
-                       'Published': payload.get('Published'),
-                       'ContentType': payload.get('ContentType'),
-                       'Exclude': exclude,
-                       'CREATION_TIMESTAMP': timestamp,
+            'items': [
+                {
+                    'itemId': payload.get('ContentId'),
+                    'properties': json.dumps({
+                        'ContentText': payload.get('ContentText'),
+                        'Category': payload.get('Category'),
+                        'WordCount': payload.get('WordCount'),
+                        'Published': payload.get('Published'),
+                        'ContentType': payload.get('ContentType'),
+                        'Exclude': exclude,
+                        'CREATION_TIMESTAMP': timestamp,
                     })
                 }
             ]
         }
+
+        status_code = "200"
+        status_body = json.dumps("Success")
 
         for tracker in settings:
             print(f"Put item to dataset {tracker.get('datasetArn').get('S')}")
@@ -119,6 +122,8 @@ def handler(event, context, metrics):
                 response = personalize_cli.put_items(**putItemsParams)
                 print("put_items response: ${response}")
             except ClientError as e:
+                status_code = "500"
+                status_body = f"Personalize Client Error: {e}"
                 print(f"Personalize Client Error: {e}")
                 fail_events += 1
             else:
@@ -127,7 +132,7 @@ def handler(event, context, metrics):
     metrics.put_metric("SuccessItems", success_events, "None")
     metrics.put_metric("FailItems", fail_events, "None")
     metrics.put_metric("SkipItems", skip_events, "None")
-    return {'statusCode': '200', 'body': json.dumps("Success")}
+    return {'statusCode': status_code, 'body': status_body}
 
 
 
