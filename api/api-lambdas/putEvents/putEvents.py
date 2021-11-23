@@ -62,6 +62,9 @@ def handler(event, context, metrics):
     if len(settings) == 0:
         return {'statusCode': '500', 'body': json.dumps("No active trackers found in dynamo settings table")}
 
+    status_code = "200"
+    status_body = json.dumps("Success")
+
     success_events = 0
     fail_events = 0
     skip_events = 0
@@ -131,11 +134,11 @@ def handler(event, context, metrics):
                 'itemId':  payload.get('content_contentId'),
                 'sentAt':  timestamp,
                 'properties':  json.dumps({
-                  'visitor_type': payload.get('visitor_type'),
-                  'visitor_countryCode': payload.get('visitor_countryCode'),
-                  'device_detector_visitorPlatform': payload.get('device_detector_visitorPlatform'),
-                  'device_detector_brandName': payload.get('device_detector_brandName'),
-                  'device_detector_browserFamily': payload.get('device_detector_browserFamily'),
+                    'visitor_type': payload.get('visitor_type'),
+                    'visitor_countryCode': payload.get('visitor_countryCode'),
+                    'device_detector_visitorPlatform': payload.get('device_detector_visitorPlatform'),
+                    'device_detector_brandName': payload.get('device_detector_brandName'),
+                    'device_detector_browserFamily': payload.get('device_detector_browserFamily'),
                 })
             }]
         }

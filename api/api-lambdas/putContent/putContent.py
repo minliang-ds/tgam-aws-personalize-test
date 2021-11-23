@@ -62,6 +62,9 @@ def handler(event, context, metrics):
     if len(settings) == 0:
         return {'statusCode': '500', 'body': json.dumps("No active trackers found in dynamo settings table")}
 
+    status_code = "200"
+    status_body = json.dumps("Success")
+
     success_events = 0
     fail_events = 0
     skip_events = 0
@@ -95,17 +98,17 @@ def handler(event, context, metrics):
             timestamp = int(round(time.time()))
 
         putItemsParams = {
-           'items': [
-               {
-                   'itemId': payload.get('ContentId'),
-                   'properties': json.dumps({
-                       'ContentText': payload.get('ContentText'),
-                       'Category': payload.get('Category'),
-                       'WordCount': payload.get('WordCount'),
-                       'Published': payload.get('Published'),
-                       'ContentType': payload.get('ContentType'),
-                       'Exclude': exclude,
-                       'CREATION_TIMESTAMP': timestamp,
+            'items': [
+                {
+                    'itemId': payload.get('ContentId'),
+                    'properties': json.dumps({
+                        'ContentText': payload.get('ContentText'),
+                        'Category': payload.get('Category'),
+                        'WordCount': payload.get('WordCount'),
+                        'Published': payload.get('Published'),
+                        'ContentType': payload.get('ContentType'),
+                        'Exclude': exclude,
+                        'CREATION_TIMESTAMP': timestamp,
                     })
                 }
             ]
