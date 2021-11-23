@@ -154,7 +154,7 @@ def handler(event, context, metrics):
                 personalize_cli.put_events(**putEventsParams)
             except ClientError as e:
                 status_code = "500"
-                status_body = json.dumps(e)
+                status_body = f"Personalize Client Error: {e}"
                 print(f"Personalize Client Error: {e}")
                 fail_events += 1
             else:
