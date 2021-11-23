@@ -2348,7 +2348,7 @@ Resources:
                   "Parameters": {
                     "datasetGroupName.$": "$.params.datasetGroup.name"
                   },
-                  "Resource": "${ListDatasetGroups}",
+                  "Resource": "${ListDatasetGroupsArn}",
                   "Catch": [
                     {
                       "ErrorEquals": [
@@ -2397,10 +2397,9 @@ Resources:
                 }
               }
             }
-          - CreateSolutionVersionArn: !GetAtt CreateSolutionVersion.Arn
-            WaitSolutionVersionArn: !GetAtt WaitSolutionVersion.Arn
-            UpdateCampaignArn: !GetAtt UpdateCampaign.Arn
-            WaitCampaignUpdateArn: !GetAtt WaitCampaignUpdate.Arn
+          - RefreshDatasetGroupArn: !GetAtt RefreshDatasetGroup.Arn
+            WaitRefreshArn: !GetAtt WaitRefresh.Arn
+            ListDatasetGroupsArn: !GetAtt ListDatasetGroups.Arn
 
   PersonalizeRole:
     Type: "AWS::IAM::Role"
