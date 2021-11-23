@@ -62,6 +62,9 @@ def handler(event, context, metrics):
     if len(settings) == 0:
         return {'statusCode': '500', 'body': json.dumps("No active trackers found in dynamo settings table")}
 
+    status_code = "200"
+    status_body = json.dumps("Success")
+
     success_events = 0
     fail_events = 0
     skip_events = 0
@@ -131,17 +134,20 @@ def handler(event, context, metrics):
                 'itemId':  payload.get('content_contentId'),
                 'sentAt':  timestamp,
                 'properties':  json.dumps({
-                  'visitor_type': payload.get('visitor_type'),
-                  'visitor_countryCode': payload.get('visitor_countryCode'),
-                  'device_detector_visitorPlatform': payload.get('device_detector_visitorPlatform'),
-                  'device_detector_brandName': payload.get('device_detector_brandName'),
-                  'device_detector_browserFamily': payload.get('device_detector_browserFamily'),
+                    'visitor_type': payload.get('visitor_type'),
+                    'visitor_countryCode': payload.get('visitor_countryCode'),
+                    'device_detector_visitorPlatform': payload.get('device_detector_visitorPlatform'),
+                    'device_detector_brandName': payload.get('device_detector_brandName'),
+                    'device_detector_browserFamily': payload.get('device_detector_browserFamily'),
                 })
             }]
         }
 
         if (payload.get('page_rid') is not None):
             putEventsParams['eventList'][0]['recommendationId'] = payload.get('page_rid')
+
+        status_code = "200"
+        status_body = json.dumps("Success")
 
         for tracker in settings:
             print(f"Put event to tracker {tracker.get('eventTrackerId').get('S')}")
@@ -150,6 +156,8 @@ def handler(event, context, metrics):
             try:
                 personalize_cli.put_events(**putEventsParams)
             except ClientError as e:
+                status_code = "500"
+                status_body = f"Personalize Client Error: {e}"
                 print(f"Personalize Client Error: {e}")
                 fail_events += 1
             else:
@@ -158,7 +166,7 @@ def handler(event, context, metrics):
     metrics.put_metric("SuccessEvents", success_events, "None")
     metrics.put_metric("FailEvents", fail_events, "None")
     metrics.put_metric("SkipEvents", skip_events, "None")
-    return {'statusCode': '200', 'body': json.dumps("Success")}
+    return {'statusCode': status_code, 'body': status_body}
 
 
 
