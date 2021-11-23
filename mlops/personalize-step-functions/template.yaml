@@ -2499,7 +2499,7 @@ Resources:
                         "Type": "Task",
                         "Resource": "arn:aws:states:::states:startExecution",
                         "Parameters": {
-                          "StateMachineArn": !Ref DeleteAllDatasetGroupResources,
+                          "StateMachineArn": "${DeleteAllDatasetGroupResourcesArn}",
                           "Input": {
                             "StatePayload": "$.datasetGroupArn",
                             "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id"
@@ -2518,6 +2518,7 @@ Resources:
           - RefreshDatasetGroupArn: !GetAtt RefreshDatasetGroup.Arn
             WaitRefreshArn: !GetAtt WaitRefresh.Arn
             ListDatasetGroupsArn: !GetAtt ListDatasetGroups.Arn
+            DeleteAllDatasetGroupResourcesArn: !Ref DeleteAllDatasetGroupResources
 
   PersonalizeRole:
     Type: "AWS::IAM::Role"
