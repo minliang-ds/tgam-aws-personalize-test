@@ -211,7 +211,7 @@ Resources:
       Environment:
         Variables:
           STEP_FUNCTIONS_ARN: !Ref RefreshStateMachine
-          PARAMS_FILE: !Ref ParameterFile
+          CONFIG_PREFIX: !Sub "config/${ResourcesPrefix}/${Environment}/"
           INPUT_BUCKET: !Ref InputBucket
       Events:
         CWSchedule:
@@ -236,7 +236,7 @@ Resources:
                       - !Split
                         - "/"
                         - !Ref "AWS::StackId"
-            Description: Update schedule for Amazon Personalize
+            Description: Refresh schedule for Amazon Personalize
             Enabled: true
   S3TriggerRole:
     Type: AWS::IAM::Role
@@ -1167,6 +1167,8 @@ Resources:
     Metadata:
       cfn_nag:
         rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
           - id: W89
             reason: "This lambda dont need to be in VPC - it will be easier to manage"
           - id: W92
@@ -1189,6 +1191,8 @@ Resources:
     Metadata:
       cfn_nag:
         rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
           - id: W89
             reason: "This lambda dont need to be in VPC - it will be easier to manage"
           - id: W92
