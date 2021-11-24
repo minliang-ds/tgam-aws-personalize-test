@@ -120,7 +120,7 @@ def handler(event, context, metrics):
             print("This is the input object: " + str(putItemsParams))
             try:
                 response = personalize_cli.put_items(**putItemsParams)
-                print("put_items response: ${response}")
+                print(f"put_items response: {response}")
             except ClientError as e:
                 status_code = "500"
                 status_body = f"Personalize Client Error: {e}"
