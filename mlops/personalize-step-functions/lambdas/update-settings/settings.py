@@ -107,7 +107,7 @@ def lambda_handler(event, context):
 
     else:
         dataSetGroupName = event['datasetGroupName']
-        datasetArn = f"arn:aws:personalize:{region}:{aws_account_id}:datasetArn/{event['datasetGroupName']}/ITEMS"
+        datasetArn = f"arn:aws:personalize:{region}:{aws_account_id}:dataset/{event['datasetGroupName']}/ITEMS"
 
         campaignArn = f"arn:aws:personalize:{region}:{aws_account_id}:campaign/{event['campaignName']}"
         trafficRatio = event['trafficRatio']
