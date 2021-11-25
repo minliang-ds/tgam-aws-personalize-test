@@ -22,35 +22,33 @@ settings_dynamo_table =  f"{resources_prefix}-{enviroment}-api-settings"
 
 
 def _get_dynamo_settings(db, dynamo_table):
-    try:
-        personalize_list = []
-        scan_kwargs = {
-            'TableName': dynamo_table,
-            'FilterExpression': "#status = :active ",
-            'ExpressionAttributeNames': {
-                "#status": "status",
-            },
-            'ExpressionAttributeValues': {
-                ":active": {
-                    'S': "active"
-                }
+    personalize_list = []
+    scan_kwargs = {
+        'TableName': dynamo_table,
+        'FilterExpression': "#status = :active ",
+        'ExpressionAttributeNames': {
+            "#status": "status",
+        },
+        'ExpressionAttributeValues': {
+            ":active": {
+                'S': "active"
             }
         }
+    }
 
-        done = False
-        start_key = None
-        while not done:
-            if start_key:
-                scan_kwargs['ExclusiveStartKey'] = start_key
-            response = db.scan(**scan_kwargs)
-            personalize_list.extend(response.get('Items', []))
-            start_key = response.get('LastEvaluatedKey', None)
-            done = start_key is None
+    done = False
+    start_key = None
+    while not done:
+        if start_key:
+            scan_kwargs['ExclusiveStartKey'] = start_key
+        response = db.scan(**scan_kwargs)
+        personalize_list.extend(response.get('Items', []))
+        start_key = response.get('LastEvaluatedKey', None)
+        done = start_key is None
 
-        return personalize_list
+    return personalize_list
 
-    except ClientError as e:
-        print(f"Key Error: {e}")
+
 
 
 @metric_scope
@@ -150,15 +148,8 @@ def handler(event, context, metrics):
             print(f"Put event to tracker {tracker.get('eventTrackerId').get('S')}")
             putEventsParams['trackingId'] = tracker.get('eventTrackerId').get('S')
             print("This is the input object: " + str(putEventsParams))
-            try:
-                personalize_cli.put_events(**putEventsParams)
-            except ClientError as e:
-                status_code = "500"
-                status_body = f"Personalize Client Error: {e}"
-                print(f"Personalize Client Error: {e}")
-                fail_events += 1
-            else:
-                success_events += 1
+            personalize_cli.put_events(**putEventsParams)
+            success_events += 1
 
     metrics.put_metric("SuccessEvents", success_events, "None")
     metrics.put_metric("FailEvents", fail_events, "None")
