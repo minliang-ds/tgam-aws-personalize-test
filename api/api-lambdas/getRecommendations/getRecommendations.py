@@ -39,7 +39,7 @@ def _api_ratio(api):
     backend_id = 0
     for backend in api:
         #print(f"Ratio: {backend.get('trafficRatio')}")
-        for i in range(1, int(int(backend.get('trafficRatio')) % 101)):
+        for i in range(0, int(int(backend.get('trafficRatio')) % 100) + 1):
             spread.append(backend_id)
         backend_id+=1
 
