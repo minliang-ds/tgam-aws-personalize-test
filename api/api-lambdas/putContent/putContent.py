@@ -72,7 +72,7 @@ def handler(event, context, metrics):
         print("Decoded payload: " + str(payload))
 
 
-        if (payload.get('ContentId') is None or payload.get('Category') is None)
+        if (payload.get('ContentId') is None or payload.get('Category') is None):
             printf(f"Skipping content: invalid ContentId: {payload.get('Published')} or Category: {payload.get('Category')}")
             skip_events += 1;
             continue
