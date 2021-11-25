@@ -144,10 +144,11 @@ def handler(event, context, metrics):
         if (payload.get('page_rid') is not None):
             putEventsParams['eventList'][0]['recommendationId'] = payload.get('page_rid')
 
+        print("This is the input object: " + str(putEventsParams))
+
         for tracker in settings:
             print(f"Put event to tracker {tracker.get('eventTrackerId').get('S')}")
             putEventsParams['trackingId'] = tracker.get('eventTrackerId').get('S')
-            print("This is the input object: " + str(putEventsParams))
             personalize_cli.put_events(**putEventsParams)
             success_events += 1
 
