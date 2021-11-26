@@ -21,8 +21,6 @@ dynamo_client         = client('dynamodb', config=config)
 settings_dynamo_table =  f"{resources_prefix}-{enviroment}-api-settings"
 
 
-isp_badlist = ['Amazon.com', 'Amazon', 'Googlebot', 'Digital Ocean', 'The Globe and Mail']
-
 url_badlist = ['localhost', 'sandbox.tgam.arcpublishing.com', 'arc-local.theglobeandmail.com',
                'arc-dev.theglobeandmail.com', 'origin-arc-dev.tgam.arcpublishing.com',
                'origin-sandbox.tgam.arcpublishing.com', 'preview-subscribe.theglobeandmail.com',
