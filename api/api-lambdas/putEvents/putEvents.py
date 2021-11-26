@@ -21,6 +21,13 @@ dynamo_client         = client('dynamodb', config=config)
 settings_dynamo_table =  f"{resources_prefix}-{enviroment}-api-settings"
 
 
+isp_badlist = ['Amazon.com', 'Amazon', 'Googlebot', 'Digital Ocean', 'The Globe and Mail']
+
+url_badlist = ['localhost', 'sandbox.tgam.arcpublishing.com', 'arc-local.theglobeandmail.com',
+               'arc-dev.theglobeandmail.com', 'origin-arc-dev.tgam.arcpublishing.com',
+               'origin-sandbox.tgam.arcpublishing.com', 'preview-subscribe.theglobeandmail.com',
+               'stg-subscribe.theglobeandmail.com']
+
 def _get_dynamo_settings(db, dynamo_table):
     personalize_list = []
     scan_kwargs = {
@@ -71,7 +78,7 @@ def handler(event, context, metrics):
         #Kinesis data is base64 encoded so decode here
         payload_str=base64.b64decode(record["kinesis"]["data"])
         payload = json.loads(payload_str)
-        #print("Decoded payload: " + str(payload.get('sp_event_id')))
+        #print("Decoded payload: " + str(payload))
 
         if (payload.get('sp_event_id') is None):
             printf(f"Skipping event: invalid sp_event_id {payload.get('sp_event_id')}")
@@ -98,10 +105,16 @@ def handler(event, context, metrics):
             skip_events += 1;
             continue
 
-        if (payload.get('device_detector_visitorPlatform') is None) or payload.get('device_detector_visitorPlatform') == "Bot":
+        if payload.get('device_detector_visitorPlatform') == "Bot":
             print(f"Skipping event: invalid device_detector_visitorPlatform: {payload.get('device_detector_visitorPlatform')}")
             skip_events += 1;
             continue
+
+        if (payload.get('sp_page_urlhost') in url_badlist):
+            print(f"Skipping event: invalid sp_page_urlhost: {payload.get('sp_page_urlhost')}")
+            skip_events += 1;
+            continue
+
 
         if (payload.get('sp_event_name') is None) or payload.get('sp_event_name') != "page_view":
             print(f"Skipping event: invalid sp_event_name: {payload.get('sp_event_name')}")
@@ -148,7 +161,7 @@ def handler(event, context, metrics):
 
         if (payload.get('page_rid') is not None):
             putEventsParams['eventList'][0]['recommendationId'] = payload.get('page_rid')
-
+        print("This is the source object: " + str(payload))
         print("This is the input object: " + str(putEventsParams))
 
         for tracker in settings:
