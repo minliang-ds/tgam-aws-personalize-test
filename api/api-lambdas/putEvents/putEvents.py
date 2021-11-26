@@ -20,6 +20,7 @@ personalize_cli       = client('personalize-events', config=config)
 dynamo_client         = client('dynamodb', config=config)
 settings_dynamo_table =  f"{resources_prefix}-{enviroment}-api-settings"
 
+
 url_badlist = ['localhost', 'sandbox.tgam.arcpublishing.com', 'arc-local.theglobeandmail.com',
                'arc-dev.theglobeandmail.com', 'origin-arc-dev.tgam.arcpublishing.com',
                'origin-sandbox.tgam.arcpublishing.com', 'preview-subscribe.theglobeandmail.com',
