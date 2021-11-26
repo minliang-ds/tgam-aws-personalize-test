@@ -98,6 +98,11 @@ def handler(event, context, metrics):
             skip_events += 1;
             continue
 
+        if (payload.get('device_detector_visitorPlatform') is None) or payload.get('device_detector_visitorPlatform') == "Bot":
+            print(f"Skipping event: invalid device_detector_visitorPlatform: {payload.get('device_detector_visitorPlatform')}")
+            skip_events += 1;
+            continue
+
         if (payload.get('sp_event_name') is None) or payload.get('sp_event_name') != "page_view":
             print(f"Skipping event: invalid sp_event_name: {payload.get('sp_event_name')}")
             skip_events += 1;
