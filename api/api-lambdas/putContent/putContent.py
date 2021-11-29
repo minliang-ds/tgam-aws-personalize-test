@@ -73,12 +73,12 @@ def handler(event, context, metrics):
 
 
         if (payload.get('ContentId') is None or payload.get('Category') is None):
-            printf(f"Skipping content: invalid ContentId: {payload.get('Published')} or Category: {payload.get('Category')}")
+            print(f"Skipping content: invalid ContentId: {payload.get('Published')} or Category: {payload.get('Category')}")
             skip_events += 1;
             continue
 
         if (payload.get('Published') is not True):
-            printf(f"Skipping content: invalid Published {payload.get('Published')}")
+            print(f"Skipping content: invalid Published {payload.get('Published')}")
             skip_events += 1;
             continue
 
