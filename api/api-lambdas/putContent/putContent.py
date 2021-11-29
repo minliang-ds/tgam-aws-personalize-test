@@ -103,7 +103,7 @@ def handler(event, context, metrics):
                 {
                     'itemId': payload.get('ContentId'),
                     'properties': json.dumps({
-                        'ContentText': payload.get('ContentText'),
+                        'ContentText': payload.get('ContentText')[:20000],  #Member must have length less than or equal to 24262
                         'Category': payload.get('Category'),
                         'WordCount': payload.get('WordCount'),
                         'Published': payload.get('Published'),
