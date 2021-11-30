@@ -99,7 +99,7 @@ def handler(event, context, metrics):
             timestamp = int(round(time.time()))
 
         #Member must have length less than or equal to 24262
-        if len(payload.get('ContentText')) > 20000:
+        if payload.get('ContentText') and len(payload.get('ContentText')) > 20000:
             payload['ContentText'] = payload.get('ContentText')[:20000]
 
         putItemsParams = {
