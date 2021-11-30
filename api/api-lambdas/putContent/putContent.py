@@ -98,12 +98,16 @@ def handler(event, context, metrics):
         except:
             timestamp = int(round(time.time()))
 
+        #Member must have length less than or equal to 24262
+        if len(payload.get('ContentText') > 20000):
+            payload['ContentText'] = payload.get('ContentText')[:20000]
+
         putItemsParams = {
             'items': [
                 {
                     'itemId': payload.get('ContentId'),
                     'properties': json.dumps({
-                        'ContentText': payload.get('ContentText')[:20000],  #Member must have length less than or equal to 24262
+                        'ContentText': payload.get('ContentText'),
                         'Category': payload.get('Category'),
                         'WordCount': payload.get('WordCount'),
                         'Published': payload.get('Published'),
@@ -114,6 +118,9 @@ def handler(event, context, metrics):
                 }
             ]
         }
+
+        status_code = "200"
+        status_body = json.dumps("Success")
 
         for tracker in settings:
             print(f"Put item to dataset {tracker.get('datasetArn').get('S')}")
