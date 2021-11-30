@@ -82,7 +82,7 @@ def handler(event, context, metrics):
             skip_events += 1;
             continue
 
-        if payload.get('ContentType') is None or payload.get('ContentType').lower() is not "article"):
+        if (payload.get('ContentType') is None) or (payload.get('ContentType').lower() is not "article"):
             print(f"Skipping content: invalid ContentType: {payload.get('ContentType')}")
             skip_events += 1;
             continue
