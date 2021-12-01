@@ -1301,7 +1301,7 @@ Resources:
                   "type": "metric",
                   "properties": {
                       "metrics": [
-                        [ { "expression": "e2/2/e1*200", "label": "TPS", "id": "e3", "region": "${AWS::Region}" } ],
+                        [ { "expression": "e2/e1/2*100", "label": "TPS", "id": "e3", "region": "${AWS::Region}" } ],
                         [ { "expression": "SEARCH('{AWS/Personalize,CampaignArn} MetricName=\"GetRecommendations\" ${ResourcesPrefix}-', 'Sum', 300)", "id": "e1", "period": 300, "visible": false } ],
                         [ "${MetricsNamespace}", "RecommendationsUsed", { "stat": "Sum", "id": "e2", "visible": false } ]
                       ],
