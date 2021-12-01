@@ -1308,7 +1308,7 @@ Resources:
                       "view": "timeSeries",
                       "stacked": false,
                       "region": "${AWS::Region}",
-                      "stat": "Avg",
+                      "stat": "Average",
                       "period": 300,
                       "title": "GetRecommendations Usage %",
                       "liveData": true
