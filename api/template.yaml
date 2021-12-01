@@ -957,7 +957,7 @@ Resources:
           Value: "ServiceName"
       EvaluationPeriods: 1
       MetricName: ReturnBackupRecommendations
-      Namespace: PersonalizeCustomMetrics
+      Namespace: !Ref MetricsNamespace
       Period: 300
       Statistic: Maximum
       Threshold: '1'
@@ -978,7 +978,7 @@ Resources:
           Value: "ServiceName"
       EvaluationPeriods: 1
       MetricName: MissingRecommendations
-      Namespace: PersonalizeCustomMetrics
+      Namespace: !Ref MetricsNamespace
       Period: 300
       Statistic: Average
       Threshold: '1'
@@ -999,7 +999,7 @@ Resources:
           Value: "ServiceName"
       EvaluationPeriods: 1
       MetricName: MissingDataDynamoSophi2
-      Namespace: PersonalizeCustomMetrics
+      Namespace: !Ref MetricsNamespace
       Period: 300
       Statistic: Average
       Threshold: '1'
@@ -1020,11 +1020,23 @@ Resources:
           Value: "ServiceName"
       EvaluationPeriods: 1
       MetricName: MissingDataDynamoSophi3
-      Namespace: PersonalizeCustomMetrics
+      Namespace: !Ref MetricsNamespace
       Period: 300
       Statistic: Average
       Threshold: '1'
       TreatMissingData: notBreaching
+
+  RIDMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName:
+        !Sub "/aws/lambda/${PutEvents}"
+      FilterPattern: "recommendationId"
+      MetricTransformations:
+        -
+          MetricValue: "1"
+          MetricNamespace: !Ref MetricsNamespace
+          MetricName: "RecommendationsUsed"
 
   settingsDynamoDBTable:
     Type: AWS::DynamoDB::Table
@@ -1194,9 +1206,9 @@ Resources:
                   "type": "metric",
                   "properties": {
                       "metrics": [
-                        [ "PersonalizeCustomMetrics", "PersonalizeRequestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ],
-                        [ "PersonalizeCustomMetrics", "DynamoSophi2RequestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ],
-                        [ "PersonalizeCustomMetrics", "DynamoSophi3RequestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ]
+                        [ "${MetricsNamespace}", "PersonalizeRequestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ],
+                        [ "${MetricsNamespace}", "DynamoSophi2RequestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ],
+                        [ "${MetricsNamespace}", "DynamoSophi3RequestTime", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "stat": "Average" } ]
                       ],
                       "view": "timeSeries",
                       "stacked": true,
@@ -1257,10 +1269,10 @@ Resources:
                   "type": "metric",
                   "properties": {
                       "metrics": [
-                        [ "PersonalizeCustomMetrics", "ReturnRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "right", "stat": "p95" } ],
-                        [ "PersonalizeCustomMetrics", "MissingRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "left", "stat": "p95" } ],
-                        [ "PersonalizeCustomMetrics", "MissingDataDynamoSophi3", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "left", "stat": "p95" } ],
-                        [ "PersonalizeCustomMetrics", "MissingDataDynamoSophi2", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "left", "stat": "p95" } ]
+                        [ "${MetricsNamespace}", "ReturnRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "right", "stat": "p95" } ],
+                        [ "${MetricsNamespace}", "MissingRecommendations", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "left", "stat": "p95" } ],
+                        [ "${MetricsNamespace}", "MissingDataDynamoSophi3", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "left", "stat": "p95" } ],
+                        [ "${MetricsNamespace}", "MissingDataDynamoSophi2", "ServiceName", "GetRecommendations", "LogGroup", "${GetRecommendations}", "ServiceType", "AWS::Lambda::Function", { "yAxis": "left", "stat": "p95" } ]
                       ],
                       "view": "timeSeries",
                       "stacked": false,
@@ -1281,7 +1293,28 @@ Resources:
                       }
                   }
               },
+              {
+                  "height": 6,
+                  "width": 24,
+                  "y": 30,
+                  "x": 0,
+                  "type": "metric",
+                  "properties": {
+                      "metrics": [
+                        [ { "expression": "e2/e1*200", "label": "TPS", "id": "e3", "region": "${AWS::Region}" } ],
+                        [ { "expression": "SEARCH('{AWS/Personalize,CampaignArn} MetricName=\"GetRecommendations\" ${ResourcesPrefix}-', 'Sum', 300)", "id": "e1", "period": 300, "visible": false } ],
+                        [ "${MetricsNamespace}", "RecommendationsUsed", { "stat": "Sum", "id": "e2", "visible": false } ],
+                      ],
+                      "view": "timeSeries",
+                      "stacked": false,
+                      "region": "${AWS::Region}",
+                      "stat": "Avg",
+                      "period": 300,
+                      "title": "GetRecommendations Usage %",
+                      "liveData": true
+                  }
 
+              },
               {
                   "height": 6,
                   "width": 12,
