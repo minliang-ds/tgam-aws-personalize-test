@@ -388,6 +388,7 @@ Resources:
           AWS_EMF_SERVICE_NAME: "GetRecommendations"
           AllowOriginDomains: !Ref CorsDomainOrigin
           CrossAccountSophi2Role: !FindInMap [EnvironmentMap, !Ref Environment, Sophi2DynamoDbTableRole]
+          TZ: "America/Toronto"
 ## Event Lambda
   PutEvents:
     Type: AWS::Serverless::Function
