@@ -9,7 +9,7 @@ class ResourceFailed(Exception):
 def take_action(status):
     if status in {'CREATE PENDING', 'CREATE IN_PROGRESS', 'RUNNING'}:
         raise ResourcePending
-    if status != 'ACTIVE':
+    if status not in {'ACTIVE', 'SUCCEEDED'}:
         raise ResourceFailed
     return True
 

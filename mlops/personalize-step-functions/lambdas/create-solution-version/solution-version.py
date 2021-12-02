@@ -9,7 +9,7 @@ def lambda_handler(event, context):
     solutionArn = ARN.format(
         region=environ['AWS_REGION'],
         account=LOADER.account_id,
-        name=event['solutionName']
+        name=event['datasetGroupName'] + '-' + event['solutionName']
     )
     trainingMode = event['trainingMode']
     

@@ -17,28 +17,27 @@ def lambda_handler(event, context):
 
     datasetGroupNames = []
     for datasetgroup in response['datasetGroups']:
-        if datasetgroup['name'].startswith(root):
+        if datasetgroup['name'].startswith(root) and datasetgroup['name'][l:].isdigit():
             datasetGroupNames.append(datasetgroup['name'])
     
-    if len(datasetGroupNames) == 0:
+    try:
+        versions = []
+        for datasetGroupName in datasetGroupNames:
+            suffix = datasetGroupName[l:]
+            versions.append(int(suffix))
+        newName = event['datasetGroup']['name'] + str(max(versions) + 1)
         datasetGroupArn = ARN.format(
             account=LOADER.account_id,
-            name=event['datasetGroup']['name'] + '1',
+            name=newName,
             region=environ['AWS_REGION']
         )
-    else:
-        try:
-            versions = []
-            for datasetGroupName in datasetGroupNames:
-                versions.append(int(datasetGroupName[l:]))
-            datasetGroupArn = ARN.format(
-                account=LOADER.account_id,
-                name=event['datasetGroup']['name'] + str(max(versions) + 1),
-                region=environ['AWS_REGION']
-            )
-        except Exception as e:
-            LOADER.logger.error(f'Unexpected dataset group name format {e}')
-            raise e
+    except:
+        newName = event['datasetGroup']['name'] + '1'
+        datasetGroupArn = ARN.format(
+            account=LOADER.account_id,
+            name=newName,
+            region=environ['AWS_REGION']
+        )
 
     try:
         status = LOADER.personalize_cli.describe_dataset_group(
@@ -49,12 +48,14 @@ def lambda_handler(event, context):
         LOADER.logger.info(
             'Dataset Group not found! Will follow to create Dataset Group.'
         )
-        LOADER.personalize_cli.create_dataset_group(**event['datasetGroup'])
+        LOADER.personalize_cli.create_dataset_group(name=newName)
         status = LOADER.personalize_cli.describe_dataset_group(
             datasetGroupArn=datasetGroupArn
         )['datasetGroup']
 
-    ssm_parameters.put_parameter("datasetGroupName", event['datasetGroup']['name'])
+    ssm_parameters.put_parameter("datasetGroupName", newName)
 
-    actions.take_action(status['status'])
-    return datasetGroupArn
+    datasetGroup = {}
+    datasetGroup['datasetGroupArn'] = datasetGroupArn
+    datasetGroup['name'] = newName
+    return datasetGroup

@@ -14,11 +14,12 @@ def lambda_handler(event, context):
 
     datasetGroupNames = []
     for datasetgroup in response['datasetGroups']:
-        if datasetgroup['name'].startswith(root):
+        if datasetgroup['name'].startswith(root) and datasetgroup['name'][l:].isdigit():
             datasetGroupNames.append(datasetgroup['name'])
 
     toBeDeleted = []
-    if len(datasetGroupNames) > 1:
+    output = {}
+    if len(datasetGroupNames) >= 1:
         try:
             versions = []
             for datasetGroupName in datasetGroupNames:
@@ -28,10 +29,13 @@ def lambda_handler(event, context):
                 if version < m:
                     toBeDeleted.append({'datasetGroupArn': ARN.format(
                                             account=LOADER.account_id,
-                                            name=event['datasetGroup']['name'] + str(version),
+                                            name=root + str(version),
                                             region=environ['AWS_REGION']
                     )})
-            return toBeDeleted
+            toBeUpdated = root + str(version)
+            output['toBeDeleted'] = toBeDeleted
+            output['toBeUpdated'] = toBeUpdated
+            return output
         except Exception as e:
             LOADER.logger.error(f'Unexpected dataset group name format {e}')
             raise e

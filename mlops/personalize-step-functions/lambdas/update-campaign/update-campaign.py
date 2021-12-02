@@ -10,7 +10,7 @@ def lambda_handler(event, context):
     campaignArn = ARN.format(
         region=environ['AWS_REGION'],
         account=LOADER.account_id,
-        name=event['campaignName']
+        name=event['datasetGroupName'] + '-' + event['campaignName']
     )
     solutionVersionArn = event['solutionVersionArn']
 
@@ -22,7 +22,7 @@ def lambda_handler(event, context):
 
     try:
         ssm_parameters.put_parameter("campaignArn", campaignArn)
-        ssm_parameters.put_parameter("campaignName", event['campaignName'])
+        ssm_parameters.put_parameter("campaignName", event['datasetGroupName'] + '-' + event['campaignName'])
         ssm_parameters.put_parameter("minProvisionedTPS", event['minProvisionedTPS'])
     except:
         pass

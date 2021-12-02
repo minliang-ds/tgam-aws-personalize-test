@@ -8,8 +8,8 @@ LOADER = Loader()
 STEP_FUNCTIONS_CLI = client('stepfunctions')
 
 def lambda_handler(event, context):
-    response = client.describe_execution(
-        executionArn = event['output']['executionArn']
+    response = STEP_FUNCTIONS_CLI.describe_execution(
+        executionArn = event['executionArn']
     )
     status = response['status']
     

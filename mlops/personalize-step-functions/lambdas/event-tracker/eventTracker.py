@@ -20,8 +20,12 @@ def lambda_handler(event, context):
         LOADER.logger.info(
             'Event tracker not found!'
         )
-        event['eventTracker']['datasetGroupArn'] = event['datasetGroupArn']
-        createStatus = LOADER.personalize_cli.create_event_tracker(**event['eventTracker'])
+        datasetGroupArn = event['datasetGroupArn']
+        eventTrackerName = event['datasetGroupName'] + '-' + event['eventTracker']['name']
+        createStatus = LOADER.personalize_cli.create_event_tracker(
+            name = eventTrackerName,
+            datasetGroupArn = datasetGroupArn
+        )
         eventTrackerArn = createStatus['eventTrackerArn']
         status = LOADER.personalize_cli.describe_event_tracker(
             eventTrackerArn=eventTrackerArn

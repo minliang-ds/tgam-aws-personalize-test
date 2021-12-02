@@ -30,6 +30,10 @@ Parameters:
       - "stg"
       - "prod"
 
+  SourceBucketName:
+    Type: String
+    Default: tgam-personalize-dev-1950aa20
+
 Conditions:
   IsDevAccount: !Equals [!Ref Environment, 'dev']
 
@@ -167,6 +171,7 @@ Resources:
       Environment:
         Variables:
           STEP_FUNCTIONS_ARN: !Ref UpdateStateMachine
+          DEPLOY_STEP_FUNCTIONS_ARN: !Ref DeployStateMachine
           CONFIG_PREFIX: !Sub "config/${ResourcesPrefix}/${Environment}/"
           INPUT_BUCKET: !Ref InputBucket
       Events:
@@ -193,7 +198,7 @@ Resources:
                         - "/"
                         - !Ref "AWS::StackId"
             Description: Update schedule for Amazon Personalize
-            Enabled: true
+            Enabled: false
   S3LambdaRefreshStateMachine:
     Type: AWS::Serverless::Function
     Metadata:
@@ -211,13 +216,14 @@ Resources:
       Environment:
         Variables:
           STEP_FUNCTIONS_ARN: !Ref RefreshStateMachine
+          DEPLOY_STEP_FUNCTIONS_ARN: !Ref DeployStateMachine
           CONFIG_PREFIX: !Sub "config/${ResourcesPrefix}/${Environment}/"
           INPUT_BUCKET: !Ref InputBucket
       Events:
         CWSchedule:
           Type: Schedule
           Properties:
-            Schedule: 'cron(0 6 ? * 7#1 *)'
+            Schedule: 'cron(0 6 ? * SAT *)'
             Name: !Join
               - ""
               - - "sched-"
@@ -225,7 +231,7 @@ Resources:
                 - "-"
                 - !Ref Environment
                 - "-"
-                - 'input'
+                - 'refreshSchedule'
                 - "-"
                 - !Select
                   - 0
@@ -368,7 +374,9 @@ Resources:
               - Effect: Allow
                 Action:
                   - states:StartExecution
-                Resource: !Ref UpdateStateMachine
+                Resource: 
+                  - !Ref UpdateStateMachine
+                  - !Ref RefreshStateMachine
 
 
 # ------------------------
@@ -515,7 +523,41 @@ Resources:
                   - !GetAtt Notify.Arn
                   - !GetAtt UpdateSettings.Arn
                   - !GetAtt NotifyDelete.Arn
+                  - !GetAtt WaitDatasetGroup.Arn
+  StatesRefreshExecutionRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W76
+            reason: "Listing resources as per security requirement"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - !Sub states.${AWS::Region}.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: StatesExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "states:StartExecution"
+                Resource:
+                  - !Ref DeleteAllDatasetGroupResources
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource:
                   - !GetAtt ListDatasetGroups.Arn
+                  - !GetAtt RefreshDatasetGroup.Arn
+                  - !GetAtt WaitRefresh.Arn
+                  - !GetAtt RefreshInputData.Arn
   CreateDatasetGroup:
     Type: AWS::Serverless::Function
     Metadata:
@@ -541,6 +583,7 @@ Resources:
               Action:
                 - personalize:CreateDatasetGroup
                 - personalize:DescribeDatasetGroup
+                - personalize:ListDatasetGroups
               Resource: "*"
   CreateDataset:
     Type: AWS::Serverless::Function
@@ -1162,6 +1205,49 @@ Resources:
               Action:
                 - personalize:CreateSolutionVersion
               Resource: "*"
+  RefreshInputData:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
+    Properties:
+      CodeUri: lambdas/refresh-input-data/
+      Handler: refresh-input-data.lambda_handler
+      Runtime: python3.8
+      Environment:
+        Variables:
+          SourceBucketName: !Ref SourceBucketName
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:DeleteObject
+                - s3:PutObject
+                - s3:ListBucket
+              Resource:
+                - !Join
+                  - ''
+                  - - 'arn:aws:s3:::'
+                    - !Ref InputBucket
+                    - /*
+                - !Join
+                  - ''
+                  - - 'arn:aws:s3:::'
+                    - !Ref InputBucket
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+              Resource:
+                - !Sub "arn:aws:s3:::${SourceBucketName}"
+                - !Sub "arn:aws:s3:::${SourceBucketName}/*"
   RefreshDatasetGroup:
     Type: AWS::Serverless::Function
     Metadata:
@@ -1185,7 +1271,9 @@ Resources:
             - Effect: Allow
               Action:
                 - states:StartExecution
-              Resource: "*"
+              Resource:
+                - !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:DeployStateMachine*"
+                - !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:DeleteAllDatasetGroupResources*"
   WaitRefresh:
     Type: AWS::Serverless::Function
     Metadata:
@@ -1209,7 +1297,8 @@ Resources:
             - Effect: Allow
               Action:
                 - states:DescribeExecution
-              Resource: "*"
+              Resource:
+                - !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:execution:DeployStateMachine*"
   ListDatasetGroups:
     Type: AWS::Serverless::Function
     Metadata:
@@ -1388,6 +1477,30 @@ Resources:
                         - !Ref "AWS::StackId"
             Description: Update schedule for item age filters
             Enabled: true
+  WaitDatasetGroup:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "This lambda is used to create/manage Amazon Personalize resources"
+          - id: W89
+            reason: "This lambda dont need to be in VPC - it will be easier to manage"
+          - id: W92
+            reason: "We dont need ReservedConcurrentExecutions for this function"
+    Properties:
+      CodeUri: lambdas/wait-dataset-group
+      Handler: wait-dataset-group.lambda_handler
+      Runtime: python3.8
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - personalize:DescribeDatasetGroup
+              Resource: "*"
   DeleteAllDatasetGroupResources:
     Type: "AWS::StepFunctions::StateMachine"
     Properties:
@@ -1568,8 +1681,8 @@ Resources:
                               "Retry": [{
                                 "ErrorEquals": ["ResourcePending"],
                                 "IntervalSeconds": 60,
-                                "BackoffRate": 1.5,
-                                "MaxAttempts": 100
+                                "BackoffRate": 1.2,
+                                "MaxAttempts": 600
                               }],
                               "Catch": [{
                                 "ErrorEquals": ["ResourceNotFoundException"],
@@ -1612,8 +1725,8 @@ Resources:
                               "Retry": [{
                                 "ErrorEquals": ["ResourcePending"],
                                 "IntervalSeconds": 60,
-                                "BackoffRate": 1.5,
-                                "MaxAttempts": 100
+                                "BackoffRate": 1.2,
+                                "MaxAttempts": 600
                               }]
                             }
                           }
@@ -1632,8 +1745,8 @@ Resources:
                         "Retry": [{
                           "ErrorEquals": ["ResourcePending"],
                           "IntervalSeconds": 60,
-                          "BackoffRate": 1.5,
-                          "MaxAttempts": 100
+                          "BackoffRate": 1.2,
+                          "MaxAttempts": 600
                         }],
                         "Catch": [{
                           "ErrorEquals": ["ResourceNotFoundException"],
@@ -1697,8 +1810,8 @@ Resources:
                         "Retry": [{
                           "ErrorEquals": ["ResourcePending"],
                           "IntervalSeconds": 60,
-                          "BackoffRate": 1.5,
-                          "MaxAttempts": 100
+                          "BackoffRate": 1.2,
+                          "MaxAttempts": 600
                         }],
                         "Catch": [{
                           "ErrorEquals": ["ResourceNotFoundException"],
@@ -1736,9 +1849,9 @@ Resources:
                   "End": true,
                   "Retry": [{
                     "ErrorEquals": ["ResourcePending"],
-                    "IntervalSeconds": 30,
-                    "BackoffRate": 1.5,
-                    "MaxAttempts": 100
+                    "IntervalSeconds": 60,
+                    "BackoffRate": 1.2,
+                    "MaxAttempts": 600
                   }],
                   "Catch": [{
                     "ErrorEquals": ["ResourceNotFoundException"],
@@ -1805,18 +1918,35 @@ Resources:
                   "Type": "Task",
                   "Resource": "${CreateDatasetGroupArn}",
                   "InputPath": "$.params",
-                  "ResultPath": "$.datasetGroupArn",
-                  "Retry": [{
-                    "ErrorEquals": ["ResourcePending"],
-                    "IntervalSeconds": 2,
-                    "BackoffRate": 1.5,
-                    "MaxAttempts": 100
-                  }],
-                  "Catch": [{
-                    "ErrorEquals": ["ResourceFailed"],
-                    "ResultPath": "$.serviceError",
-                    "Next": "Fail"
-                  }],
+                  "ResultPath": "$.datasetGroup",
+                  "Next": "Wait Dataset Group"
+                },
+                "Wait Dataset Group": {
+                  "Type": "Task",
+                  "Parameters": {
+                    "datasetGroupArn.$": "$.datasetGroup.datasetGroupArn"
+                  },
+                  "Resource": "${WaitDatasetGroupArn}",
+                  "ResultPath": "$.datasetGroupStatus",
+                  "Retry": [
+                    {
+                      "ErrorEquals": [
+                        "ResourcePending"
+                      ],
+                      "IntervalSeconds": 2,
+                      "BackoffRate": 1.5,
+                      "MaxAttempts": 100
+                    }
+                  ],
+                  "Catch": [
+                    {
+                      "ErrorEquals": [
+                        "ResourceFailed"
+                      ],
+                      "ResultPath": "$.serviceError",
+                      "Next": "Fail"
+                    }
+                  ],
                   "Next": "Create Datasets"
                 },
                 "Create Datasets": {
@@ -1841,8 +1971,8 @@ Resources:
                             "Resource": "${CreateDatasetArn}",
                             "Parameters": {
                               "datasets.$": "$.params.datasets",
-                              "datasetGroupName.$": "$.params.datasetGroup.name",
-                              "datasetGroupArn.$": "$.datasetGroupArn",
+                              "datasetGroupName.$": "$.datasetGroup.name",
+                              "datasetGroupArn.$": "$.datasetGroup.datasetGroupArn",
                               "datasetType": "Users"
                             },
                             "ResultPath": "$.datasetArn",
@@ -1889,8 +2019,8 @@ Resources:
                             "Resource": "${CreateDatasetArn}",
                             "Parameters": {
                               "datasets.$": "$.params.datasets",
-                              "datasetGroupName.$": "$.params.datasetGroup.name",
-                              "datasetGroupArn.$": "$.datasetGroupArn",
+                              "datasetGroupName.$": "$.datasetGroup.name",
+                              "datasetGroupArn.$": "$.datasetGroup.datasetGroupArn",
                               "datasetType": "Items"
                             },
                             "ResultPath": "$.datasetArn",
@@ -1937,8 +2067,8 @@ Resources:
                             "Resource": "${CreateDatasetArn}",
                             "Parameters": {
                               "datasets.$": "$.params.datasets",
-                              "datasetGroupName.$": "$.params.datasetGroup.name",
-                              "datasetGroupArn.$": "$.datasetGroupArn",
+                              "datasetGroupName.$": "$.datasetGroup.name",
+                              "datasetGroupArn.$": "$.datasetGroup.datasetGroupArn",
                               "datasetType": "Interactions"
                             },
                             "ResultPath": "$.datasetArn",
@@ -2003,7 +2133,8 @@ Resources:
                             "Parameters": {
                               "solution.$": "$.params.solutions",
                               "solutionType": "userPersonalization",
-                              "datasetGroupArn.$": "$.datasetGroupArn"
+                              "datasetGroupArn.$": "$.datasetGroup.datasetGroupArn",
+                              "datasetGroupName.$": "$.datasetGroup.name"
                             },
                             "Catch": [{
                               "ErrorEquals": ["KeyError"],
@@ -2020,8 +2151,8 @@ Resources:
                             "Retry": [{
                               "ErrorEquals": ["ResourcePending"],
                               "IntervalSeconds": 60,
-                              "BackoffRate": 1.5,
-                              "MaxAttempts": 100
+                              "BackoffRate": 1.2,
+                              "MaxAttempts": 600
                             }],
                             "Catch": [{
                               "ErrorEquals": ["ResourceFailed"],
@@ -2035,7 +2166,8 @@ Resources:
                             "Resource": "${CreateCampaignArn}",
                             "Parameters": {
                               "campaign.$": "$.params.campaigns.userPersonalizationCampaign",
-                              "solutionVersionArn.$": "$.solutionVersionArn"
+                              "solutionVersionArn.$": "$.solutionVersionArn",
+                              "datasetGroupName.$": "$.datasetGroup.name"
                             },
                             "ResultPath": "$.campaignArn",
                             "Retry": [{
@@ -2071,7 +2203,8 @@ Resources:
                             "Parameters": {
                               "solution.$": "$.params.solutions",
                               "solutionType": "similarItems",
-                              "datasetGroupArn.$": "$.datasetGroupArn"
+                              "datasetGroupArn.$": "$.datasetGroup.datasetGroupArn",
+                              "datasetGroupName.$": "$.datasetGroup.name"
                             },
                             "Catch": [{
                               "ErrorEquals": ["KeyError"],
@@ -2103,7 +2236,8 @@ Resources:
                             "Resource": "${CreateCampaignArn}",
                             "Parameters": {
                               "campaign.$": "$.params.campaigns.similarItemsCampaign",
-                              "solutionVersionArn.$": "$.solutionVersionArn"
+                              "solutionVersionArn.$": "$.solutionVersionArn",
+                              "datasetGroupName.$": "$.datasetGroup.name"
                             },
                             "ResultPath": "$.campaignArn",
                             "Retry": [{
@@ -2139,7 +2273,8 @@ Resources:
                             "Parameters": {
                               "solution.$": "$.params.solutions",
                               "solutionType": "personalizedRanking",
-                              "datasetGroupArn.$": "$.datasetGroupArn"
+                              "datasetGroupArn.$": "$.datasetGroup.datasetGroupArn",
+                              "datasetGroupName.$": "$.datasetGroup.name"
                             },
                             "Catch": [{
                               "ErrorEquals": ["KeyError"],
@@ -2171,7 +2306,8 @@ Resources:
                             "Resource": "${CreateCampaignArn}",
                             "Parameters": {
                               "campaign.$": "$.params.campaigns.personalizedRankingCampaign",
-                              "solutionVersionArn.$": "$.solutionVersionArn"
+                              "solutionVersionArn.$": "$.solutionVersionArn",
+                              "datasetGroupName.$": "$.datasetGroup.name"
                             },
                             "ResultPath": "$.campaignArn",
                             "Retry": [{
@@ -2206,7 +2342,8 @@ Resources:
                   "Resource": "${AttachEventTrackerArn}",
                   "Parameters": {
                     "eventTracker.$": "$.params.eventTracker",
-                    "datasetGroupArn.$": "$.datasetGroupArn"
+                    "datasetGroupArn.$": "$.datasetGroup.datasetGroupArn",
+                    "datasetGroupName.$": "$.datasetGroup.name"
                   },
                   "ResultPath": "$.eventTrackerArn",
                   "Retry": [{
@@ -2227,7 +2364,8 @@ Resources:
                   "Resource": "${CreateFiltersArn}",
                   "Parameters": {
                     "filters.$": "$.params.filters",
-                    "datasetGroupArn.$": "$.datasetGroupArn"
+                    "datasetGroupArn.$": "$.datasetGroup.datasetGroupArn",
+                    "datasetGroupName.$": "$.datasetGroup.name"
                   },
                   "ResultPath": "$.filterArns",
                   "Retry": [{
@@ -2248,7 +2386,7 @@ Resources:
                   "Resource": "${UpdateSettingsArn}",
                   "Parameters": {
                     "filters.$": "$.params.filters",
-                    "datasetGroupName.$": "$.params.datasetGroup.name",
+                    "datasetGroupName.$": "$.datasetGroup.name",
                     "campaignName.$": "$.params.campaigns.userPersonalizationCampaign.name",
                     "eventTrackerArn.$": "$.eventTrackerArn",
                     "trafficRatio.$": "$.params.campaigns.userPersonalizationCampaign.trafficRatio"
@@ -2289,6 +2427,7 @@ Resources:
             CreateFiltersArn: !GetAtt  CreateFilters.Arn
             NotifyArn: !GetAtt Notify.Arn
             UpdateSettingsArn: !GetAtt UpdateSettings.Arn
+            WaitDatasetGroupArn: !GetAtt WaitDatasetGroup.Arn
           
   UpdateStateMachine:
     Type: "AWS::StepFunctions::StateMachine"
@@ -2299,11 +2438,30 @@ Resources:
           - |-
             {
               "Comment": "Create new solution version and update campaign",
-              "StartAt": "CreateSolutionVersion",
+              "StartAt": "ListDatasetGroups",
               "States": {
+                "ListDatasetGroups": {
+                  "Type": "Task",
+                  "Parameters": {
+                    "datasetGroupName.$": "$.params.datasetGroup.name"
+                  },
+                  "Resource": "${ListDatasetGroupsArn}",
+                  "Catch": [
+                    {
+                      "ErrorEquals": [
+                        "KeyError"
+                      ],
+                      "ResultPath": "$.serviceError",
+                      "Next": "Fail"
+                    }
+                  ],
+                  "ResultPath": "$.output",
+                  "Next": "CreateSolutionVersion"
+                },
                 "CreateSolutionVersion": {
                   "Type": "Task",
                   "Parameters": {
+                    "datasetGroupName.$": "$.output.toBeUpdated",
                     "solutionName.$": "$.params.solutions.userPersonalization.name",
                     "trainingMode.$": "$.params.userPersonalizationUpdates.trainingMode"
                   },
@@ -2333,8 +2491,8 @@ Resources:
                         "ResourcePending"
                       ],
                       "IntervalSeconds": 60,
-                      "BackoffRate": 1.5,
-                      "MaxAttempts": 100
+                      "BackoffRate": 1.2,
+                      "MaxAttempts": 600
                     }
                   ],
                   "Catch": [
@@ -2351,6 +2509,7 @@ Resources:
                 "UpdateCampaign": {
                   "Type": "Task",
                   "Parameters": {
+                    "datasetGroupName.$": "$.output.toBeUpdated",
                     "campaignName.$": "$.params.campaigns.userPersonalizationCampaign.name",
                     "minProvisionedTPS.$": "$.params.campaigns.userPersonalizationCampaign.minProvisionedTPS",
                     "solutionVersionArn.$": "$.solutionVersionArn"
@@ -2405,27 +2564,42 @@ Resources:
             WaitSolutionVersionArn: !GetAtt WaitSolutionVersion.Arn
             UpdateCampaignArn: !GetAtt UpdateCampaign.Arn
             WaitCampaignUpdateArn: !GetAtt WaitCampaignUpdate.Arn
+            ListDatasetGroupsArn: !GetAtt ListDatasetGroups.Arn
 
   RefreshStateMachine:
     Type: "AWS::StepFunctions::StateMachine"
     Properties:
-      RoleArn: !GetAtt [StatesExecutionRole, Arn]
+      RoleArn: !GetAtt [StatesRefreshExecutionRole, Arn]
       DefinitionString:
         !Sub
           - |-
             {
               "Comment": "Create new dataset group version and delete old ones after",
-              "StartAt": "RefreshDatasetGroup",
+              "StartAt": "RefreshInputData",
               "States": {
+                "RefreshInputData": {
+                  "Type": "Task",
+                  "Resource": "${RefreshInputDataArn}",
+                  "ResultPath": null,
+                  "Catch": [
+                    {
+                      "ErrorEquals": [
+                        "States.ALL"
+                      ],
+                      "ResultPath": "$.serviceError",
+                      "Next": "Fail"
+                    }
+                  ],
+                  "Next": "RefreshDatasetGroup"
+                },
                 "RefreshDatasetGroup": {
                   "Type": "Task",
-                  "InputPath": "$.params",
                   "Resource": "${RefreshDatasetGroupArn}",
                   "ResultPath": "$.executionArn",
                   "Catch": [
                     {
                       "ErrorEquals": [
-                        "KeyError"
+                        "States.ALL"
                       ],
                       "ResultPath": "$.serviceError",
                       "Next": "Fail"
@@ -2446,7 +2620,7 @@ Resources:
                         "ResourcePending"
                       ],
                       "IntervalSeconds": 60,
-                      "BackoffRate": 1.5,
+                      "BackoffRate": 1.2,
                       "MaxAttempts": 600
                     }
                   ],
@@ -2476,13 +2650,13 @@ Resources:
                       "Next": "Fail"
                     }
                   ],
-                  "ResultPath": "$.toBeDeleted",
+                  "ResultPath": "$.output",
                   "Next": "Map"
                 },
                 "Map": {
                   "Type": "Map",
                   "End": true,
-                  "ItemsPath": "$.toBeDeleted",
+                  "ItemsPath": "$.output.toBeDeleted",
                   "ResultPath": null,
                   "MaxConcurrency": 3,
                   "Iterator": {
@@ -2501,7 +2675,7 @@ Resources:
                         "Parameters": {
                           "StateMachineArn": "${DeleteAllDatasetGroupResourcesArn}",
                           "Input": {
-                            "StatePayload": "$.datasetGroupArn",
+                            "datasetGroupArn.$": "$.datasetGroupArn",
                             "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id"
                           }
                         },
@@ -2515,7 +2689,8 @@ Resources:
                 }
               }
             }
-          - RefreshDatasetGroupArn: !GetAtt RefreshDatasetGroup.Arn
+          - RefreshInputDataArn: !GetAtt RefreshInputData.Arn
+            RefreshDatasetGroupArn: !GetAtt RefreshDatasetGroup.Arn
             WaitRefreshArn: !GetAtt WaitRefresh.Arn
             ListDatasetGroupsArn: !GetAtt ListDatasetGroups.Arn
             DeleteAllDatasetGroupResourcesArn: !Ref DeleteAllDatasetGroupResources

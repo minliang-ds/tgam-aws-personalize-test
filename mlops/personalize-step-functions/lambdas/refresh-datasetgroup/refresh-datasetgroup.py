@@ -7,11 +7,11 @@ STEP_FUNCTIONS_CLI = client('stepfunctions')
 
 
 def lambda_handler(event, context):
-    bucket_name = os.environ['INPUT_BUCKET']
+    bucket_name = event['bucket']
     
     # Execute DeployStateMachine
     response = STEP_FUNCTIONS_CLI.start_execution(
-                    stateMachineArn=os.environ['STEP_FUNCTIONS_ARN'],
+                    stateMachineArn=event['deployArn'],
                     name=datetime.now().strftime("%Y_%m_%d_%H_%M_%S"),
                     input=dumps(
                         {
