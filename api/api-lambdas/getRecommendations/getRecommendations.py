@@ -284,6 +284,8 @@ def handler(event, context, metrics):
         if arguments["numResults"] > 500:
             arguments["numResults"] = 500
 
+        metrics.set_property("personalizeFilterContext", payload.get("context"))
+
         if payload.get("context") in context_settings:
             filter_settings = context_settings.get(payload.get('context'))
         else:
@@ -310,6 +312,7 @@ def handler(event, context, metrics):
             if category in filter_settings.get("include_time_range_for_sections", []):
                 limit_time_range = True
 
+            metrics.set_property("personalizeFilterCategory", category)
             arguments["filterValues"]["category"] = f'\"{category}\"';
 
         if payload.get("platform"):
@@ -357,6 +360,8 @@ def handler(event, context, metrics):
         metrics.put_metric("MissingRecommendations", (arguments["numResults"] - len(response['itemList'])), "None")
 
         #reply['recommendations_debug'] = response['itemList']
+        metrics.set_property("personalizeRecommendationId", response.get('recommendationId'))
+
         reply['recommendationId'] = response['recommendationId']
 
         try:
