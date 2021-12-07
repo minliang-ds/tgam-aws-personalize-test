@@ -48,7 +48,8 @@ def lambda_handler(event, context):
     filter_arns = []
 
     yesterday = datetime.date.today() - datetime.timedelta(1)
-    ageFilterExpression = " | EXCLUDE ItemID WHERE Items.CREATION_TIMESTAMP < " + str(yesterday.strftime("%s"))
+    ageLimit = datetime.date.today() - datetime.timedelta(3)
+    ageFilterExpression = " | EXCLUDE ItemID WHERE Items.CREATION_TIMESTAMP < " + str(ageLimit.strftime("%s"))
     suffix = yesterday.strftime("%Y-%m-%d")
 
     for filter in event['filters']:
