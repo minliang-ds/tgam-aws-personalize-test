@@ -186,7 +186,7 @@ Resources:
                 - "-"
                 - !Ref Environment
                 - "-"
-                - 'input'
+                - 'updateSchedule'
                 - "-"
                 - !Select
                   - 0
