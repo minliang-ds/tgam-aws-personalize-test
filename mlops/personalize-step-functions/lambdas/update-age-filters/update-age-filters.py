@@ -80,11 +80,12 @@ def list_filters(datasetGroupArn):
 def lambda_handler(event, context):
     yesterday = datetime.date.today() - datetime.timedelta(1)
     three_days_ago = datetime.date.today() - datetime.timedelta(3)
-    
+    ageLimit = datetime.date.today() - datetime.timedelta(3)
+
     deleteFilterSuffix = three_days_ago.strftime("%Y-%m-%d")
     createFilterSuffix = yesterday.strftime("%Y-%m-%d")
     
-    ageFilterExpression = " | EXCLUDE ItemID WHERE Items.CREATION_TIMESTAMP < " + str(yesterday.strftime("%s"))
+    ageFilterExpression = " | EXCLUDE ItemID WHERE Items.CREATION_TIMESTAMP < " + str(ageLimit.strftime("%s"))
     
     response = LOADER.personalize_cli.list_dataset_groups()
 
