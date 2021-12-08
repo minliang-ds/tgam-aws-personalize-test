@@ -49,7 +49,7 @@ Parameters:
     Type: String
     Default: "noreply@example.com"
 
-  DevInputBucket:
+  DevGlueSourceBucket:
     Type: String
     Default: "tgam-personalize-dev-1950aa20"
 
@@ -348,9 +348,9 @@ Resources:
           - Name: TemplatePath
             Type: PLAINTEXT
             Value: !FindInMap [TypePath, !Ref PipelineType, Path]
-          - Name: DevInputBucket
+          - Name: DevGlueSourceBucket
             Type: PLAINTEXT
-            Value: !Ref DevInputBucket
+            Value: !Ref DevGlueSourceBucket
 
       Source:
         Type: NO_SOURCE
@@ -365,8 +365,8 @@ Resources:
                 - echo cd ${TemplatePath} && cd ${TemplatePath}
                 - export input_bucket=`aws cloudformation describe-stacks --stack-name ${ResourcesPrefix}-${PipelineType}-${Environment}  --query 'Stacks[0].Outputs' --output table | grep InputBucketName  | awk -F \| {'print $4'} | awk {'print $1'}`
                 - for file in `rm -rf .temp_params.json; ls ../../config/${ResourcesPrefix}/${Environment}/`; do aws s3 cp s3://${input_bucket}/config/${ResourcesPrefix}/${Environment}/${file} .temp_params.json ${profile_arg} && diff -ruNp ../../config/${ResourcesPrefix}/${Environment}/${file} .temp_params.json || aws s3 cp ../../config/${ResourcesPrefix}/${Environment}/${file} s3://${input_bucket}/config/${ResourcesPrefix}/${Environment}/${file} ; done
-                - if [ "${Environment}" = "prod" ]; then aws s3 sync --delete s3://${DevInputBucket}/glue-job/Interactions s3://${input_bucket}/Interactions; fi
-                - if [ "${Environment}" = "prod" ]; then aws s3 sync --delete s3://${DevInputBucket}/glue-job/Items s3://${input_bucket}/Items; fi
+                - if [ "${Environment}" = "prod" ]; then aws s3 sync --delete s3://${DevGlueSourceBucket}/glue-job/Interactions s3://${input_bucket}/Interactions; fi
+                - if [ "${Environment}" = "prod" ]; then aws s3 sync --delete s3://${DevGlueSourceBucket}/glue-job/Items s3://${input_bucket}/Items; fi
       Tags:
         - Key: "Environment"
           Value: !Ref Environment
@@ -781,12 +781,12 @@ Resources:
               - 's3:GetObjectVersion'
               - 's3:GetBucketAcl'
               - 's3:GetBucketLocation'
-            Resource: !Sub "arn:aws:s3:::${DevInputBucket}/*"
+            Resource: !Sub "arn:aws:s3:::${DevGlueSourceBucket}/*"
           - Effect: Allow
             Action:
               - 's3:ListBucket'
             Resource:
-              - !Sub "arn:aws:s3:::${DevInputBucket}"
+              - !Sub "arn:aws:s3:::${DevGlueSourceBucket}"
               - !Sub "arn:aws:s3:::${ResourcesPrefix}-${Environment}-input*"
           - Effect: Allow
             Action:

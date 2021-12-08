@@ -284,6 +284,8 @@ def handler(event, context, metrics):
         if arguments["numResults"] > 500:
             arguments["numResults"] = 500
 
+        metrics.set_property("personalizeFilterContext", payload.get("context"))
+
         if payload.get("context") in context_settings:
             filter_settings = context_settings.get(payload.get('context'))
         else:
@@ -310,6 +312,7 @@ def handler(event, context, metrics):
             if category in filter_settings.get("include_time_range_for_sections", []):
                 limit_time_range = True
 
+            metrics.set_property("personalizeFilterCategory", category)
             arguments["filterValues"]["category"] = f'\"{category}\"';
 
         if payload.get("platform"):
@@ -357,6 +360,8 @@ def handler(event, context, metrics):
         metrics.put_metric("MissingRecommendations", (arguments["numResults"] - len(response['itemList'])), "None")
 
         #reply['recommendations_debug'] = response['itemList']
+        metrics.set_property("personalizeRecommendationId", response.get('recommendationId'))
+
         reply['recommendationId'] = response['recommendationId']
 
         try:
@@ -364,14 +369,19 @@ def handler(event, context, metrics):
                 before_request = time.time_ns()
                 deserialized_item = get_dynamo_data(client_sophi3, os.environ.get('Sophi3DynamoDbTableName'), sort_key_name_sophi3, attributes_to_get_sophi3, response['itemList'], False, True, api_gateway_request_id)
                 after_request = time.time_ns()
+                MissingDataDynamoSophi3 = arguments["numResults"] - len(deserialized_item)
                 metrics.put_metric("DynamoSophi2RequestTime", (int(after_request-before_request)/1000000), "Milliseconds")
-                metrics.put_metric("MissingDataDynamoSophi2", (arguments["numResults"] - len(deserialized_item)), "None")
+                metrics.put_metric("MissingDataDynamoSophi3", MissingDataDynamoSophi3, "None")
 
                 before_request = time.time_ns()
                 images_map = get_dynamo_data(client_sophi2, os.environ.get('Sophi2DynamoDbTableName'), sort_key_name_sophi2, attributes_to_get_sophi2, response['itemList'], True, False, api_gateway_request_id)
                 after_request = time.time_ns()
+                MissingDataDynamoSophi2 = arguments["numResults"] - len(images_map)
                 metrics.put_metric("DynamoSophi3RequestTime", (int(after_request-before_request)/1000000), "Milliseconds")
-                metrics.put_metric("MissingDataDynamoSophi3", (arguments["numResults"] - len(images_map)), "None")
+                metrics.put_metric("MissingDataDynamoSophi2", MissingDataDynamoSophi2, "None")
+
+                if MissingDataDynamoSophi2 > 0 or MissingDataDynamoSophi3 > 0:
+                    print (f"RequestID: {api_gateway_request_id} missing recommendations, Sophi2: {MissingDataDynamoSophi2}, Sophi3: {MissingDataDynamoSophi3}, RawRecommendations = {response['itemList']}, Raw Sophi3 data: {deserialized_item}, Raw Sophi2 data: {images_map} ")
 
         except ClientError as e:
             print(f"RequestID: {api_gateway_request_id} Key Error: {e}")

@@ -73,12 +73,17 @@ def handler(event, context, metrics):
 
 
         if (payload.get('ContentId') is None or payload.get('Category') is None):
-            print(f"Skipping content: invalid ContentId: {payload.get('Published')} or Category: {payload.get('Category')}")
+            print(f"Skipping content: invalid ContentId: {payload.get('ContentId')} or Category: {payload.get('Category')}")
             skip_events += 1;
             continue
 
         if (payload.get('Published') is not True):
             print(f"Skipping content: invalid Published {payload.get('Published')}")
+            skip_events += 1;
+            continue
+
+        if payload.get('ContentText') is None:
+            print(f"Skipping content: invalid ContentText: {payload.get('ContentText')}")
             skip_events += 1;
             continue
 
@@ -99,7 +104,7 @@ def handler(event, context, metrics):
             timestamp = int(round(time.time()))
 
         #Member must have length less than or equal to 24262
-        if len(payload.get('ContentText')) > 20000:
+        if payload.get('ContentText') and len(payload.get('ContentText')) > 20000:
             payload['ContentText'] = payload.get('ContentText')[:20000]
 
         putItemsParams = {

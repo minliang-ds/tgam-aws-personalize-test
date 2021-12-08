@@ -15,15 +15,15 @@ Help()
    echo "-d     Debug mode."
    echo
    echo "Example for dev:"
-   echo "sh pipeline.sh -e dev -t api -p tgam-personalize -b development "
-   echo "sh pipeline.sh -e dev -t mlops -p tgam-personalize -b development "
+   echo "sh pipeline.sh -e dev -t api -p tgam-personalize -b development -m mail@example.com"
+   echo "sh pipeline.sh -e dev -t mlops -p tgam-personalize -b development -m mail@example.com"
    echo "Example for prod:"
-   echo "sh pipeline.sh -e prod -t api -p tgam-personalize -b prod "
-   echo "sh pipeline.sh -e prod -t mlops -p tgam-personalize -b prod "
+   echo "sh pipeline.sh -e prod -t api -p tgam-personalize -b prod -m mail@example.com"
+   echo "sh pipeline.sh -e prod -t mlops -p tgam-personalize -b prod -m mail@example.com"
 
 }
 
-while getopts ":h:e:b:t:p:d:r:m" option; do
+while getopts ":he:b:t:p:d:r:m:" option; do
    case $option in
       h) # display Help
          Help
@@ -44,11 +44,16 @@ while getopts ":h:e:b:t:p:d:r:m" option; do
          arg_debug=$OPTARG;;
       r) # Enter a name
          arg_region=$OPTARG;;
-     \?) # Invalid option
+     *) # Invalid option
          echo "Error: Invalid option"
          exit;;
    esac
 done
+echo "size:"
+if [[ $# == "0" ]]; then
+  Help
+  exit
+fi
 
 pipeline_type="${arg_type:-"mlops"}"
 pipeline_env="${arg_env:-"dev"}"
