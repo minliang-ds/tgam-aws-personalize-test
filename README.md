@@ -1,6 +1,6 @@
 # Introduction
 
-This repository contains 2 [AWS Serverless Application Model](https://aws.amazon.com/serverless/sam/) projects, every in each own folder:
+This repository contains 2 [AWS Serverless Application Model](https://aws.amazon.com/serverless/sam/) projects, each in its own folder:
 - api - GetRecommendations, PutContent, PutEvents api  
 - mlops - MLOps pipeline for [Amazon Personalize](https://aws.amazon.com/personalize/) Recommender System
 
@@ -49,23 +49,46 @@ git clone https://github.com/globeandmail/tgam-aws-personalize
 
 
 ## 2. MLOps pipeline 
-MLOps pipeline for Amazon Personalize Recommender System
+This pipeline builds and manages a User-Personalization and a Similar-Items Amazon Personalize campaign from end to end. The pipeline uses AWS Serverless Application Model (SAM) to deploy multiple AWS Step Functions workflows, introduced below.
 
-This pipeline builds a User-Personalization Amazon Personalize campaign for Sophi from scatch, assuming input datasets have been pre-generated. The pipeline uses AWS Serverless Application Model (SAM) to deploy an AWS Step Functions workflow containing AWS Lambda functions that call Amazon S3, Amazon Personalize, and Amazon SNS APIs.
+### Special Note About Input Data
+Currently input data gathering is not managed by IAC (Infrastructure as Code) but is rather created manually on Sophi's DS DEV account. It involves a scheduled state machine that scales up the `Sophi3ContentMetaData` DynamoDB table, initiates 2 AWS Glue jobs (one for Interactions dataset, and one for Items dataset), and scales the `Sophi3ContentMetaData` DynamoDB table back down at the end. We decided to keep this step this way because data scientists at Sophi can have full control over the input data for the Personalize campaigns. This makes it easier for data scientists to perform data validation and model improvements in the future. Related resource names/ARNs can be found below:
 
-In addition, the pipeline also deploys a scheduled (weekly on Sunday morning) AWS Step Functions workflow that fully trains a new User-Personalization solution version with the latest data and updates the live campaign with the new solution version.
+- Glue Crawlers (runs every day at 6:00 EST):
+  - Interactions: `tgam_personalize_sophi_aux_crawler`
+  - Items: `tgam-personalize-content-crawler`
+- Glue Jobs:
+  - Interactions: `tgam-personalize-sophi-aux-transform`
+  - Items: `tgam-personalize-content-metadata-transform`
+- Step Functions: `arn:aws:states:us-east-1:727304503525:stateMachine:tgam-personalize-data-refresh`
+- Eventbridge Scheduler: `arn:aws:events:us-east-1:727304503525:rule/tgam-personalize-inputdata-refresh`
+  - Current event schedule: `cron(0 12 * * ? *)` - everyday at 12:00 GMT
+- S3 URI for output: `s3://tgam-personalize-dev-1950aa20/glue-job/`
 
-The below diagram describes the architecture of the solution:
+The Glue Job scripts can be found in the [glue-job](/glue-job) folder. The exact filters and feature transformation logic can be found within.
 
-![Architecture Diagram](mlops/images/architecture.png)
+### Model Deployment
 
-The below diagram showcases the campaign creation step functions workflow:
+Model deployment is performed through the `DeployStateMachine` state machine. To run the state machine, input datasets and a JSON config file need to exist in the S3 input bucket created by the SAM. Note that this state machine is automatically triggered whenever there's a change in the JSON config files in the S3 input bucket, or it can be manually triggered by the `tgam-personalize-mlops-dev-S3Lambda` Lambda function. Details of the state machine are described below:
 
 ![stepfunction definition](mlops/images/campaign_creation_step_functions.png)
 
-The below diagram showcases the campaign update step functions workflow:
+Note that this state machine is capable of creating User Personalization, Similar Items, and Personalized Ranking solutions all in one go; the user may pick and specify the solutions they need in the JSON config file.
 
-![stepfunction definition](mlops/images/campaign_update_step_functions.png)
+### Dataset Refresh
+
+To avoid accumulating too much legacy data (note that Amazon Perosonalize has an internal limit of 750k items in the item catalog) in the Personalize solutions, we recommend performing a dataset refresh once every week. This can be achieved through the `RefreshStateMachine` state machine. It is triggered by the `S3LambdaRefreshStateMachine` lambda function, which is scheduled through an Eventbridge rule. The `RefreshStateMachine` state machine works in the following order:
+1. Sync the latest dataset in the Glue Job output folder to the S3 input bucket created by the SAM pipeline
+2. Create a new Amazon Personalize dataset group through `DeployStateMachine` state machine and increment version number by 1
+3. Update the DynamoDB table with API settings with new dataset group. Note that at this stage traffic is equally split between existing campaigns and the new campaign
+4. Delete all Amazon Personalize dataset groups with the same root name but lower version numbers through `DeleteAllDatasetGroupResources` state machine. This state machine also deletes entries in the DynamoDB table with API settings for the old campaigns
+5. Once complete, all traffic will be directed to the new campaign in the new dataset group
+
+The SAM deployment pipeline also sets up an Eventbridge rule (`sched-tgam-personalize-dev-refreshSchedule`) that triggers the `S3LambdaRefreshStateMachine` lambda function every Saturday at 6:00 GMT (`cron(0 6 ? * SAT *)`).
+
+The below diagram showcases the `RefreshStateMachine` workflow:
+
+![stepfunction definition](mlops/images/dataset_refresh_step_functions.png)
 
 ### MLOps Pipeline Deployment steps 
 This command will deploy CodePipieline that will deploy changes based on git repository
