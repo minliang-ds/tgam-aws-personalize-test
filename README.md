@@ -15,7 +15,7 @@
  			* [PutEvent Lambda Documentation](#PutEvent-Lambda-Documentation)
 			* [PutContent Lambda Documentation](#PutContent-Lambda-Documentation)
 			* [GetRecommendation Api Lambda Documentation](#GetRecommendation-Api-Lambda-Documentation)
-			* [GetRecommendation Api Data conversion between Sophi DynamoDB](#GetRecommendation-Api-Data-conversion-between-Sophi-	DynamoDB-and-response)
+			* [GetRecommendation Api Data conversion between Sophi DynamoDB](#GetRecommendation-Api-Data-conversion-between-Sophi-DynamoDB-and-response)
 			* [GetRecommendation Api Frontend fields required in response](#GetRecommendation-Api-Frontend-fields-required-in-response)
 	
 # Introduction
