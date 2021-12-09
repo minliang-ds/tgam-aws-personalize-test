@@ -3,7 +3,7 @@
 * [High level Architecture Diagram](#High-level-Architecture-Diagram)
 * [Global prerequisite](#Global-prerequisite)
 * [MLOps pipeline](#MLOps-pipeline)
-  * [MLOps Pipeline Deployment steps](#MLOps Pipeline-Deployment-steps)
+  * [MLOps Pipeline Deployment steps](#MLOps-Pipeline-Deployment-steps)
 * [Recommendations API Pipeline](#Recommendations-API-Pipeline)
 * [API/Lambda documentation](#API/Lambda-documentation)
 
