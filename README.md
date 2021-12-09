@@ -2,11 +2,22 @@
 * [Introduction](#Introduction) 
 * [High level Architecture Diagram](#High-level-Architecture-Diagram)
 * [Global prerequisite](#Global-prerequisite)
-* [MLOps pipeline](#MLOps-pipeline)
-  * [MLOps Pipeline Deployment steps](#MLOps-Pipeline-Deployment-steps)
+ * [MLOps pipeline](#MLOps-pipeline)
+  * [Special Note About Input Data](#Special-Note-About-Input-Data)
+  * [Model Deployment](#Model-Deployment)
+  * [Dataset Refresh](#Dataset-Refresh)
+ * [MLOps Pipeline Deployment steps](#MLOps-Pipeline-Deployment-steps)
 * [Recommendations API Pipeline](#Recommendations-API-Pipeline)
-* [API/Lambda documentation](#API/Lambda-documentation)
-
+ * [Prerequisite - Create ACM Certificate](#Prerequisite--Create-ACM-Certificate) 
+ * [API Pipeline Deployment steps](#API-Pipeline-Deployment-steps)
+ * [DynamoDB Table with Api settings](#DynamoDB-Table-with-Api-settings)
+ * [API Lambda documentation](#API-Lambda-documentation)
+ *	[PutEvent Lambda Documentation](#PutEvent-Lambda-Documentation)
+	* [PutContent Lambda Documentation](#PutContent-Lambda-Documentation)
+	* [GetRecommendation Api Lambda Documentation](#GetRecommendation-Api-Lambda-Documentation)
+	* [GetRecommendation Api Data conversion between Sophi DynamoDB and response](#GetRecommendation-Api-Data-conversion-between-Sophi-DynamoDB-and-response)
+	* [GetRecommendation Api Frontend fields required in response](#GetRecommendation-Api-Frontend-fields-required-in-response)
+	
 # Introduction
 
 This repository contains 2 [AWS Serverless Application Model](https://aws.amazon.com/serverless/sam/) projects, each in its own folder:
@@ -116,7 +127,7 @@ aws s3 cp ./config/tgam-personalize/${env} s3://<input-bucket-name>/config/tgam-
 
 # Recommendations API Pipeline
 
-# Prerequisite - Create ACM Certificate
+## Prerequisite Create ACM Certificate
 1. [In CLI]: To deploy API Gateway using custom domain we need to create [AWS Certificate Manager](https://aws.amazon.com/certificate-manager/) public certificate. Because validation require DNS changes outside access of cloudformation this step needs to be done manualy.
 ```bash
 export domain="recoapi-ng-dev.theglobeandmail.com" #for prod recoapi-ng.theglobeandmail.com
@@ -236,7 +247,7 @@ Example of item in table:
 }
 ```
 
-## API - Lambda documentation
+## API Lambda documentation
 
 This solution will provide 4 [AWS Lambda](https://aws.amazon.com/lambda/) functions that will be processing Sophi data:
 - *PutEvent* - AWS Lambda to transfer information about events from **sophi3-transformed-event-stream** [Amazon Kinesis Data Streams](https://aws.amazon.com/kinesis/data-streams/)
@@ -244,7 +255,7 @@ This solution will provide 4 [AWS Lambda](https://aws.amazon.com/lambda/) functi
 - *GetRecommendations* - AWS Lambda published in backend of [Amazon API Gateway](https://aws.amazon.com/api-gateway/) to provide recommendation api for end users
 - *updateLogs* - AWS Lambda for updating CloudWatch logs retention policy as name is generic we can't setup this using CloudFormation
 
-### PutEvent - Lambda Documentation
+### PutEvent Lambda Documentation
 This Lambda is responsible to collect Events from Sophi Kinesis stream and translate events to Personalize [PutEvents](https://docs.aws.amazon.com/personalize/latest/dg/API_UBS_PutEvents.html) API calls.
 
 Lambda will:
@@ -266,7 +277,7 @@ Lambda will:
 - Use event **device_detector_browserFamily** as device_detector_browserFamily Personalize event property
 - Use event **page_rid** as recommendationId Personalize event property
 
-## PutContent - Lambda Documentation
+### PutContent Lambda Documentation
 This Lambda is responsible to collect Content Updates from Sophi Kinesis stream and translate events to Personalize [PutItems](https://docs.aws.amazon.com/personalize/latest/dg/API_UBS_PutItems.html) API calls.
 
 Lambda will:
@@ -281,7 +292,7 @@ Lambda will:
 - Content UpdatedDate will be use as Personalize Item CREATION_TIMESTAMP
 
 
-## GetRecommendation Api - Lambda Documentation
+### GetRecommendation Api Lambda Documentation
 This Lambda is setup behind Api Gateway and is responsible for providing recommendations to users. Lambda will:
 - Validate request inputs
 - Select required Personalize needed to be used based on DynamoDB settings
@@ -335,7 +346,7 @@ Example of request data:
 }
 ```
 
-### GetRecommendation Api - Data conversion between Sophi DynamoDB and response
+### GetRecommendation Api Data conversion between Sophi DynamoDB and response
 | DynamoDB Table        | Field in DynamoDB  | Field in reply | Additional convertion | Comment | 
 | --------------------- | ------------------ | -------------- | --------------------- |-------- | 
 | Sophi3ContentMetaData | Byline             | byline | join list of string with separator ' and ' |  |
@@ -355,7 +366,7 @@ Example of request data:
 | arc_content           | AuthorRel          | author_rel | only url220 key from data | from sophi2 | |
 | arc_content           | PictureRel         | promo_image | copy from PictureRel only url220 key from data | from sophi2  | |
 
-### GetRecommendation Api - Frontend fields required in response
+### GetRecommendation Api Frontend fields required in response
 | Field name | Type | Example | 
 | ----------------- | -------------- |-------- | 
 | published_at  |  String | 2021-10-20 06:00:00 |
