@@ -8,10 +8,11 @@ LOADER = Loader()
 
 
 def lambda_handler(event, context):
+    campaignName = event['datasetGroupName'] + '-' + event['campaign']['name']
     campaignArn = ARN.format(
         region=environ['AWS_REGION'],
         account=LOADER.account_id,
-        name=event['campaign']['name']
+        name=campaignName
     )
     try:
         status = LOADER.personalize_cli.describe_campaign(
@@ -19,7 +20,7 @@ def lambda_handler(event, context):
         )['campaign']
         try:
             ssm_parameters.put_parameter("campaignArn", campaignArn)
-            ssm_parameters.put_parameter("campaignName", event['campaign']['name'])
+            ssm_parameters.put_parameter("campaignName", campaignName)
             ssm_parameters.put_parameter("minProvisionedTPS", str(event['campaign']['minProvisionedTPS']))
         except:
             pass
@@ -44,7 +45,7 @@ def lambda_handler(event, context):
             'Campaign not found! Will follow to create a new campaign.'
         )
         LOADER.personalize_cli.create_campaign(
-            name=event['campaign']['name'],
+            name=campaignName,
             solutionVersionArn=event['solutionVersionArn'],
             minProvisionedTPS=event['campaign']['minProvisionedTPS']
         )

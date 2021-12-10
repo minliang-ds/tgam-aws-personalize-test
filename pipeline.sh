@@ -86,4 +86,4 @@ aws cloudformation deploy --region ${pipeline_region} ${profile} \
   GitHubBranch=${pipeline_branch} \
   Email=${notification_mail} \
   PipelineType=${pipeline_type} \
-  DevInputBucket="tgam-personalize-dev-input-1a8a97b0"
+  DevInputBucket="tgam-personalize-dev-1950aa20"

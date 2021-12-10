@@ -1126,7 +1126,7 @@ Resources:
       PolicyType: TargetTrackingScaling
       ScalingTargetId: !Ref ReadCapacityScalableTarget
       TargetTrackingScalingPolicyConfiguration:
-        TargetValue: 50.0
+        TargetValue: 70.0
         ScaleInCooldown: 60
         ScaleOutCooldown: 60
         PredefinedMetricSpecification:
@@ -1302,14 +1302,14 @@ Resources:
                   "properties": {
                       "metrics": [
                         [ { "expression": "e2/(e1/2)*100", "label": "TPS", "id": "e3", "region": "${AWS::Region}" } ],
-                        [ { "expression": "SEARCH('{AWS/Personalize,CampaignArn} MetricName=\"GetRecommendations\" ${ResourcesPrefix}-', 'Sum', 300)", "id": "e1", "period": 300, "visible": false } ],
+                        [ { "expression": "SEARCH('{AWS/Personalize,CampaignArn} MetricName=\"GetRecommendations\" ${ResourcesPrefix}-', 'Sum', 3600)", "id": "e1", "period": 300, "visible": false } ],
                         [ "${MetricsNamespace}", "RecommendationsUsed", { "stat": "Sum", "id": "e2", "visible": false } ]
                       ],
                       "view": "timeSeries",
                       "stacked": false,
                       "region": "${AWS::Region}",
                       "stat": "Average",
-                      "period": 300,
+                      "period": 3600,
                       "title": "GetRecommendations Usage %",
                       "liveData": true,
                       "yAxis": {

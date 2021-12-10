@@ -31,6 +31,7 @@ def get_params(bucket_name, object):
 
 def lambda_handler(event, context):
     bucket_name = os.environ['INPUT_BUCKET']
+    deployArn = os.environ['DEPLOY_STEP_FUNCTIONS_ARN']
 
     for object_name in get_files(bucket_name, os.environ['CONFIG_PREFIX']):
         dumps(
@@ -40,6 +41,7 @@ def lambda_handler(event, context):
                 input=dumps(
                     {
                         'bucket': bucket_name,
+                        'deployArn': deployArn,
                         'currentDate': datetime.now().strftime("%Y_%m_%d_%H_%M_%S"),
                         'params':
                             get_params(bucket_name, object_name)

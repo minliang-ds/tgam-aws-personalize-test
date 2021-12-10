@@ -56,7 +56,7 @@ def lambda_handler(event, context):
         filter_arn = create_filter(
             event['datasetGroupArn'],
             filter['filterExpression'],
-            filter['name']
+            event['datasetGroupName'] + '-' + filter['name']
         )
         filter_arns.append(filter_arn)
 
@@ -65,7 +65,7 @@ def lambda_handler(event, context):
         filter_arn = create_filter(
             event['datasetGroupArn'],
             filter['filterExpression'] + ageFilterExpression,
-            filter['name'] + '-' + suffix
+            event['datasetGroupName'] + '-' + filter['name'] + '-' + suffix
         )
         filter_arns.append(filter_arn)
 

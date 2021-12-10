@@ -31,11 +31,13 @@ def create_solution(solutionArn, params):
 
 
 def lambda_handler(event, context):
+    solutionName = event['datasetGroupName'] + '-' + event['solution']['{}'.format(event['solutionType'])]['name']
+    event['solution']['{}'.format(event['solutionType'])]['name'] = solutionName
 
     solutionArn = ARN.format(
         region=environ['AWS_REGION'],
         account=LOADER.account_id,
-        name=event['solution']['{}'.format(event['solutionType'])]['name']
+        name=solutionName
     )
 
     event['solution']['{}'.format(event['solutionType'])]['datasetGroupArn'] = event['datasetGroupArn']

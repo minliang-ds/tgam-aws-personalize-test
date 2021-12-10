@@ -109,7 +109,7 @@ def lambda_handler(event, context):
         dataSetGroupName = event['datasetGroupName']
         datasetArn = f"arn:aws:personalize:{region}:{aws_account_id}:dataset/{event['datasetGroupName']}/ITEMS"
 
-        campaignArn = f"arn:aws:personalize:{region}:{aws_account_id}:campaign/{event['campaignName']}"
+        campaignArn = f"arn:aws:personalize:{region}:{aws_account_id}:campaign/{event['datasetGroupName']}-{event['campaignName']}"
         trafficRatio = event['trafficRatio']
         contextMap = {
             'default' : {
@@ -133,7 +133,7 @@ def lambda_handler(event, context):
             if filter.get('context'):
                 context = filter.get('context')
                 contextMap[context] = {}
-                contextMap[context]['filter_name'] = filter['name']
+                contextMap[context]['filter_name'] = event['datasetGroupName'] + '-' + filter['name']
 
                 for key in filter.keys():
                     contextMap[context][key] = filter[key]

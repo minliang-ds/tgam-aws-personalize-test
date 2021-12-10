@@ -122,7 +122,7 @@
    },
    "solutions":{
       "userPersonalization":{
-         "name":"tgam-personalize-blue-userPersonalizationSolution",
+         "name":"userPersonalizationSolution",
          "recipeArn":"arn:aws:personalize:::recipe/aws-user-personalization",
          "solutionConfig":{
              "algorithmHyperParameters":{
@@ -133,16 +133,16 @@
          }
       },
       "similarItems":{
-         "name":"tgam-personalize-blue-similarItemsSolution",
+         "name":"similarItemsSolution",
          "recipeArn":"arn:aws:personalize:::recipe/aws-similar-items"
       }
    },
    "eventTracker":{
-      "name":"tgam-personalize-blue-event-tracker"
+      "name":"event-tracker"
    },
    "campaigns":{
       "userPersonalizationCampaign":{
-         "name":"tgam-personalize-blue-userPersonalizationCampaign",
+         "name":"userPersonalizationCampaign",
         "trafficRatio": 1,
         "minProvisionedTPS":1,
          "campaignConfig":{
@@ -153,7 +153,7 @@
          }
       },
       "similarItemsCampaign":{
-         "name":"tgam-personalize-blue-similarItemsCampaign",
+         "name":"similarItemsCampaign",
          "minProvisionedTPS":1
       }
    },
@@ -167,14 +167,21 @@
           "filter_values": [ "category" ],
           "limit_time_range": false,
           "include_time_range_for_sections": [ "canada", "world", "business", "investing", "politics", "sports", "arts", "opinion" ],
-          "name":"tgam-personalize-blue-category",
+          "name":"category",
           "filterExpression":"INCLUDE ItemID WHERE Items.Category IN ($category) | EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\") | EXCLUDE ItemID WHERE Items.Exclude = 1"
        },
        {
-         "context": "default",
-         "limit_time_range": true,
-         "name":"tgam-personalize-blue-unread",
-         "filterExpression":"INCLUDE ItemID WHERE Items.CREATION_TIMESTAMP > 0 | EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\") | EXCLUDE ItemID WHERE Items.Exclude = 1"
+          "context": "default",
+          "limit_time_range": true,
+          "name":"unread",
+          "filterExpression":"INCLUDE ItemID WHERE Items.CREATION_TIMESTAMP > 0 | EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\") | EXCLUDE ItemID WHERE Items.Exclude = 1"
+       },
+       {
+          "context": "mobile_art_morestories_test",
+          "filter_values": [ "category" ],
+          "name":"exclcat",
+          "limit_time_range": true,
+          "filterExpression":"INCLUDE ItemID WHERE Items.CREATION_TIMESTAMP > 0 | EXCLUDE ItemID WHERE Items.Category IN ($category) | EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\") | EXCLUDE ItemID WHERE Items.Exclude = 1"
        }
    ]
 }

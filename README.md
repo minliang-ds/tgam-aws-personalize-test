@@ -1,26 +1,37 @@
 # Table of Content
-* [Introduction](#Introduction) 
+* [Introduction](#Introduction)
 * [High level Architecture Diagram](#High-level-Architecture-Diagram)
 * [Global prerequisite](#Global-prerequisite)
-* [MLOps pipeline](#MLOps-pipeline)
-  * [MLOps Pipeline Deployment steps](#MLOps Pipeline-Deployment-steps)
-* [Recommendations API Pipeline](#Recommendations-API-Pipeline)
-* [API/Lambda documentation](#API/Lambda-documentation)
+    * [MLOps pipeline](#MLOps-pipeline)
+        * [Special Note About Input Data](#Special-Note-About-Input-Data)
+        * [Model Deployment](#Model-Deployment)
+        * [Dataset Refresh](#Dataset-Refresh)
+    * [MLOps Pipeline Deployment steps](#MLOps-Pipeline-Deployment-steps)
+    * [Recommendations API Pipeline](#Recommendations-API-Pipeline)
+        * [Prerequisite - Create ACM Certificate](#Prerequisite--Create-ACM-Certificate)
+        * [API Pipeline Deployment steps](#API-Pipeline-Deployment-steps)
+        * [DynamoDB Table with Api settings](#DynamoDB-Table-with-Api-settings)
+        * [API Lambda documentation](#API-Lambda-documentation)
+            * [PutEvent Lambda Documentation](#PutEvent-Lambda-Documentation)
+            * [PutContent Lambda Documentation](#PutContent-Lambda-Documentation)
+            * [GetRecommendation Api Lambda Documentation](#GetRecommendation-Api-Lambda-Documentation)
+            * [GetRecommendation Api Data conversion between Sophi DynamoDB](#GetRecommendation-Api-Data-conversion-between-Sophi-DynamoDB-and-response)
+            * [GetRecommendation Api Frontend fields required in response](#GetRecommendation-Api-Frontend-fields-required-in-response)
 
 # Introduction
 
-This repository contains 2 [AWS Serverless Application Model](https://aws.amazon.com/serverless/sam/) projects, every in each own folder:
-- api - GetRecommendations, PutContent, PutEvents api  
+This repository contains 2 [AWS Serverless Application Model](https://aws.amazon.com/serverless/sam/) projects, each in its own folder:
+- api - GetRecommendations, PutContent, PutEvents api
 - mlops - MLOps pipeline for [Amazon Personalize](https://aws.amazon.com/personalize/) Recommender System
 
-# High level Architecture Diagram 
+# High level Architecture Diagram
 
 ![Architecture Diagram](images/high-level.png)
 
 
 # Global prerequisite
 Global prerequisite items required for both mlops and api sub-projects deployment.
-1. User has access to clone this git repository  
+1. User has access to clone this git repository
 2. Commands will be executed In CloudShell or on local machine with AWS CLI credentials setup properly to access required AWS accounts
 3. Update default role for API gateway on account level. **This operation need to be executed only once per account**.
 ```bash
@@ -39,34 +50,57 @@ aws apigateway update-account --patch-operations op='replace',path='/cloudwatchR
 git clone https://github.com/globeandmail/tgam-aws-personalize
 ```
 
-# MLOps pipeline 
-MLOps pipeline for Amazon Personalize Recommender System
+## MLOps pipeline
+This pipeline builds and manages a User-Personalization and a Similar-Items Amazon Personalize campaign from end to end. The pipeline uses AWS Serverless Application Model (SAM) to deploy multiple AWS Step Functions workflows, introduced below.
 
-This pipeline builds a User-Personalization Amazon Personalize campaign for Sophi from scatch, assuming input datasets have been pre-generated. The pipeline uses AWS Serverless Application Model (SAM) to deploy an AWS Step Functions workflow containing AWS Lambda functions that call Amazon S3, Amazon Personalize, and Amazon SNS APIs.
+### Special Note About Input Data
+Currently input data gathering is not managed by IAC (Infrastructure as Code) but is rather created manually on Sophi's DS DEV account. It involves a scheduled state machine that scales up the `Sophi3ContentMetaData` DynamoDB table, initiates 2 AWS Glue jobs (one for Interactions dataset, and one for Items dataset), and scales the `Sophi3ContentMetaData` DynamoDB table back down at the end. We decided to keep this step this way because data scientists at Sophi can have full control over the input data for the Personalize campaigns. This makes it easier for data scientists to perform data validation and model improvements in the future. Related resource names/ARNs can be found below:
 
-In addition, the pipeline also deploys a scheduled (weekly on Sunday morning) AWS Step Functions workflow that fully trains a new User-Personalization solution version with the latest data and updates the live campaign with the new solution version.
+- Glue Crawlers (runs every day at 6:00 EST):
+    - Interactions: `tgam_personalize_sophi_aux_crawler`
+    - Items: `tgam-personalize-content-crawler`
+- Glue Jobs:
+    - Interactions: `tgam-personalize-sophi-aux-transform`
+    - Items: `tgam-personalize-content-metadata-transform`
+- Step Functions: `arn:aws:states:us-east-1:727304503525:stateMachine:tgam-personalize-data-refresh`
+- Eventbridge Scheduler: `arn:aws:events:us-east-1:727304503525:rule/tgam-personalize-inputdata-refresh`
+    - Current event schedule: `cron(0 12 * * ? *)` - everyday at 12:00 GMT
+- S3 URI for output: `s3://tgam-personalize-dev-1950aa20/glue-job/`
 
-The below diagram describes the architecture of the solution:
+The Glue Job scripts can be found in the [glue-job](/glue-job) folder. The exact filters and feature transformation logic can be found within.
 
-![Architecture Diagram](mlops/images/architecture.png)
+### Model Deployment
 
-The below diagram showcases the campaign creation step functions workflow:
+Model deployment is performed through the `DeployStateMachine` state machine. To run the state machine, input datasets and a JSON config file need to exist in the S3 input bucket created by the SAM. Note that this state machine is automatically triggered whenever there's a change in the JSON config files in the S3 input bucket, or it can be manually triggered by the `tgam-personalize-mlops-dev-S3Lambda` Lambda function. Details of the state machine are described below:
 
 ![stepfunction definition](mlops/images/campaign_creation_step_functions.png)
 
-The below diagram showcases the campaign update step functions workflow:
+Note that this state machine is capable of creating User Personalization, Similar Items, and Personalized Ranking solutions all in one go; the user may pick and specify the solutions they need in the JSON config file.
 
-![stepfunction definition](mlops/images/campaign_update_step_functions.png)
+### Dataset Refresh
 
-## MLOps Pipeline Deployment steps 
+To avoid accumulating too much legacy data (note that Amazon Perosonalize has an internal limit of 750k items in the item catalog) in the Personalize solutions, we recommend performing a dataset refresh once every week. This can be achieved through the `RefreshStateMachine` state machine. It is triggered by the `S3LambdaRefreshStateMachine` lambda function, which is scheduled through an Eventbridge rule. The `RefreshStateMachine` state machine works in the following order:
+1. Sync the latest dataset in the Glue Job output folder to the S3 input bucket created by the SAM pipeline
+2. Create a new Amazon Personalize dataset group through `DeployStateMachine` state machine and increment version number by 1
+3. Update the DynamoDB table with API settings with new dataset group. Note that at this stage traffic is equally split between existing campaigns and the new campaign
+4. Delete all Amazon Personalize dataset groups with the same root name but lower version numbers through `DeleteAllDatasetGroupResources` state machine. This state machine also deletes entries in the DynamoDB table with API settings for the old campaigns
+5. Once complete, all traffic will be directed to the new campaign in the new dataset group
+
+The SAM deployment pipeline also sets up an Eventbridge rule (`sched-tgam-personalize-dev-refreshSchedule`) that triggers the `S3LambdaRefreshStateMachine` lambda function every Saturday at 6:00 GMT (`cron(0 6 ? * SAT *)`).
+
+The below diagram showcases the `RefreshStateMachine` workflow:
+
+![stepfunction definition](mlops/images/dataset_refresh_step_functions.png)
+
+## MLOps Pipeline Deployment steps
 1. This command will deploy CodePipieline that will deploy changes based on git repository. Parameters:
--e     enviroment  dev/prod Default: dev
--t     pipeline type api/mlops Default: env
--p     pipeline prefix. Default: tgam-personaliz - need to be the same for mlops and api pipelines 
--b     git repo branch Default: development
--r     aws region to deploy Default: us-east-1
--m     Mail for notification Default: noreply@example.com
--d     Debug mode
+   -e     enviroment  dev/prod Default: dev
+   -t     pipeline type api/mlops Default: env
+   -p     pipeline prefix. Default: tgam-personaliz - need to be the same for mlops and api pipelines
+   -b     git repo branch Default: development
+   -r     aws region to deploy Default: us-east-1
+   -m     Mail for notification Default: noreply@example.com
+   -d     Debug mode
 
 ```bash
 sh pipeline.sh -e dev -t mlops -p tgam-personalize -b development -m mail@example.com -d 
@@ -93,7 +127,7 @@ aws s3 cp ./config/tgam-personalize/${env} s3://<input-bucket-name>/config/tgam-
 
 # Recommendations API Pipeline
 
-# Prerequisite - Create ACM Certificate
+## Prerequisite Create ACM Certificate
 1. [In CLI]: To deploy API Gateway using custom domain we need to create [AWS Certificate Manager](https://aws.amazon.com/certificate-manager/) public certificate. Because validation require DNS changes outside access of cloudformation this step needs to be done manualy.
 ```bash
 export domain="recoapi-ng-dev.theglobeandmail.com" #for prod recoapi-ng.theglobeandmail.com
@@ -148,18 +182,18 @@ All 3 Lambda Functions using Dynamo Table **${prefix}-${env}-api-settings** for 
 Entry to DynamoDB table is generated using MLOPS pipeline so there is no need for manual creation/updates.
 
 Items in table should have values:
-1. name - uniq name of entry, should be equal to DatasetGroupName 
+1. name - uniq name of entry, should be equal to DatasetGroupName
 2. status - status of entry, "active" is used as filter on all table queries
 3. eventTrackerId - id f event tracker where putEvent lambda will send future events
 4. datasetArn - ARN of dataset with ITEMS where putContent Lambda will send updates related with content
-5. trafficRatio - INT 0-100 that is used to decide what % of traffic getRecommendation Lambda will send to this 
+5. trafficRatio - INT 0-100 that is used to decide what % of traffic getRecommendation Lambda will send to this
 6. campaignArn - ARN for campaign used by getRecommendation Lambda
 7. context - dictionary of mapping between API context and personalize filters
-   1. key - default/context name
-   2. value.filter_name - name of prefix
-   3. value.filter_values - list of values needed by filter
-   4. value.include_time_range_for_sections - list of sections/categories where we will limit time limit for filters
-   5. value.limit_time_range - true/false - if this filter by default use time limits or no 
+    1. key - default/context name
+    2. value.filter_name - name of prefix
+    3. value.filter_values - list of values needed by filter
+    4. value.include_time_range_for_sections - list of sections/categories where we will limit time limit for filters
+    5. value.limit_time_range - true/false - if this filter by default use time limits or no
 
 Example of item in table:
 ```json
@@ -213,7 +247,7 @@ Example of item in table:
 }
 ```
 
-## API - Lambda documentation
+## API Lambda documentation
 
 This solution will provide 4 [AWS Lambda](https://aws.amazon.com/lambda/) functions that will be processing Sophi data:
 - *PutEvent* - AWS Lambda to transfer information about events from **sophi3-transformed-event-stream** [Amazon Kinesis Data Streams](https://aws.amazon.com/kinesis/data-streams/)
@@ -221,7 +255,7 @@ This solution will provide 4 [AWS Lambda](https://aws.amazon.com/lambda/) functi
 - *GetRecommendations* - AWS Lambda published in backend of [Amazon API Gateway](https://aws.amazon.com/api-gateway/) to provide recommendation api for end users
 - *updateLogs* - AWS Lambda for updating CloudWatch logs retention policy as name is generic we can't setup this using CloudFormation
 
-### PutEvent - Lambda Documentation
+### PutEvent Lambda Documentation
 This Lambda is responsible to collect Events from Sophi Kinesis stream and translate events to Personalize [PutEvents](https://docs.aws.amazon.com/personalize/latest/dg/API_UBS_PutEvents.html) API calls.
 
 Lambda will:
@@ -235,15 +269,15 @@ Lambda will:
 - Skip events if event sp_page_urlhost is in list defined in [putEvents.py](https://github.com/globeandmail/tgam-aws-personalize/blob/pre-prod/api/api-lambdas/putEvents/putEvents.py#L24)
 - Skip events if sp_event_name is not **page_view**
 - Skip events without: sp_domain_sessionid
-- Skip event if both **sp_domain_userid** and **sp_domain_sessionid** dont exist 
-- Use event **sp_derived_tstamp** to set sentAt value for content. 
+- Skip event if both **sp_domain_userid** and **sp_domain_sessionid** dont exist
+- Use event **sp_derived_tstamp** to set sentAt value for content.
 - Use event **visitor_type** as visitor_type Personalize event property
 - Use event **device_detector_visitorPlatform** as device_detector_visitorPlatform Personalize event property
 - Use event **device_detector_brandName** as device_detector_brandName Personalize event property
 - Use event **device_detector_browserFamily** as device_detector_browserFamily Personalize event property
 - Use event **page_rid** as recommendationId Personalize event property
 
-## PutContent - Lambda Documentation
+### PutContent Lambda Documentation
 This Lambda is responsible to collect Content Updates from Sophi Kinesis stream and translate events to Personalize [PutItems](https://docs.aws.amazon.com/personalize/latest/dg/API_UBS_PutItems.html) API calls.
 
 Lambda will:
@@ -258,11 +292,11 @@ Lambda will:
 - Content UpdatedDate will be use as Personalize Item CREATION_TIMESTAMP
 
 
-## GetRecommendation Api - Lambda Documentation
+### GetRecommendation Api Lambda Documentation
 This Lambda is setup behind Api Gateway and is responsible for providing recommendations to users. Lambda will:
 - Validate request inputs
 - Select required Personalize needed to be used based on DynamoDB settings
-  - If filter with date limit will return 0 results we will retry using filter without date restrictions
+    - If filter with date limit will return 0 results we will retry using filter without date restrictions
 - Select active Personalize campaign based on DynamoDB settings
 
 Settings are defined in cloudformation mappings in [api/template.yaml](api/template.yaml#L20)
@@ -312,7 +346,7 @@ Example of request data:
 }
 ```
 
-### GetRecommendation Api - Data conversion between Sophi DynamoDB and response
+### GetRecommendation Api Data conversion between Sophi DynamoDB and response
 | DynamoDB Table        | Field in DynamoDB  | Field in reply | Additional convertion | Comment | 
 | --------------------- | ------------------ | -------------- | --------------------- |-------- | 
 | Sophi3ContentMetaData | Byline             | byline | join list of string with separator ' and ' |  |
@@ -332,7 +366,7 @@ Example of request data:
 | arc_content           | AuthorRel          | author_rel | only url220 key from data | from sophi2 | |
 | arc_content           | PictureRel         | promo_image | copy from PictureRel only url220 key from data | from sophi2  | |
 
-### GetRecommendation Api - Frontend fields required in response
+### GetRecommendation Api Frontend fields required in response
 | Field name | Type | Example | 
 | ----------------- | -------------- |-------- | 
 | published_at  |  String | 2021-10-20 06:00:00 |
