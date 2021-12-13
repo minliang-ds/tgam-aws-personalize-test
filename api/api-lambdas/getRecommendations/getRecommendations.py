@@ -296,6 +296,8 @@ def handler(event, context, metrics):
         #Variable to decided if we use date filters
         limit_time_range = filter_settings.get("limit_time_range", True)
 
+        #Default category in case we wont have anything in request
+        category = "canada"
         if "category" in filter_settings.get("filter_values", []):
             if payload.get("include_sections"):
                 category = payload.get("include_sections")
