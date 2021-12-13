@@ -365,6 +365,8 @@ Resources:
                 - echo cd ${TemplatePath} && cd ${TemplatePath}
                 - export input_bucket=`aws cloudformation describe-stacks --stack-name ${ResourcesPrefix}-${PipelineType}-${Environment}  --query 'Stacks[0].Outputs' --output table | grep InputBucketName  | awk -F \| {'print $4'} | awk {'print $1'}`
                 - for file in `rm -rf .temp_params.json; ls ../../config/${ResourcesPrefix}/${Environment}/`; do aws s3 cp s3://${input_bucket}/config/${ResourcesPrefix}/${Environment}/${file} .temp_params.json ${profile_arg} && diff -ruNp ../../config/${ResourcesPrefix}/${Environment}/${file} .temp_params.json || aws s3 cp ../../config/${ResourcesPrefix}/${Environment}/${file} s3://${input_bucket}/config/${ResourcesPrefix}/${Environment}/${file} ; done
+                - if [ "${Environment}" = "prod" ]; then echo aws s3 sync --delete s3://${DevGlueSourceBucket}/glue-job/Interactions s3://${input_bucket}/Interactions; fi
+                - if [ "${Environment}" = "prod" ]; then echo aws s3 sync --delete s3://${DevGlueSourceBucket}/glue-job/Items s3://${input_bucket}/Items; fi
                 - if [ "${Environment}" = "prod" ]; then aws s3 sync --delete s3://${DevGlueSourceBucket}/glue-job/Interactions s3://${input_bucket}/Interactions; fi
                 - if [ "${Environment}" = "prod" ]; then aws s3 sync --delete s3://${DevGlueSourceBucket}/glue-job/Items s3://${input_bucket}/Items; fi
       Tags:
