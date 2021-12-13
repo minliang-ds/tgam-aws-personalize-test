@@ -177,7 +177,7 @@
           "filterExpression":"INCLUDE ItemID WHERE Items.CREATION_TIMESTAMP > 0 | EXCLUDE ItemID WHERE Interactions.event_type IN (\"page_view\") | EXCLUDE ItemID WHERE Items.Exclude = 1"
        },
        {
-          "context": "mobile_art_morestories_test",
+          "context": "mobile_art_morestories",
           "filter_values": [ "category" ],
           "name":"exclcat",
           "limit_time_range": true,
