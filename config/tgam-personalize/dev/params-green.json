@@ -129,7 +129,12 @@
                  "bptt":"30",
                  "hidden_dimension":"56",
                  "recency_mask":"true"
+             },
+             "optimizationObjective": {
+                 "itemAttribute": "CREATION_TIMESTAMP",
+                 "objectiveSensitivity": "HIGH"
              }
+            
          }
       },
       "similarItems":{
